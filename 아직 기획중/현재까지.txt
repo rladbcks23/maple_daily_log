@@ -271,8 +271,8 @@
 
 19번을 이제 정해봅시다
 서버위치 : render로 꽁짜 서버(배포)
-서버기술 : DRF or spring boot
-앱 기술 : Flutter or Tauri
+서버기술 : spring boot
+앱 기술 : Flutter
 DB : supabase
-인증방식? : 로컬 혹은 https
+인증방식? : HTTPS + 관리자 토큰
 MVP 범위 : 나혼자 사용하는 메이플 기록용 
