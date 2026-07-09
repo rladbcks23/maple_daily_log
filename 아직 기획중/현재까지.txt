@@ -347,3 +347,8 @@ Nexon API 호출 제한:
 - docs/report-rules.md: 리포트 계산 규칙
 - docs/nexon-api-rules.md: Nexon API 호출 제한 및 운영 규칙
 - server/: Spring Boot 서버 뼈대
+
+현재 구현:
+- /api/sync/snapshot 강제 새로고침 요청 시 Nexon API 호출
+- characters 테이블에 캐릭터 기본 정보 upsert
+- character_snapshots 테이블에 snapshot_json 저장

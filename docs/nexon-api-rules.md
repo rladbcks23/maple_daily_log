@@ -40,7 +40,7 @@ Recommended API trigger points:
 
 Each snapshot may call multiple Nexon endpoints.
 
-For this reason, `POST /api/sync/snapshot` should eventually return how many Nexon API calls were used.
+For this reason, `POST /api/sync/snapshot` returns how many Nexon API calls were used.
 
 Example response shape:
 

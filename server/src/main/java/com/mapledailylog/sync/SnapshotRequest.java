@@ -5,7 +5,7 @@ import java.time.LocalDate;
 
 public record SnapshotRequest(
         @NotBlank String ocid,
-        @NotBlank String snapshotType,
+        String snapshotType,
         LocalDate playDate
 ) {
 }

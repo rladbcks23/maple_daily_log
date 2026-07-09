@@ -69,6 +69,8 @@ The app only calls this server for actions such as:
 
 ## Nexon API Client
 
-`POST /api/sync/snapshot` now calls Nexon OpenAPI and returns the fetched snapshot section names plus the number of API calls used.
+`POST /api/sync/snapshot` calls Nexon OpenAPI, upserts the character row, and saves the response bundle into `character_snapshots.snapshot_json`.
 
-Database saving is the next implementation step.
+If the database was created before `force_refresh` was added as a snapshot type, run:
+
+- `src/main/resources/db/migration/V2__add_force_refresh_snapshot_type.sql`

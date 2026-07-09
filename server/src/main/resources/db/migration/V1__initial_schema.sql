@@ -27,7 +27,7 @@ create table if not exists character_snapshots (
     snapshot_json jsonb not null,
     created_at timestamptz not null default now(),
     constraint character_snapshots_snapshot_type_check
-        check (snapshot_type in ('app_start', 'game_start', 'game_end', 'manual', 'scheduled'))
+        check (snapshot_type in ('app_start', 'game_start', 'game_end', 'force_refresh', 'manual', 'scheduled'))
 );
 
 create table if not exists starforce_events (
