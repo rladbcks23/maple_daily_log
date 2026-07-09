@@ -361,6 +361,35 @@ def find_character(identifier):
     return _character_row_to_dict(row) if row else None
 
 
+def first_character():
+    ensure_schema()
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            select
+                id,
+                ocid,
+                character_name,
+                world_name,
+                character_class,
+                character_class_level,
+                character_level,
+                tags,
+                is_ignored,
+                last_synced_at,
+                created_at,
+                updated_at
+            from characters
+            order by is_ignored asc, last_synced_at desc, character_name asc
+            limit 1
+            """
+        )
+        row = cursor.fetchone()
+
+    return _character_row_to_dict(row) if row else None
+
+
 def latest_snapshot(character_id):
     ensure_schema()
 
@@ -391,6 +420,224 @@ def latest_snapshot(character_id):
     if not row:
         return None
     return _snapshot_row_to_dict(row)
+
+
+def create_daily_report(character_id, report_date):
+    ensure_schema()
+
+    report_date_text = report_date.isoformat()
+    end_snapshot = _latest_snapshot_for_date(character_id, report_date_text)
+    if end_snapshot is None:
+        return {
+            "status": "skipped",
+            "code": "end_snapshot_not_found",
+            "message": "No snapshot exists for the report date.",
+            "characterId": character_id,
+            "reportType": "daily",
+            "reportDate": report_date_text,
+        }
+
+    start_snapshot = _latest_snapshot_before_date(character_id, report_date_text)
+    play_minutes = _play_minutes_for_date(character_id, report_date_text)
+    summary = _build_daily_summary(start_snapshot, end_snapshot, play_minutes)
+    report_id = str(uuid.uuid4())
+
+    with connection.cursor() as cursor:
+        existing_id = _get_report_id(cursor, character_id, "daily", report_date_text)
+        report_id = existing_id or report_id
+        cursor.execute(
+            """
+            insert into reports (
+                id,
+                character_id,
+                report_type,
+                report_date,
+                start_snapshot_id,
+                end_snapshot_id,
+                play_minutes,
+                level_delta,
+                exp_delta,
+                combat_power_delta,
+                summary_json,
+                updated_at
+            )
+            values (%s, %s, 'daily', %s, %s, %s, %s, %s, %s, %s, %s, datetime('now'))
+            on conflict (character_id, report_type, report_date) do update set
+                start_snapshot_id = excluded.start_snapshot_id,
+                end_snapshot_id = excluded.end_snapshot_id,
+                play_minutes = excluded.play_minutes,
+                level_delta = excluded.level_delta,
+                exp_delta = excluded.exp_delta,
+                combat_power_delta = excluded.combat_power_delta,
+                summary_json = excluded.summary_json,
+                updated_at = datetime('now')
+            """,
+            [
+                report_id,
+                character_id,
+                report_date_text,
+                start_snapshot["id"] if start_snapshot else None,
+                end_snapshot["id"],
+                play_minutes,
+                summary["level"]["delta"],
+                _decimal_to_text(summary["experience"]["expDelta"]),
+                _decimal_to_text(summary["combatPower"]["delta"]),
+                json.dumps(summary, ensure_ascii=False),
+            ],
+        )
+
+    return {
+        "status": "saved",
+        "reportId": report_id,
+        "characterId": character_id,
+        "reportType": "daily",
+        "reportDate": report_date_text,
+        "startSnapshotId": start_snapshot["id"] if start_snapshot else None,
+        "endSnapshotId": end_snapshot["id"],
+        "playMinutes": play_minutes,
+        "levelDelta": summary["level"]["delta"],
+        "expDelta": _decimal_to_text(summary["experience"]["expDelta"]),
+        "combatPowerDelta": _decimal_to_text(summary["combatPower"]["delta"]),
+        "summary": summary,
+    }
+
+
+def _latest_snapshot_for_date(character_id, play_date):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            select
+                id,
+                character_id,
+                snapshot_type,
+                play_date,
+                recorded_at,
+                character_level,
+                character_exp,
+                exp_rate,
+                combat_power,
+                snapshot_json,
+                created_at
+            from character_snapshots
+            where character_id = %s and play_date = %s
+            order by recorded_at desc
+            limit 1
+            """,
+            [character_id, play_date],
+        )
+        row = cursor.fetchone()
+    return _snapshot_row_to_dict(row) if row else None
+
+
+def _latest_snapshot_before_date(character_id, play_date):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            select
+                id,
+                character_id,
+                snapshot_type,
+                play_date,
+                recorded_at,
+                character_level,
+                character_exp,
+                exp_rate,
+                combat_power,
+                snapshot_json,
+                created_at
+            from character_snapshots
+            where character_id = %s and play_date < %s
+            order by play_date desc, recorded_at desc
+            limit 1
+            """,
+            [character_id, play_date],
+        )
+        row = cursor.fetchone()
+    return _snapshot_row_to_dict(row) if row else None
+
+
+def _play_minutes_for_date(character_id, play_date):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            select coalesce(sum(play_minutes), 0)
+            from play_time_records
+            where character_id = %s and play_date = %s
+            """,
+            [character_id, play_date],
+        )
+        row = cursor.fetchone()
+    return int(row[0] or 0)
+
+
+def _get_report_id(cursor, character_id, report_type, report_date):
+    cursor.execute(
+        """
+        select id
+        from reports
+        where character_id = %s and report_type = %s and report_date = %s
+        """,
+        [character_id, report_type, report_date],
+    )
+    row = cursor.fetchone()
+    return row[0] if row else None
+
+
+def _build_daily_summary(start_snapshot, end_snapshot, play_minutes):
+    level_delta = None
+    exp_delta = None
+    exp_rate_delta = None
+    combat_power_delta = None
+
+    if start_snapshot:
+        start_level = _int_or_none(start_snapshot["characterLevel"])
+        end_level = _int_or_none(end_snapshot["characterLevel"])
+        level_delta = _subtract(end_level, start_level)
+
+        same_level = start_level is not None and start_level == end_level
+        if same_level:
+            exp_delta = _subtract(_decimal_or_none(end_snapshot["characterExp"]), _decimal_or_none(start_snapshot["characterExp"]))
+            exp_rate_delta = _subtract(_decimal_or_none(end_snapshot["expRate"]), _decimal_or_none(start_snapshot["expRate"]))
+
+        combat_power_delta = _subtract(
+            _decimal_or_none(end_snapshot["combatPower"]),
+            _decimal_or_none(start_snapshot["combatPower"]),
+        )
+
+    return {
+        "baseline": start_snapshot is None,
+        "snapshots": {
+            "startSnapshotId": start_snapshot["id"] if start_snapshot else None,
+            "endSnapshotId": end_snapshot["id"],
+            "startPlayDate": start_snapshot["playDate"] if start_snapshot else None,
+            "endPlayDate": end_snapshot["playDate"],
+        },
+        "level": {
+            "start": start_snapshot["characterLevel"] if start_snapshot else None,
+            "end": end_snapshot["characterLevel"],
+            "delta": level_delta,
+            "accuracy": "SNAPSHOT_DIFF" if start_snapshot else "API_REPORTED",
+        },
+        "experience": {
+            "startExp": start_snapshot["characterExp"] if start_snapshot else None,
+            "endExp": end_snapshot["characterExp"],
+            "expDelta": _decimal_to_text(exp_delta),
+            "startRate": start_snapshot["expRate"] if start_snapshot else None,
+            "endRate": end_snapshot["expRate"],
+            "expRateDelta": _decimal_to_text(exp_rate_delta),
+            "accuracy": "SNAPSHOT_DIFF" if start_snapshot else "API_REPORTED",
+        },
+        "combatPower": {
+            "start": start_snapshot["combatPower"] if start_snapshot else None,
+            "end": end_snapshot["combatPower"],
+            "delta": _decimal_to_text(combat_power_delta),
+            "accuracy": "SNAPSHOT_DIFF" if start_snapshot else "API_REPORTED",
+        },
+        "playTime": {
+            "minutes": play_minutes,
+            "accuracy": "MANUAL" if play_minutes else "ESTIMATED",
+        },
+    }
 
 
 def _get_character_id(cursor, ocid):
@@ -450,6 +697,21 @@ def _decimal_or_none(value):
 
 def _decimal_to_text(value):
     return str(value) if value is not None else None
+
+
+def _int_or_none(value):
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _subtract(end_value, start_value):
+    if end_value is None or start_value is None:
+        return None
+    return end_value - start_value
 
 
 def _number_text_or_none(value):

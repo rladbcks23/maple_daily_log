@@ -16,3 +16,10 @@ class SnapshotRequestSerializer(serializers.Serializer):
         if not any(attrs.get(field) for field in ("ocid", "characterId", "characterName")):
             raise serializers.ValidationError("ocid, characterId, or characterName is required.")
         return attrs
+
+
+class DailyReportRequestSerializer(serializers.Serializer):
+    ocid = serializers.CharField(required=False, allow_blank=True)
+    characterId = serializers.CharField(required=False, allow_blank=True)
+    characterName = serializers.CharField(required=False, allow_blank=True)
+    reportDate = serializers.DateField(required=False)

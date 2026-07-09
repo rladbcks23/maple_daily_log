@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from api import repositories
 from api.nexon import NexonApiClient, NexonApiError
-from api.serializers import SnapshotRequestSerializer
+from api.serializers import DailyReportRequestSerializer, SnapshotRequestSerializer
 
 
 @api_view(["GET"])
@@ -103,10 +103,34 @@ def latest_snapshot(_request, character_id):
 
 @api_view(["POST"])
 def create_daily_report(request):
+    serializer = DailyReportRequestSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    data = serializer.validated_data
+    report_date = data.get("reportDate") or (datetime.now(ZoneInfo(settings.MAPLE["TIMEZONE"])).date() - timedelta(days=1))
+    character = repositories.find_character(data) if data else None
+    if character is None:
+        character = repositories.first_character()
+
+    if character is None:
+        return Response(
+            {
+                "status": "error",
+                "code": "character_not_found",
+                "message": "Run /api/sync/characters first.",
+            },
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    with transaction.atomic():
+        report = repositories.create_daily_report(character["id"], report_date)
+
+    http_status = status.HTTP_200_OK if report["status"] == "saved" else status.HTTP_202_ACCEPTED
     return Response(
         {
-            "status": "planned",
-            "message": "Daily report calculation will be implemented after snapshot comparison rules are finalized.",
+            **report,
+            "characterName": character["characterName"],
+            "worldName": character["worldName"],
         },
-        status=status.HTTP_202_ACCEPTED,
+        status=http_status,
     )

@@ -58,6 +58,16 @@ Snapshot sync accepts any one of these identifiers:
 - `characterId`
 - `characterName`
 
+`POST /api/reports/daily` creates one daily report. If `reportDate` is omitted, it uses yesterday in `MAPLE_TIMEZONE`.
+
+Daily report creation accepts any one of these identifiers:
+
+- `ocid`
+- `characterId`
+- `characterName`
+
+If no character identifier is provided, the server uses the first saved character.
+
 ## Database
 
 The default SQLite database file is:

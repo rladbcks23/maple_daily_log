@@ -20,6 +20,8 @@ For each character and report date:
 4. If there is no `start_snapshot`, create the report as the first baseline report.
 5. If there is no `end_snapshot`, do not create a daily report for that character/date.
 
+The first baseline report stores the end snapshot and current values, but difference values such as level delta, experience delta, and combat power delta stay empty.
+
 ## Play Date Rule
 
 `recorded_at` is the real timestamp when the snapshot was saved.
