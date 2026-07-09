@@ -2,6 +2,7 @@ package com.mapledailylog.sync;
 
 import com.mapledailylog.config.MapleProperties;
 import com.mapledailylog.nexon.NexonApiClient;
+import com.mapledailylog.nexon.NexonCharacterSummary;
 import com.mapledailylog.nexon.NexonSnapshotBundle;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -26,23 +27,32 @@ public class SyncService {
     );
 
     private final NexonApiClient nexonApiClient;
+    private final CharacterRepository characterRepository;
     private final SnapshotRepository snapshotRepository;
     private final ZoneId zoneId;
 
     public SyncService(
             NexonApiClient nexonApiClient,
+            CharacterRepository characterRepository,
             SnapshotRepository snapshotRepository,
             MapleProperties properties
     ) {
         this.nexonApiClient = nexonApiClient;
+        this.characterRepository = characterRepository;
         this.snapshotRepository = snapshotRepository;
         this.zoneId = ZoneId.of(properties.timezone());
     }
 
+    @Transactional
     public Map<String, Object> syncCharacters() {
+        List<NexonCharacterSummary> characters = nexonApiClient.fetchCharacterList();
+        int saved = characterRepository.upsertCharacters(characters);
+
         return Map.of(
-                "status", "planned",
-                "message", "Nexon API character synchronization will be implemented here."
+                "status", "saved",
+                "found", characters.size(),
+                "saved", saved,
+                "message", "Nexon account characters were synchronized into characters."
         );
     }
 

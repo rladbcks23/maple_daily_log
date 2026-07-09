@@ -69,6 +69,8 @@ The app only calls this server for actions such as:
 
 ## Nexon API Client
 
+`POST /api/sync/characters` calls Nexon OpenAPI account character list and upserts every returned character into `characters`.
+
 `POST /api/sync/snapshot` calls Nexon OpenAPI, upserts the character row, and saves the response bundle into `character_snapshots.snapshot_json`.
 
 If the database was created before `force_refresh` was added as a snapshot type, run:

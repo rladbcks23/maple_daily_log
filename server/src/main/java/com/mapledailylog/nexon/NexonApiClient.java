@@ -2,6 +2,8 @@ package com.mapledailylog.nexon;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
@@ -29,6 +31,16 @@ public class NexonApiClient {
         }
 
         return ocid.asText();
+    }
+
+    public List<NexonCharacterSummary> fetchCharacterList() {
+        JsonNode body = get(uriBuilder -> uriBuilder
+                .path("/maplestory/v1/character/list")
+                .build());
+
+        List<NexonCharacterSummary> characters = new ArrayList<>();
+        collectCharacters(body, characters);
+        return List.copyOf(characters);
     }
 
     public NexonSnapshotBundle fetchSnapshotBundle(String ocid) {
@@ -108,6 +120,58 @@ public class NexonApiClient {
                 Map.entry("hexamatrix", "/maplestory/v1/character/hexamatrix"),
                 Map.entry("hexamatrixStat", "/maplestory/v1/character/hexamatrix-stat")
         );
+    }
+
+    private void collectCharacters(JsonNode node, List<NexonCharacterSummary> characters) {
+        if (node == null || node.isNull()) {
+            return;
+        }
+
+        if (node.isObject() && node.hasNonNull("ocid")) {
+            characters.add(toCharacterSummary(node));
+            return;
+        }
+
+        if (node.isArray()) {
+            node.forEach(child -> collectCharacters(child, characters));
+            return;
+        }
+
+        JsonNode characterList = node.get("character_list");
+        if (characterList != null) {
+            collectCharacters(characterList, characters);
+        }
+
+        JsonNode accountList = node.get("account_list");
+        if (accountList != null) {
+            collectCharacters(accountList, characters);
+        }
+    }
+
+    private NexonCharacterSummary toCharacterSummary(JsonNode node) {
+        return new NexonCharacterSummary(
+                textValue(node, "ocid"),
+                textValue(node, "character_name"),
+                textValue(node, "world_name"),
+                textValue(node, "character_class"),
+                integerValue(node, "character_level")
+        );
+    }
+
+    private String textValue(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        return value.asText();
+    }
+
+    private Integer integerValue(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        return value.asInt();
     }
 
     @FunctionalInterface

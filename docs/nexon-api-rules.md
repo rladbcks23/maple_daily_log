@@ -21,6 +21,7 @@ The first version should avoid scanning every character with every endpoint on e
 Recommended behavior:
 
 - Collect full snapshots only for important characters.
+- Synchronize the account character list first, then choose characters from the saved `characters` table.
 - Use character tags to reduce collection scope.
 - Use force refresh for the currently selected or explicitly requested character.
 - Skip ignored/storage characters.
