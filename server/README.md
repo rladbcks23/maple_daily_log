@@ -33,6 +33,19 @@ pip install -r requirements.txt
 python manage.py runserver
 ```
 
+Local runs automatically load `server/.env`.
+
+Pooler example:
+
+```text
+DATABASE_URL=postgresql://aws-0-ap-southeast-2.pooler.supabase.com:5432/postgres
+DATABASE_USERNAME=postgres.<project-ref>
+DATABASE_PASSWORD=<database-password>
+DATABASE_SSLMODE=require
+```
+
+Keep `DATABASE_PASSWORD` separate from `DATABASE_URL`, especially when the password contains special characters such as `@`.
+
 Do not run `python manage.py migrate` for this project right now.
 
 This server does not use Django models for the app tables. Supabase tables are created from:

@@ -2,8 +2,11 @@ import os
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from dotenv import load_dotenv
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "local-dev-only-change-me")
 DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
