@@ -1,0 +1,1 @@
+web: gunicorn maple_daily_log.wsgi:application
