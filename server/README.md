@@ -18,6 +18,8 @@ Required environment variables:
 Optional:
 
 - `FLYWAY_ENABLED=true`
+- `NEXON_REQUESTS_PER_SECOND=5`
+- `NEXON_REQUESTS_PER_DAY=1000`
 
 ## First API Surface
 
@@ -40,6 +42,10 @@ The Supabase schema is in:
 - `../database/rls.sql`
 
 The first version stores most character state in `character_snapshots.snapshot_json`.
+
+Nexon API request budget notes are in:
+
+- `../docs/nexon-api-rules.md`
 
 ## App Data Flow
 

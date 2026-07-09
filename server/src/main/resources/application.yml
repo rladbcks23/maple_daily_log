@@ -13,3 +13,6 @@ maple:
   admin-token: ${ADMIN_TOKEN}
   nexon-api-key: ${NEXON_API_KEY}
   timezone: Asia/Seoul
+  nexon-rate-limit:
+    requests-per-second: ${NEXON_REQUESTS_PER_SECOND:5}
+    requests-per-day: ${NEXON_REQUESTS_PER_DAY:1000}

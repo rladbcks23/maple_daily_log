@@ -70,6 +70,13 @@
 실행 중 주기 호출은 1차에서는 안 해도 됨.
 필요하면 나중에 실시간 모드로 추가.
 
+Nexon API 호출 제한:
+- 초당 최대 5건
+- 하루 최대 1,000건
+- 강제 새로고침은 선택 캐릭터 중심으로 호출
+- 태그를 이용해 중요 캐릭터만 풀스냅샷 수집
+- storage / ignore 캐릭터는 기본 수집 제외
+
 
 7. 앱 실행 시 할 일
 
@@ -338,4 +345,5 @@
 - database/schema.sql: Supabase SQL 스키마 초안
 - database/rls.sql: 앱 읽기 전용 RLS 정책 초안
 - docs/report-rules.md: 리포트 계산 규칙
+- docs/nexon-api-rules.md: Nexon API 호출 제한 및 운영 규칙
 - server/: Spring Boot 서버 뼈대
