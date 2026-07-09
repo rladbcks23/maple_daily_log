@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
 
 from dotenv import load_dotenv
 
@@ -37,30 +36,11 @@ REST_FRAMEWORK = {
     ],
 }
 
-
-def database_config():
-    database_url = os.environ.get("DATABASE_URL", "")
-    if database_url.startswith("jdbc:"):
-        database_url = database_url.removeprefix("jdbc:")
-
-    parsed = urlparse(database_url)
-    query = parse_qs(parsed.query)
-
-    return {
-        "ENGINE": "django.db.backends.postgresql",
-        "HOST": parsed.hostname or os.environ.get("DATABASE_HOST", ""),
-        "PORT": parsed.port or int(os.environ.get("DATABASE_PORT", "5432")),
-        "NAME": parsed.path.lstrip("/") or os.environ.get("DATABASE_NAME", "postgres"),
-        "USER": os.environ.get("DATABASE_USERNAME") or parsed.username or "postgres",
-        "PASSWORD": os.environ.get("DATABASE_PASSWORD") or parsed.password or "",
-        "OPTIONS": {
-            "sslmode": query.get("sslmode", [os.environ.get("DATABASE_SSLMODE", "require")])[0],
-        },
-    }
-
-
 DATABASES = {
-    "default": database_config(),
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": os.environ.get("SQLITE_PATH", BASE_DIR / "db.sqlite3"),
+    },
 }
 
 MAPLE = {

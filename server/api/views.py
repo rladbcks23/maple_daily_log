@@ -72,6 +72,22 @@ def sync_snapshot(request):
     )
 
 
+@api_view(["GET"])
+def list_characters(_request):
+    return Response({"characters": repositories.list_characters()})
+
+
+@api_view(["GET"])
+def latest_snapshot(_request, character_id):
+    snapshot = repositories.latest_snapshot(character_id)
+    if snapshot is None:
+        return Response(
+            {"status": "not_found", "message": "No snapshot exists for this character."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    return Response(snapshot)
+
+
 @api_view(["POST"])
 def create_daily_report(request):
     return Response(
