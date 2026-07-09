@@ -22,6 +22,7 @@ create table if not exists character_snapshots (
     play_date text not null,
     recorded_at text not null default (datetime('now')),
     character_level integer,
+    character_exp text,
     exp_rate text,
     combat_power text,
     snapshot_json text not null,

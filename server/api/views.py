@@ -47,9 +47,20 @@ def sync_snapshot(request):
     data = serializer.validated_data
     snapshot_type = data.get("snapshotType") or "force_refresh"
     play_date = data.get("playDate") or datetime.now(ZoneInfo(settings.MAPLE["TIMEZONE"])).date()
+    character = repositories.find_character(data)
+
+    if character is None:
+        return Response(
+            {
+                "status": "error",
+                "code": "character_not_found",
+                "message": "Run /api/sync/characters first, then request a snapshot with ocid, characterId, or characterName.",
+            },
+            status=status.HTTP_404_NOT_FOUND,
+        )
 
     try:
-        bundle = NexonApiClient().fetch_snapshot_bundle(data["ocid"])
+        bundle = NexonApiClient().fetch_snapshot_bundle(character["ocid"])
         with transaction.atomic():
             saved_snapshot = repositories.save_snapshot(bundle, snapshot_type, play_date)
     except NexonApiError as exc:
@@ -58,11 +69,13 @@ def sync_snapshot(request):
     return Response(
         {
             "status": "saved",
-            "ocid": data["ocid"],
+            "ocid": character["ocid"],
             "characterId": saved_snapshot["characterId"],
             "snapshotId": saved_snapshot["snapshotId"],
             "characterName": saved_snapshot["characterName"],
             "characterLevel": saved_snapshot["characterLevel"],
+            "characterExp": saved_snapshot["characterExp"],
+            "expRate": saved_snapshot["expRate"],
             "snapshotType": snapshot_type,
             "playDate": saved_snapshot["playDate"],
             "apiCallsUsed": bundle.api_calls_used,

@@ -53,6 +53,7 @@ The first version stores most API data in `character_snapshots.snapshot_json`.
 Frequently compared values may also be copied into columns for easier querying:
 
 - `character_level`
+- `character_exp`
 - `exp_rate`
 - `combat_power`
 

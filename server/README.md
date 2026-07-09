@@ -52,6 +52,12 @@ Authorization: Bearer <ADMIN_TOKEN>
 
 `POST /api/sync/snapshot` calls Nexon OpenAPI, upserts the character row, and saves the response bundle into `character_snapshots.snapshot_json`.
 
+Snapshot sync accepts any one of these identifiers:
+
+- `ocid`
+- `characterId`
+- `characterName`
+
 ## Database
 
 The default SQLite database file is:

@@ -35,6 +35,7 @@ def ensure_schema():
                 play_date text not null,
                 recorded_at text not null default (datetime('now')),
                 character_level integer,
+                character_exp text,
                 exp_rate text,
                 combat_power text,
                 snapshot_json text not null,
@@ -43,6 +44,7 @@ def ensure_schema():
             )
             """
         )
+        _add_column_if_missing(cursor, "character_snapshots", "character_exp", "text")
         cursor.execute(
             """
             create table if not exists starforce_events (
@@ -195,6 +197,7 @@ def save_snapshot(bundle, snapshot_type, play_date):
 
     basic = bundle.sections.get("basic") or {}
     level = basic.get("character_level")
+    character_exp = _number_text_or_none(basic.get("character_exp"))
     exp_rate = _decimal_or_none(basic.get("character_exp_rate"))
     combat_power = _combat_power(bundle.sections.get("stat") or {})
     character_id = None
@@ -254,11 +257,12 @@ def save_snapshot(bundle, snapshot_type, play_date):
                 play_date,
                 recorded_at,
                 character_level,
+                character_exp,
                 exp_rate,
                 combat_power,
                 snapshot_json
             )
-            values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             [
                 snapshot_id,
@@ -267,6 +271,7 @@ def save_snapshot(bundle, snapshot_type, play_date):
                 play_date.isoformat(),
                 bundle.collected_at.isoformat(),
                 level,
+                character_exp,
                 _decimal_to_text(exp_rate),
                 _decimal_to_text(combat_power),
                 json.dumps(snapshot_json, ensure_ascii=False),
@@ -278,6 +283,8 @@ def save_snapshot(bundle, snapshot_type, play_date):
         "snapshotId": str(snapshot_id),
         "characterName": basic.get("character_name") or bundle.ocid,
         "characterLevel": level,
+        "characterExp": character_exp,
+        "expRate": _decimal_to_text(exp_rate),
         "playDate": play_date.isoformat(),
     }
 
@@ -308,6 +315,52 @@ def list_characters():
         return [_character_row_to_dict(row) for row in cursor.fetchall()]
 
 
+def find_character(identifier):
+    ensure_schema()
+
+    clauses = []
+    params = []
+    if identifier.get("characterId"):
+        clauses.append("id = %s")
+        params.append(identifier["characterId"])
+    if identifier.get("ocid"):
+        clauses.append("ocid = %s")
+        params.append(identifier["ocid"])
+    if identifier.get("characterName"):
+        clauses.append("character_name = %s")
+        params.append(identifier["characterName"])
+
+    if not clauses:
+        return None
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            f"""
+            select
+                id,
+                ocid,
+                character_name,
+                world_name,
+                character_class,
+                character_class_level,
+                character_level,
+                tags,
+                is_ignored,
+                last_synced_at,
+                created_at,
+                updated_at
+            from characters
+            where {" or ".join(clauses)}
+            order by is_ignored asc, last_synced_at desc
+            limit 1
+            """,
+            params,
+        )
+        row = cursor.fetchone()
+
+    return _character_row_to_dict(row) if row else None
+
+
 def latest_snapshot(character_id):
     ensure_schema()
 
@@ -321,6 +374,7 @@ def latest_snapshot(character_id):
                 play_date,
                 recorded_at,
                 character_level,
+                character_exp,
                 exp_rate,
                 combat_power,
                 snapshot_json,
@@ -370,10 +424,11 @@ def _snapshot_row_to_dict(row):
         "playDate": row[3],
         "recordedAt": row[4],
         "characterLevel": row[5],
-        "expRate": row[6],
-        "combatPower": row[7],
-        "snapshot": json.loads(row[8]),
-        "createdAt": row[9],
+        "characterExp": row[6],
+        "expRate": row[7],
+        "combatPower": row[8],
+        "snapshot": json.loads(row[9]),
+        "createdAt": row[10],
     }
 
 
@@ -395,3 +450,16 @@ def _decimal_or_none(value):
 
 def _decimal_to_text(value):
     return str(value) if value is not None else None
+
+
+def _number_text_or_none(value):
+    if value is None or value == "":
+        return None
+    return str(value).replace(",", "")
+
+
+def _add_column_if_missing(cursor, table_name, column_name, column_type):
+    cursor.execute(f"pragma table_info({table_name})")
+    existing_columns = {row[1] for row in cursor.fetchall()}
+    if column_name not in existing_columns:
+        cursor.execute(f"alter table {table_name} add column {column_name} {column_type}")
