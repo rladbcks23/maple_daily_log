@@ -27,6 +27,15 @@ WSGI_APPLICATION = "maple_daily_log.wsgi.application"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 STATIC_URL = "static/"
 
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "APP_DIRS": True,
+        "DIRS": [],
+        "OPTIONS": {},
+    },
+]
+
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "api.auth.AdminTokenAuthentication",
