@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from time import monotonic, sleep
 
 import requests
 from django.conf import settings
@@ -33,6 +34,8 @@ class NexonApiClient:
     def __init__(self):
         self.base_url = settings.MAPLE["NEXON_API_BASE_URL"].rstrip("/")
         self.api_key = settings.MAPLE["NEXON_API_KEY"]
+        self.min_request_interval = 1 / max(settings.MAPLE["NEXON_REQUESTS_PER_SECOND"], 1)
+        self.last_request_at = 0
 
     def fetch_character_list(self):
         body = self._get("/maplestory/v1/character/list")
@@ -43,7 +46,10 @@ class NexonApiClient:
     def fetch_snapshot_bundle(self, ocid):
         sections = {}
         for section, path in self.SNAPSHOT_ENDPOINTS.items():
-            sections[section] = self._get(path, {"ocid": ocid})
+            try:
+                sections[section] = self._get(path, {"ocid": ocid})
+            except NexonApiError as exc:
+                raise NexonApiError(f"Snapshot section '{section}' failed at {path}: {exc}") from exc
 
         return NexonSnapshotBundle(
             ocid=ocid,
@@ -56,12 +62,17 @@ class NexonApiClient:
         if not self.api_key:
             raise NexonApiError("NEXON_API_KEY is not configured.")
 
-        response = requests.get(
-            f"{self.base_url}{path}",
-            params=params,
-            headers={"x-nxopen-api-key": self.api_key},
-            timeout=20,
-        )
+        self._wait_for_rate_limit()
+
+        try:
+            response = requests.get(
+                f"{self.base_url}{path}",
+                params=params,
+                headers={"x-nxopen-api-key": self.api_key},
+                timeout=20,
+            )
+        except requests.RequestException as exc:
+            raise NexonApiError(f"Nexon API request failed: {exc}") from exc
 
         if response.status_code >= 400:
             raise NexonApiError(f"Nexon API request failed with status {response.status_code}: {response.text}")
@@ -70,6 +81,12 @@ class NexonApiClient:
             return response.json()
         except ValueError as exc:
             raise NexonApiError("Nexon API returned a non-JSON response.") from exc
+
+    def _wait_for_rate_limit(self):
+        elapsed = monotonic() - self.last_request_at
+        if elapsed < self.min_request_interval:
+            sleep(self.min_request_interval - elapsed)
+        self.last_request_at = monotonic()
 
     def _collect_characters(self, node, characters):
         if node is None:
