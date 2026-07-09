@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+
+build/
+.gradle/
+out/
+
+*.log
+
+server/build/
+server/.gradle/

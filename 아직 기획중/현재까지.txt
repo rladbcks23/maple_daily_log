@@ -43,8 +43,8 @@
 - 서버는 Spring Boot에서 Supabase DB에 연결
 - WebSocket은 저장소가 아니라 실시간 알림/갱신용
 - 1차는 REST API만으로 충분
-- API로 조회한 현재 상태 자체를 계속 스냅샷으로 누적하지는 않음
-- 현재 상태는 필요할 때 API로 다시 불러오고, DB에는 캐릭터 기본 정보 / 변화 기록 / 리포트 재료 / 리포트 결과를 저장
+- API 호출 결과는 character_snapshots에 누적 저장
+- 현재 화면은 최신 스냅샷을 기준으로 보여주고, 리포트는 이전 스냅샷과 최신 스냅샷을 비교해서 작성
 
 
 5. 보안
@@ -235,8 +235,10 @@
 - 테이블은 report 하나로 시작
 - report_type으로 daily / weekly / monthly 구분
 - 1차는 daily만 사용하고, weekly / monthly는 이후 추가
+- 리포트에는 비교 기준이 된 시작 스냅샷 ID와 종료 스냅샷 ID를 저장
 
 일일 리포트:
+- 기준은 전날 마지막 스냅샷 vs 해당 날짜 마지막 스냅샷
 - 플레이타임
 - 경험치 증가량 ( + 레벨업)
 - 전투력 변화
@@ -283,8 +285,8 @@
 - 일일 리포트는 한국 시간 기준 하루로 묶는다.
 - 주간 리포트는 메이플 주간 초기화 기준으로 묶는다.
 - 원본 스냅샷 시간은 KST로 표시한다.
-- 현재 상태 스냅샷을 계속 저장하는 방식은 사용하지 않는다.
-- 변화가 생긴 기록과 리포트에 들어갈 누적 데이터 위주로 저장한다.
+- API 호출 결과는 스냅샷으로 저장한다.
+- 일일 리포트는 전날 마지막 스냅샷과 해당 날짜 마지막 스냅샷을 비교해 만든다.
 
 
 
@@ -313,19 +315,22 @@
 
 기본 방향:
 - 캐릭터 기본 정보는 별도 테이블로 관리
-- API 현재 상태는 필요할 때 조회
-- 업데이트마다 늘어나는 데이터는 리포트 재료로 누적
+- API 호출 결과는 character_snapshots에 누적
+- 최신 상태 화면은 최신 스냅샷을 사용
+- 일일 리포트는 전날 마지막 스냅샷과 해당 날짜 마지막 스냅샷을 비교
 - 플레이타임은 분 단위 총합으로 저장
 - 리포트는 report 단일 테이블에 daily / weekly / monthly 타입으로 구분
 
 1차 테이블 후보:
 - characters: 캐릭터 기본 정보, ocid, 월드, 직업, 태그, 기록 제외 여부
-- character_records: 레벨, 경험치, 전투력, 주요 스탯 등 업데이트마다 저장되는 성장 기록
-- equipment_records: 장비 변경 기록
-- symbol_records: 심볼 성장 기록
-- hexamatrix_records: 헥사 / 헥사 스탯 성장 기록
+- character_snapshots: API 호출 시점의 캐릭터 상태, 장비, 심볼, 헥사, 스탯 등을 snapshot_json에 통째로 저장
 - starforce_events: 스타포스 로그
 - cube_events: 큐브 로그
 - potential_events: 잠재 재설정 로그
 - play_time_records: 날짜별 총 플레이타임, 분 단위 저장, 수동 입력 여부
-- reports: report_type으로 daily / weekly / monthly 구분, 리포트 결과 JSON 및 요약값 저장
+- reports: report_type으로 daily / weekly / monthly 구분, 시작/종료 스냅샷 ID, 리포트 결과 JSON 및 요약값 저장
+
+관련 파일:
+- database/schema.sql: Supabase SQL 스키마 초안
+- docs/report-rules.md: 리포트 계산 규칙
+- server/: Spring Boot 서버 뼈대

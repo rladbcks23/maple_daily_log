@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: maple-daily-log-server
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: ${FLYWAY_ENABLED:false}
+
+maple:
+  admin-token: ${ADMIN_TOKEN}
+  nexon-api-key: ${NEXON_API_KEY}
+  timezone: Asia/Seoul
