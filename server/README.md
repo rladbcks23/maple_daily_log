@@ -33,6 +33,13 @@ pip install -r requirements.txt
 python manage.py runserver
 ```
 
+Do not run `python manage.py migrate` for this project right now.
+
+This server does not use Django models for the app tables. Supabase tables are created from:
+
+- `../database/schema.sql`
+- `../database/rls.sql`
+
 All endpoints except `/health` require:
 
 ```text
