@@ -12,6 +12,7 @@ spring:
 maple:
   admin-token: ${ADMIN_TOKEN}
   nexon-api-key: ${NEXON_API_KEY}
+  nexon-api-base-url: ${NEXON_API_BASE_URL:https://open.api.nexon.com}
   timezone: Asia/Seoul
   nexon-rate-limit:
     requests-per-second: ${NEXON_REQUESTS_PER_SECOND:5}

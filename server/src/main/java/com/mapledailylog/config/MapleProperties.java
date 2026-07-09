@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record MapleProperties(
         String adminToken,
         String nexonApiKey,
+        String nexonApiBaseUrl,
         String timezone,
         NexonRateLimit nexonRateLimit
 ) {

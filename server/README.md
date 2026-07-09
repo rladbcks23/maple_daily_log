@@ -18,6 +18,7 @@ Required environment variables:
 Optional:
 
 - `FLYWAY_ENABLED=true`
+- `NEXON_API_BASE_URL=https://open.api.nexon.com`
 - `NEXON_REQUESTS_PER_SECOND=5`
 - `NEXON_REQUESTS_PER_DAY=1000`
 
@@ -64,5 +65,10 @@ The app should use the Supabase anon key only. Do not put the Nexon API key, adm
 The app only calls this server for actions such as:
 
 - force refresh
-- manual sync
 - daily report calculation trigger
+
+## Nexon API Client
+
+`POST /api/sync/snapshot` now calls Nexon OpenAPI and returns the fetched snapshot section names plus the number of API calls used.
+
+Database saving is the next implementation step.
