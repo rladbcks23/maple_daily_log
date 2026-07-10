@@ -7,6 +7,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from .models import Character, CharacterSnapshot, PlaySession, Report
+from .nexon import NexonClient
 
 
 def today_play_date() -> date:
@@ -31,6 +32,36 @@ def start_play_session(
         started_at=started_at or timezone.now(),
         start_snapshot=start_snapshot,
     )
+
+
+def sync_characters_from_nexon(client: NexonClient | None = None) -> dict[str, Any]:
+    client = client or NexonClient()
+    synced = []
+    created_count = 0
+    updated_count = 0
+
+    for character_data in client.character_list():
+        character, created = Character.objects.update_or_create(
+            ocid=character_data["ocid"],
+            defaults={
+                "character_name": character_data["character_name"],
+                "world_name": character_data.get("world_name", ""),
+                "character_class": character_data.get("character_class", ""),
+                "character_class_level": character_data.get("character_class_level", ""),
+                "character_level": character_data.get("character_level"),
+                "last_synced_at": timezone.now(),
+            },
+        )
+        created_count += int(created)
+        updated_count += int(not created)
+        synced.append(character)
+
+    return {
+        "created": created_count,
+        "updated": updated_count,
+        "total": len(synced),
+        "characters": synced,
+    }
 
 
 def end_play_session(

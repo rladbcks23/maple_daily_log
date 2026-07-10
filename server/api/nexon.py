@@ -99,3 +99,60 @@ class NexonClient:
             endpoint_key: self.request(endpoint_key, params=params)
             for endpoint_key in SNAPSHOT_BUNDLES[bundle_name]
         }
+
+    def character_list(self) -> list[dict[str, Any]]:
+        data = self.request("character_list")
+        raw_characters = extract_character_list(data)
+
+        characters = []
+        for raw_character in raw_characters:
+            if not isinstance(raw_character, dict):
+                continue
+            character = normalize_character(raw_character)
+            if not character.get("ocid") and character.get("character_name"):
+                character["ocid"] = self.ocid(character["character_name"])
+            if character.get("ocid") and character.get("character_name"):
+                characters.append(character)
+        return characters
+
+    def ocid(self, character_name: str) -> str:
+        data = self.request("id", params={"character_name": character_name})
+        return data.get("ocid", "")
+
+
+def first_list_value(data: dict[str, Any], keys: list[str]) -> list[Any] | None:
+    for key in keys:
+        value = data.get(key)
+        if isinstance(value, list):
+            return value
+    return None
+
+
+def extract_character_list(data: dict[str, Any]) -> list[dict[str, Any]]:
+    raw_characters = first_list_value(data, ["character_list", "characters"])
+    if raw_characters is not None:
+        return [item for item in raw_characters if isinstance(item, dict)]
+
+    accounts = first_list_value(data, ["account_list"])
+    if accounts is None:
+        return []
+
+    characters = []
+    for account in accounts:
+        if not isinstance(account, dict):
+            continue
+        account_characters = first_list_value(account, ["character_list", "characters"])
+        if account_characters:
+            characters.extend(item for item in account_characters if isinstance(item, dict))
+    return characters
+
+
+def normalize_character(raw_character: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "ocid": raw_character.get("ocid", ""),
+        "character_name": raw_character.get("character_name", ""),
+        "world_name": raw_character.get("world_name", ""),
+        "character_class": raw_character.get("character_class", ""),
+        "character_class_level": raw_character.get("character_class_level", ""),
+        "character_level": raw_character.get("character_level"),
+    }

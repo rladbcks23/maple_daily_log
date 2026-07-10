@@ -10,7 +10,7 @@ from rest_framework import status
 from .models import Character, CharacterSnapshot, PlaySession, Report
 from .nexon import NEXON_ENDPOINTS, SNAPSHOT_BUNDLES
 from .serializers import CharacterSerializer, CharacterSnapshotSerializer, PlaySessionSerializer, ReportSerializer
-from .services import create_report, end_play_session, find_missing_scheduler_tasks, latest_snapshot_for_date, start_play_session, today_play_date
+from .services import create_report, end_play_session, find_missing_scheduler_tasks, latest_snapshot_for_date, start_play_session, sync_characters_from_nexon, today_play_date
 
 
 @api_view(["GET"])
@@ -21,6 +21,28 @@ def nexon_endpoints(_request):
 @api_view(["GET"])
 def snapshot_bundles(_request):
     return Response({"bundles": SNAPSHOT_BUNDLES})
+
+
+@api_view(["GET", "POST"])
+def sync_characters(request):
+    if request.method == "GET":
+        return Response(
+            {
+                "detail": "POST 요청을 보내면 .env의 NEXON_API_KEY로 캐릭터 목록을 동기화한다.",
+                "method": "POST",
+                "url": "/api/sync/characters",
+            }
+        )
+
+    sync_result = sync_characters_from_nexon()
+    return Response(
+        {
+            "created": sync_result["created"],
+            "updated": sync_result["updated"],
+            "total": sync_result["total"],
+            "characters": CharacterSerializer(sync_result["characters"], many=True).data,
+        }
+    )
 
 
 @api_view(["GET", "POST"])

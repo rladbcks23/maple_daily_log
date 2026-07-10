@@ -1,6 +1,10 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
+from .models import Character
+from .services import sync_characters_from_nexon
+from .nexon import extract_character_list
+
 
 class PlanningFlowTests(TestCase):
     def setUp(self):
@@ -91,3 +95,55 @@ class PlanningFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Content-Type"], "application/json")
         self.assertEqual(response.json(), [])
+
+    def test_sync_characters_get_describes_post_usage(self):
+        response = self.client.get("/api/sync/characters")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["method"], "POST")
+
+    def test_sync_characters_from_nexon_upserts_character_list(self):
+        class FakeNexonClient:
+            def character_list(self):
+                return [
+                    {
+                        "ocid": "ocid-1",
+                        "character_name": "본캐",
+                        "world_name": "스카니아",
+                        "character_class": "아델",
+                        "character_class_level": "6",
+                        "character_level": 280,
+                    }
+                ]
+
+        result = sync_characters_from_nexon(client=FakeNexonClient())
+
+        self.assertEqual(result["created"], 1)
+        self.assertEqual(result["updated"], 0)
+        self.assertEqual(result["total"], 1)
+        character = Character.objects.get(ocid="ocid-1")
+        self.assertEqual(character.character_name, "본캐")
+        self.assertEqual(character.character_level, 280)
+
+    def test_extract_character_list_supports_account_list_response(self):
+        data = {
+            "account_list": [
+                {
+                    "account_id": "hidden",
+                    "character_list": [
+                        {
+                            "ocid": "ocid-1",
+                            "character_name": "본캐",
+                            "world_name": "스카니아",
+                            "character_class": "아델",
+                            "character_level": 280,
+                        }
+                    ],
+                }
+            ]
+        }
+
+        characters = extract_character_list(data)
+
+        self.assertEqual(len(characters), 1)
+        self.assertEqual(characters[0]["character_name"], "본캐")

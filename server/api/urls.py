@@ -6,6 +6,7 @@ from . import views
 urlpatterns = [
     path("meta/nexon-endpoints", views.nexon_endpoints),
     path("meta/snapshot-bundles", views.snapshot_bundles),
+    path("sync/characters", views.sync_characters),
     path("characters", views.characters),
     path("characters/<uuid:character_id>", views.character_detail),
     path("snapshots", views.create_snapshot),
