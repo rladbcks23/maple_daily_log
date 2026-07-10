@@ -30,6 +30,7 @@ python manage.py runserver
 - `GET /api/characters`
 - `POST /api/characters`
 - `POST /api/sync/characters`
+- `POST /api/sync/snapshot`
 - `POST /api/snapshots`
 - `GET /api/snapshots/latest?character_id=...`
 - `POST /api/play-sessions/start`

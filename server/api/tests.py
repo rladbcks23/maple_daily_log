@@ -2,7 +2,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from .models import Character
-from .services import sync_characters_from_nexon
+from .services import sync_character_snapshot_from_nexon, sync_characters_from_nexon
 from .nexon import extract_character_list
 
 
@@ -147,3 +147,65 @@ class PlanningFlowTests(TestCase):
 
         self.assertEqual(len(characters), 1)
         self.assertEqual(characters[0]["character_name"], "본캐")
+
+    def test_sync_snapshot_get_describes_post_usage(self):
+        response = self.client.get("/api/sync/snapshot")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["method"], "POST")
+
+    def test_sync_character_snapshot_from_nexon_saves_bundle_result(self):
+        character = Character.objects.create(
+            ocid="ocid-snapshot",
+            character_name="스냅샷캐릭",
+            world_name="스카니아",
+        )
+
+        class FakeNexonClient:
+            def collect_bundle_with_count(self, bundle_name, params):
+                self.bundle_name = bundle_name
+                self.params = params
+                return (
+                    {
+                        "character_basic": {
+                            "character_name": "스냅샷캐릭",
+                            "world_name": "스카니아",
+                            "character_class": "아델",
+                            "character_class_level": "6",
+                            "character_level": 280,
+                            "character_exp": "123456",
+                            "character_exp_rate": "12.34",
+                        },
+                        "character_stat": {
+                            "final_stat": [
+                                {
+                                    "stat_name": "전투력",
+                                    "stat_value": "987654321",
+                                }
+                            ]
+                        },
+                    },
+                    2,
+                )
+
+        client = FakeNexonClient()
+        result = sync_character_snapshot_from_nexon(
+            character=character,
+            bundle_name="light",
+            snapshot_type="app_start",
+            play_date="2026-07-10",
+            client=client,
+        )
+
+        snapshot = result["snapshot"]
+        character.refresh_from_db()
+        self.assertEqual(result["api_calls_used"], 2)
+        self.assertEqual(client.params["ocid"], "ocid-snapshot")
+        self.assertEqual(snapshot.bundle_name, "light")
+        self.assertEqual(snapshot.snapshot_type, "app_start")
+        self.assertEqual(snapshot.character_level, 280)
+        self.assertEqual(snapshot.character_exp, "123456")
+        self.assertEqual(snapshot.exp_rate, "12.34")
+        self.assertEqual(snapshot.combat_power, "987654321")
+        self.assertEqual(character.character_class, "아델")
+        self.assertEqual(character.character_level, 280)

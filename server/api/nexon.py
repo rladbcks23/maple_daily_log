@@ -1,8 +1,10 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from time import monotonic, sleep
 from typing import Any
 
 import requests
 from django.conf import settings
+from requests import RequestException
 
 
 NEXON_ENDPOINTS = {
@@ -62,6 +64,9 @@ SNAPSHOT_BUNDLES = {
         "character_other_stat",
         "character_ring_exchange",
         "character_ring_reserve",
+        "user_union",
+        "user_union_artifact",
+        "user_union_champion",
         "scheduler_character_state",
     ],
     "history": [
@@ -71,11 +76,20 @@ SNAPSHOT_BUNDLES = {
     ],
 }
 
+SKILL_GRADES_FOR_SNAPSHOT = [
+    "hyperpassive",
+    "hyperactive",
+    "5",
+    "6",
+]
+
 
 @dataclass
 class NexonClient:
     api_key: str = settings.NEXON_API_KEY
     base_url: str = settings.NEXON_API_BASE_URL
+    request_interval_seconds: float = settings.NEXON_REQUEST_INTERVAL_SECONDS
+    _last_request_at: float = field(default=0.0, init=False)
 
     def request(self, endpoint_key: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         if endpoint_key not in NEXON_ENDPOINTS:
@@ -83,6 +97,7 @@ class NexonClient:
         if not self.api_key:
             raise RuntimeError("NEXON_API_KEY is not configured")
 
+        self.throttle()
         response = requests.get(
             f"{self.base_url}{NEXON_ENDPOINTS[endpoint_key]}",
             headers={"x-nxopen-api-key": self.api_key},
@@ -92,13 +107,50 @@ class NexonClient:
         response.raise_for_status()
         return response.json()
 
+    def throttle(self) -> None:
+        elapsed = monotonic() - self._last_request_at
+        wait_seconds = self.request_interval_seconds - elapsed
+        if wait_seconds > 0:
+            sleep(wait_seconds)
+        self._last_request_at = monotonic()
+
     def collect_bundle(self, bundle_name: str, params: dict[str, Any]) -> dict[str, Any]:
+        data, _api_calls_used = self.collect_bundle_with_count(bundle_name, params=params)
+        return data
+
+    def collect_bundle_with_count(self, bundle_name: str, params: dict[str, Any]) -> tuple[dict[str, Any], int]:
         if bundle_name not in SNAPSHOT_BUNDLES:
             raise ValueError(f"Unknown snapshot bundle: {bundle_name}")
-        return {
-            endpoint_key: self.request(endpoint_key, params=params)
-            for endpoint_key in SNAPSHOT_BUNDLES[bundle_name]
-        }
+        snapshot = {}
+        api_calls_used = 0
+        for endpoint_key in SNAPSHOT_BUNDLES[bundle_name]:
+            result, calls_used = self.collect_endpoint(endpoint_key, params=params)
+            snapshot[endpoint_key] = result
+            api_calls_used += calls_used
+        return snapshot, api_calls_used
+
+    def collect_endpoint(self, endpoint_key: str, params: dict[str, Any]) -> tuple[Any, int]:
+        if endpoint_key == "character_skill":
+            results = {}
+            calls_used = 0
+            for skill_grade in SKILL_GRADES_FOR_SNAPSHOT:
+                request_params = {**params, "character_skill_grade": skill_grade}
+                results[skill_grade] = self.safe_request(endpoint_key, params=request_params)
+                calls_used += 1
+            return results, calls_used
+
+        return self.safe_request(endpoint_key, params=params), 1
+
+    def safe_request(self, endpoint_key: str, params: dict[str, Any]) -> dict[str, Any]:
+        try:
+            return self.request(endpoint_key, params=params)
+        except (RequestException, RuntimeError, ValueError) as exc:
+            return {
+                "error": {
+                    "endpoint": endpoint_key,
+                    "message": str(exc),
+                }
+            }
 
     def character_list(self) -> list[dict[str, Any]]:
         data = self.request("character_list")

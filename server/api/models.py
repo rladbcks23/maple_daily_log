@@ -29,7 +29,10 @@ class CharacterSnapshot(models.Model):
         APP_START = "app_start", "App start"
         GAME_START = "game_start", "Game start"
         GAME_END = "game_end", "Game end"
+        MAPLE_LAUNCHER_START = "maple_launcher_start", "Maple launcher start"
+        MAPLE_LAUNCHER_END = "maple_launcher_end", "Maple launcher end"
         FORCE_REFRESH = "force_refresh", "Force refresh"
+        HOURLY_AUTO = "hourly_auto", "Hourly auto"
         MANUAL = "manual", "Manual"
         SCHEDULED = "scheduled", "Scheduled"
 

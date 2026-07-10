@@ -64,6 +64,95 @@ def sync_characters_from_nexon(client: NexonClient | None = None) -> dict[str, A
     }
 
 
+def sync_character_snapshot_from_nexon(
+    *,
+    character: Character,
+    bundle_name: str,
+    snapshot_type: str,
+    play_date: date,
+    client: NexonClient | None = None,
+) -> dict[str, Any]:
+    client = client or NexonClient()
+    snapshot_json, api_calls_used = client.collect_bundle_with_count(
+        bundle_name,
+        params={"ocid": character.ocid},
+    )
+    extracted = extract_snapshot_columns(snapshot_json)
+
+    snapshot = CharacterSnapshot.objects.create(
+        character=character,
+        snapshot_type=snapshot_type,
+        bundle_name=bundle_name,
+        play_date=play_date,
+        character_level=extracted["character_level"],
+        character_exp=extracted["character_exp"],
+        exp_rate=extracted["exp_rate"],
+        combat_power=extracted["combat_power"],
+        snapshot_json=snapshot_json,
+    )
+
+    update_character_from_snapshot(character, snapshot_json)
+
+    return {
+        "snapshot": snapshot,
+        "api_calls_used": api_calls_used,
+        "bundle_name": bundle_name,
+        "snapshot_type": snapshot_type,
+    }
+
+
+def extract_snapshot_columns(snapshot_json: dict[str, Any]) -> dict[str, Any]:
+    basic = snapshot_json.get("character_basic") or {}
+    stat = snapshot_json.get("character_stat") or {}
+    return {
+        "character_level": basic.get("character_level"),
+        "character_exp": stringify_or_blank(basic.get("character_exp")),
+        "exp_rate": stringify_or_blank(basic.get("character_exp_rate")),
+        "combat_power": stringify_or_blank(extract_combat_power(stat)),
+    }
+
+
+def update_character_from_snapshot(character: Character, snapshot_json: dict[str, Any]) -> None:
+    basic = snapshot_json.get("character_basic") or {}
+    changed_fields = []
+    field_map = {
+        "character_name": basic.get("character_name"),
+        "world_name": basic.get("world_name"),
+        "character_class": basic.get("character_class"),
+        "character_class_level": basic.get("character_class_level"),
+        "character_level": basic.get("character_level"),
+    }
+    for field_name, value in field_map.items():
+        if value not in (None, "") and getattr(character, field_name) != value:
+            setattr(character, field_name, value)
+            changed_fields.append(field_name)
+    character.last_synced_at = timezone.now()
+    changed_fields.append("last_synced_at")
+    character.save(update_fields=changed_fields)
+
+
+def extract_combat_power(stat: dict[str, Any]) -> Any:
+    direct_value = stat.get("combat_power")
+    if direct_value not in (None, ""):
+        return direct_value
+
+    final_stats = stat.get("final_stat")
+    if not isinstance(final_stats, list):
+        return ""
+    for item in final_stats:
+        if not isinstance(item, dict):
+            continue
+        if item.get("stat_name") in ("전투력", "combat_power"):
+            return item.get("stat_value", "")
+    return ""
+
+
+def stringify_or_blank(value: Any) -> str:
+    if value in (None, ""):
+        return ""
+    return str(value)
+
+
 def end_play_session(
     *,
     session: PlaySession,
