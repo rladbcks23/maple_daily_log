@@ -24,24 +24,30 @@ Recommended behavior:
 - Synchronize the account character list first, then choose characters from the saved `characters` table.
 - Use character tags to reduce collection scope.
 - Use force refresh for the currently selected or explicitly requested character.
-- Skip ignored/storage characters.
+- Skip `ignore` characters.
 - Prefer one snapshot bundle per trigger instead of repeated polling while the game is running.
 
 ## Character Collection Scope
 
-Newly synchronized characters start with the `ignored` tag by default.
+Newly synchronized characters start with the `ignore` tag by default.
 
 This keeps new account characters out of automatic collection until the user explicitly classifies them.
 
 Current policy:
 
-- Default tag: `ignored`
+- Default tag: `ignore`
+- Supported tags:
+  - `본캐`: main character. Use for normal collection, daily reports, and weekly reports.
+  - `부캐`: sub character. Use only when daily reports need collection.
+  - `주보돌이`: weekly boss character. Use only when weekly reports need collection.
+  - `ignore`: excluded from collection.
 - Automatic/bulk collection excludes:
   - characters with `is_ignored = true`
-  - characters tagged `ignored`
-  - characters tagged `storage`
-- Tag-specific collection intervals are deferred until the app workflow is clearer.
-- For now, broad scheduled collection should target every non-ignored character only.
+  - characters tagged `ignore`
+- Tag-specific collection intervals:
+  - normal/main collection: `본캐`
+  - daily report collection: `본캐`, `부캐`
+  - weekly report collection: `본캐`, `주보돌이`
 
 ## Trigger Policy
 
