@@ -3,6 +3,10 @@ import uuid
 from django.db import models
 
 
+def default_character_tags():
+    return ["ignored"]
+
+
 class Character(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     ocid = models.CharField(max_length=128, unique=True)
@@ -11,7 +15,7 @@ class Character(models.Model):
     character_class = models.CharField(max_length=64, blank=True)
     character_class_level = models.CharField(max_length=64, blank=True)
     character_level = models.IntegerField(null=True, blank=True)
-    tags = models.JSONField(default=list, blank=True)
+    tags = models.JSONField(default=default_character_tags, blank=True)
     is_ignored = models.BooleanField(default=False)
     last_synced_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

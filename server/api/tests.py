@@ -24,6 +24,7 @@ class PlanningFlowTests(TestCase):
         )
         self.assertEqual(character_response.status_code, 201)
         character_id = character_response.data["id"]
+        self.assertEqual(character_response.data["tags"], ["ignored"])
 
         snapshot_response = self.client.post(
             "/api/snapshots",
