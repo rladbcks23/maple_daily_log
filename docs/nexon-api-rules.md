@@ -27,6 +27,22 @@ Recommended behavior:
 - Skip ignored/storage characters.
 - Prefer one snapshot bundle per trigger instead of repeated polling while the game is running.
 
+## Character Collection Scope
+
+Newly synchronized characters start with the `ignored` tag by default.
+
+This keeps new account characters out of automatic collection until the user explicitly classifies them.
+
+Current policy:
+
+- Default tag: `ignored`
+- Automatic/bulk collection excludes:
+  - characters with `is_ignored = true`
+  - characters tagged `ignored`
+  - characters tagged `storage`
+- Tag-specific collection intervals are deferred until the app workflow is clearer.
+- For now, broad scheduled collection should target every non-ignored character only.
+
 ## Trigger Policy
 
 Recommended API trigger points:
