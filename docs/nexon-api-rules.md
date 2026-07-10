@@ -36,6 +36,7 @@ This keeps new account characters out of automatic collection until the user exp
 Current policy:
 
 - Default tag: `ignore`
+- A character may have at most one tag.
 - Supported tags:
   - `본캐`: main character. Use for normal collection, daily reports, and weekly reports.
   - `부캐`: sub character. Use only when daily reports need collection.
