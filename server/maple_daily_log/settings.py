@@ -1,5 +1,5 @@
-import os
 from pathlib import Path
+import os
 
 from dotenv import load_dotenv
 
@@ -7,12 +7,15 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "local-dev-only-change-me")
-DEBUG = os.environ.get("DJANGO_DEBUG", "false").lower() == "true"
-ALLOWED_HOSTS = [host.strip() for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",") if host.strip()]
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
+DEBUG = os.getenv("DEBUG", "True").lower() == "true"
+ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if host.strip()]
+if DEBUG and "testserver" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("testserver")
 
 INSTALLED_APPS = [
-    "django.contrib.staticfiles",
+    "django.contrib.contenttypes",
+    "django.contrib.auth",
     "rest_framework",
     "api",
 ]
@@ -23,42 +26,32 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "maple_daily_log.urls"
+
+TEMPLATES = []
+
 WSGI_APPLICATION = "maple_daily_log.wsgi.application"
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-STATIC_URL = "static/"
-
-TEMPLATES = [
-    {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "APP_DIRS": True,
-        "DIRS": [],
-        "OPTIONS": {},
-    },
-]
-
-REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "api.auth.AdminTokenAuthentication",
-    ],
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
-    ],
-    "UNAUTHENTICATED_USER": None,
-    "UNAUTHENTICATED_TOKEN": None,
-}
 
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.environ.get("SQLITE_PATH", BASE_DIR / "db.sqlite3"),
-    },
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
 }
 
-MAPLE = {
-    "ADMIN_TOKEN": os.environ.get("ADMIN_TOKEN", ""),
-    "NEXON_API_KEY": os.environ.get("NEXON_API_KEY", ""),
-    "NEXON_API_BASE_URL": os.environ.get("NEXON_API_BASE_URL", "https://open.api.nexon.com"),
-    "TIMEZONE": os.environ.get("MAPLE_TIMEZONE", "Asia/Seoul"),
-    "NEXON_REQUESTS_PER_SECOND": int(os.environ.get("NEXON_REQUESTS_PER_SECOND", "5")),
-    "NEXON_REQUESTS_PER_DAY": int(os.environ.get("NEXON_REQUESTS_PER_DAY", "1000")),
+LANGUAGE_CODE = "ko-kr"
+TIME_ZONE = "Asia/Seoul"
+USE_I18N = True
+USE_TZ = True
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_PERMISSION_CLASSES": [],
 }
+
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+NEXON_API_KEY = os.getenv("NEXON_API_KEY", "")
+NEXON_API_BASE_URL = os.getenv("NEXON_API_BASE_URL", "https://open.api.nexon.com")
+REPORT_SETTLEMENT_TIME = os.getenv("REPORT_SETTLEMENT_TIME", "05:00")
+WEEKLY_REMINDER_TIME = os.getenv("WEEKLY_REMINDER_TIME", "21:00")

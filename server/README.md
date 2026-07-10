@@ -1,100 +1,40 @@
 # Maple Daily Log Server
 
-Django REST Framework server for collecting Nexon OpenAPI data, saving local SQLite records, and triggering report jobs.
+문서 기준으로 다시 만든 Django REST 서버다.
 
-The server owns Nexon API calls, writes, force refresh, and report calculation. The app should read data from this server API instead of connecting to Supabase directly.
+## 역할
 
-## Environment
+- 캐릭터 기본 정보 저장
+- 게임 시작/종료 이벤트 저장
+- 플레이 세션과 총 플레이타임 기록
+- Nexon API 스냅샷 저장
+- 일일/주간/월간 리포트 생성
+- 스케줄러 미완료 항목 확인용 데이터 제공
 
-Required environment variables:
+## 실행
 
-- `ADMIN_TOKEN`
-- `NEXON_API_KEY`
-- `DJANGO_SECRET_KEY`
-
-Optional:
-
-- `DJANGO_DEBUG=false`
-- `DJANGO_ALLOWED_HOSTS=*`
-- `SQLITE_PATH=db.sqlite3`
-- `NEXON_API_BASE_URL=https://open.api.nexon.com`
-- `NEXON_REQUESTS_PER_SECOND=5`
-- `NEXON_REQUESTS_PER_DAY=1000`
-- `MAPLE_TIMEZONE=Asia/Seoul`
-
-Local runs automatically load `server/.env`.
-
-## Local Run
-
-```text
+```powershell
+cd server
+python -m venv venv
+.\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+python manage.py migrate
 python manage.py runserver
 ```
 
-Do not run `python manage.py migrate` for the Maple app tables right now. The server creates the SQLite tables it needs when the API is called.
-
-All endpoints except `/health` require:
-
-```text
-Authorization: Bearer <ADMIN_TOKEN>
-```
-
-## API Surface
+## 주요 API
 
 - `GET /health`
+- `GET /api/meta/nexon-endpoints`
+- `GET /api/meta/snapshot-bundles`
 - `GET /api/characters`
-- `GET /api/characters/<character_id>/latest-snapshot`
-- `POST /api/sync/characters`
-- `POST /api/sync/snapshot`
+- `POST /api/characters`
+- `POST /api/snapshots`
+- `GET /api/snapshots/latest?character_id=...`
+- `POST /api/play-sessions/start`
+- `POST /api/play-sessions/{id}/end`
 - `POST /api/reports/daily`
-
-`POST /api/sync/characters` calls Nexon OpenAPI account character list and upserts every returned character into `characters`.
-
-`POST /api/sync/snapshot` calls Nexon OpenAPI, upserts the character row, and saves the response bundle into `character_snapshots.snapshot_json`.
-
-Snapshot sync accepts any one of these identifiers:
-
-- `ocid`
-- `characterId`
-- `characterName`
-
-`POST /api/reports/daily` creates one daily report. If `reportDate` is omitted, it uses yesterday in `MAPLE_TIMEZONE`.
-
-Daily report creation accepts any one of these identifiers:
-
-- `ocid`
-- `characterId`
-- `characterName`
-
-If no character identifier is provided, the server uses the first saved character.
-
-## Database
-
-The default SQLite database file is:
-
-- `server/db.sqlite3`
-
-You can change it with:
-
-```text
-SQLITE_PATH=<path-to-sqlite-file>
-```
-
-The reference schema is:
-
-- `../database/schema.sql`
-
-The first version stores most character state in `character_snapshots.snapshot_json`.
-
-Nexon API request budget notes are in:
-
-- `../docs/nexon-api-rules.md`
-
-## App Data Flow
-
-The app should call the DRF server read APIs:
-
-- `GET /api/characters`
-- `GET /api/characters/<character_id>/latest-snapshot`
-
-Do not put the Nexon API key or admin token in a public app build. For a personal local app, keep them only in `server/.env`.
+- `POST /api/reports/weekly`
+- `POST /api/reports/monthly`
+- `GET /api/reports`
+- `GET /api/scheduler/missing-tasks?character_id=...&play_date=YYYY-MM-DD`

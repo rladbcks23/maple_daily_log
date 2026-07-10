@@ -1,136 +1,152 @@
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
+from datetime import date
 
-from django.conf import settings
-from django.db import transaction
-from rest_framework import status
-from rest_framework.decorators import api_view, authentication_classes, permission_classes
-from rest_framework.permissions import AllowAny
+from django.shortcuts import get_object_or_404
+from django.utils.dateparse import parse_date, parse_datetime
+from django.utils import timezone
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework import status
 
-from api import repositories
-from api.nexon import NexonApiClient, NexonApiError
-from api.serializers import DailyReportRequestSerializer, SnapshotRequestSerializer
+from .models import Character, CharacterSnapshot, PlaySession, Report
+from .nexon import NEXON_ENDPOINTS, SNAPSHOT_BUNDLES
+from .serializers import CharacterSerializer, CharacterSnapshotSerializer, PlaySessionSerializer, ReportSerializer
+from .services import create_report, end_play_session, find_missing_scheduler_tasks, latest_snapshot_for_date, start_play_session, today_play_date
 
 
 @api_view(["GET"])
-@authentication_classes([])
-@permission_classes([AllowAny])
-def health(_request):
-    return Response({"status": "ok"})
+def nexon_endpoints(_request):
+    return Response({"endpoints": NEXON_ENDPOINTS})
 
 
-@api_view(["POST"])
-def sync_characters(_request):
-    try:
-        characters = NexonApiClient().fetch_character_list()
-        with transaction.atomic():
-            saved = repositories.upsert_characters(characters)
-    except NexonApiError as exc:
-        return Response({"status": "error", "code": "nexon_api_error", "message": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
-
-    return Response(
-        {
-            "status": "saved",
-            "found": len(characters),
-            "saved": saved,
-            "message": "Nexon account characters were synchronized into characters.",
-        }
-    )
+@api_view(["GET"])
+def snapshot_bundles(_request):
+    return Response({"bundles": SNAPSHOT_BUNDLES})
 
 
-@api_view(["POST"])
-def sync_snapshot(request):
-    serializer = SnapshotRequestSerializer(data=request.data)
+@api_view(["GET", "POST"])
+def characters(request):
+    if request.method == "GET":
+        queryset = Character.objects.all()
+        return Response(CharacterSerializer(queryset, many=True).data)
+
+    serializer = CharacterSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-
-    data = serializer.validated_data
-    snapshot_type = data.get("snapshotType") or "force_refresh"
-    play_date = data.get("playDate") or datetime.now(ZoneInfo(settings.MAPLE["TIMEZONE"])).date()
-    character = repositories.find_character(data)
-
-    if character is None:
-        return Response(
-            {
-                "status": "error",
-                "code": "character_not_found",
-                "message": "Run /api/sync/characters first, then request a snapshot with ocid, characterId, or characterName.",
-            },
-            status=status.HTTP_404_NOT_FOUND,
-        )
-
-    try:
-        bundle = NexonApiClient().fetch_snapshot_bundle(character["ocid"])
-        with transaction.atomic():
-            saved_snapshot = repositories.save_snapshot(bundle, snapshot_type, play_date)
-    except NexonApiError as exc:
-        return Response({"status": "error", "code": "nexon_api_error", "message": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
-
-    return Response(
-        {
-            "status": "saved",
-            "ocid": character["ocid"],
-            "characterId": saved_snapshot["characterId"],
-            "snapshotId": saved_snapshot["snapshotId"],
-            "characterName": saved_snapshot["characterName"],
-            "characterLevel": saved_snapshot["characterLevel"],
-            "characterExp": saved_snapshot["characterExp"],
-            "expRate": saved_snapshot["expRate"],
-            "snapshotType": snapshot_type,
-            "playDate": saved_snapshot["playDate"],
-            "apiCallsUsed": bundle.api_calls_used,
-            "sections": list(bundle.sections.keys()),
-            "message": "Nexon API data was fetched and saved into character_snapshots.",
-        }
-    )
+    character = serializer.save()
+    return Response(CharacterSerializer(character).data, status=status.HTTP_201_CREATED)
 
 
-@api_view(["GET"])
-def list_characters(_request):
-    return Response({"characters": repositories.list_characters()})
+@api_view(["GET", "PATCH"])
+def character_detail(request, character_id):
+    character = get_object_or_404(Character, id=character_id)
+    if request.method == "GET":
+        return Response(CharacterSerializer(character).data)
 
-
-@api_view(["GET"])
-def latest_snapshot(_request, character_id):
-    snapshot = repositories.latest_snapshot(character_id)
-    if snapshot is None:
-        return Response(
-            {"status": "not_found", "message": "No snapshot exists for this character."},
-            status=status.HTTP_404_NOT_FOUND,
-        )
-    return Response(snapshot)
+    serializer = CharacterSerializer(character, data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response(serializer.data)
 
 
 @api_view(["POST"])
-def create_daily_report(request):
-    serializer = DailyReportRequestSerializer(data=request.data)
+def create_snapshot(request):
+    serializer = CharacterSnapshotSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
+    snapshot = serializer.save()
+    return Response(CharacterSnapshotSerializer(snapshot).data, status=status.HTTP_201_CREATED)
 
-    data = serializer.validated_data
-    report_date = data.get("reportDate") or (datetime.now(ZoneInfo(settings.MAPLE["TIMEZONE"])).date() - timedelta(days=1))
-    character = repositories.find_character(data) if data else None
-    if character is None:
-        character = repositories.first_character()
 
-    if character is None:
-        return Response(
-            {
-                "status": "error",
-                "code": "character_not_found",
-                "message": "Run /api/sync/characters first.",
-            },
-            status=status.HTTP_404_NOT_FOUND,
-        )
+@api_view(["GET"])
+def latest_snapshot(request):
+    character_id = request.query_params.get("character_id")
+    if not character_id:
+        return Response({"detail": "character_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+    play_date_value = parse_date(request.query_params.get("play_date", "")) if request.query_params.get("play_date") else None
+    character = get_object_or_404(Character, id=character_id)
+    snapshot = (
+        latest_snapshot_for_date(character, play_date_value)
+        if play_date_value
+        else CharacterSnapshot.objects.filter(character=character).order_by("-play_date", "-recorded_at").first()
+    )
+    if not snapshot:
+        return Response({"detail": "snapshot not found"}, status=status.HTTP_404_NOT_FOUND)
+    return Response(CharacterSnapshotSerializer(snapshot).data)
 
-    with transaction.atomic():
-        report = repositories.create_daily_report(character["id"], report_date)
 
-    http_status = status.HTTP_200_OK if report["status"] == "saved" else status.HTTP_202_ACCEPTED
+@api_view(["POST"])
+def start_session(request):
+    character = None
+    if request.data.get("character"):
+        character = get_object_or_404(Character, id=request.data["character"])
+    play_date_value = parse_date(request.data.get("play_date", "")) or today_play_date()
+    started_at = parse_datetime(request.data.get("started_at", "")) if request.data.get("started_at") else timezone.now()
+    start_snapshot = None
+    if request.data.get("start_snapshot"):
+        start_snapshot = get_object_or_404(CharacterSnapshot, id=request.data["start_snapshot"])
+
+    session = start_play_session(
+        character=character,
+        play_date=play_date_value,
+        started_at=started_at,
+        start_snapshot=start_snapshot,
+    )
+    return Response(PlaySessionSerializer(session).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
+def end_session(request, session_id):
+    session = get_object_or_404(PlaySession, id=session_id)
+    ended_at = parse_datetime(request.data.get("ended_at", "")) if request.data.get("ended_at") else timezone.now()
+    end_snapshot = None
+    if request.data.get("end_snapshot"):
+        end_snapshot = get_object_or_404(CharacterSnapshot, id=request.data["end_snapshot"])
+
+    session = end_play_session(session=session, ended_at=ended_at, end_snapshot=end_snapshot)
+    response = PlaySessionSerializer(session).data
+    if session.end_snapshot:
+        response["missing_tasks"] = find_missing_scheduler_tasks(session.end_snapshot)
+    return Response(response)
+
+
+@api_view(["POST"])
+def generate_report(request, report_type):
+    if report_type not in Report.ReportType.values:
+        return Response({"detail": "unsupported report_type"}, status=status.HTTP_400_BAD_REQUEST)
+
+    report_date = parse_date(request.data.get("report_date", "")) or today_play_date()
+    character_ids = request.data.get("character_ids")
+    characters_query = Character.objects.filter(is_ignored=False)
+    if character_ids:
+        characters_query = characters_query.filter(id__in=character_ids)
+
+    reports = [
+        create_report(character=character, report_type=report_type, report_date=report_date)
+        for character in characters_query
+    ]
+    return Response(ReportSerializer(reports, many=True).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["GET"])
+def reports(request):
+    queryset = Report.objects.all()
+    if request.query_params.get("character_id"):
+        queryset = queryset.filter(character_id=request.query_params["character_id"])
+    if request.query_params.get("report_type"):
+        queryset = queryset.filter(report_type=request.query_params["report_type"])
+    return Response(ReportSerializer(queryset, many=True).data)
+
+
+@api_view(["GET"])
+def missing_tasks(request):
+    character_id = request.query_params.get("character_id")
+    if not character_id:
+        return Response({"detail": "character_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+    play_date_value = parse_date(request.query_params.get("play_date", "")) or date.today()
+    character = get_object_or_404(Character, id=character_id)
+    snapshot = latest_snapshot_for_date(character, play_date_value)
     return Response(
         {
-            **report,
-            "characterName": character["characterName"],
-            "worldName": character["worldName"],
-        },
-        status=http_status,
+            "character_id": character_id,
+            "play_date": play_date_value,
+            "missing_tasks": find_missing_scheduler_tasks(snapshot),
+        }
     )

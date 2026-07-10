@@ -1,13 +1,18 @@
 from django.urls import path
 
-from api import views
+from . import views
 
 
 urlpatterns = [
-    path("health", views.health, name="health"),
-    path("api/characters", views.list_characters, name="list-characters"),
-    path("api/characters/<str:character_id>/latest-snapshot", views.latest_snapshot, name="latest-snapshot"),
-    path("api/sync/characters", views.sync_characters, name="sync-characters"),
-    path("api/sync/snapshot", views.sync_snapshot, name="sync-snapshot"),
-    path("api/reports/daily", views.create_daily_report, name="create-daily-report"),
+    path("meta/nexon-endpoints", views.nexon_endpoints),
+    path("meta/snapshot-bundles", views.snapshot_bundles),
+    path("characters", views.characters),
+    path("characters/<uuid:character_id>", views.character_detail),
+    path("snapshots", views.create_snapshot),
+    path("snapshots/latest", views.latest_snapshot),
+    path("play-sessions/start", views.start_session),
+    path("play-sessions/<uuid:session_id>/end", views.end_session),
+    path("reports/<str:report_type>", views.generate_report),
+    path("reports", views.reports),
+    path("scheduler/missing-tasks", views.missing_tasks),
 ]
