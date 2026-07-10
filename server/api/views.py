@@ -9,7 +9,7 @@ from rest_framework import status
 
 from .models import Character, CharacterSnapshot, PlaySession, Report
 from .nexon import NEXON_ENDPOINTS, SNAPSHOT_BUNDLES
-from .serializers import CharacterSerializer, CharacterSnapshotSerializer, PlaySessionSerializer, ReportSerializer
+from .serializers import CharacterSerializer, CharacterSnapshotSerializer, CharacterTagsSerializer, PlaySessionSerializer, ReportSerializer
 from .services import create_report, end_play_session, find_missing_scheduler_tasks, latest_snapshot_for_date, start_play_session, sync_character_snapshot_from_nexon, sync_character_snapshots_from_nexon, sync_characters_from_nexon, today_play_date
 
 
@@ -108,8 +108,9 @@ def sync_snapshots(request):
                 "body": {
                     "bundle": "light | daily | full | history",
                     "snapshot_type": "scheduled | app_start | hourly_auto",
+                    "collection_scope": "main | daily_report | weekly_report | all_classified",
                     "play_date": "YYYY-MM-DD optional",
-                    "character_ids": "optional list; omitted means every non-ignored character",
+                    "character_ids": "optional list; omitted means characters matching collection_scope",
                 },
             }
         )
@@ -123,6 +124,7 @@ def sync_snapshots(request):
     if character_ids is not None and not isinstance(character_ids, list):
         return Response({"detail": "character_ids must be a list"}, status=status.HTTP_400_BAD_REQUEST)
 
+    collection_scope = request.data.get("collection_scope") or "main"
     play_date_value = parse_date(request.data.get("play_date", "")) or today_play_date()
     try:
         result = sync_character_snapshots_from_nexon(
@@ -130,6 +132,7 @@ def sync_snapshots(request):
             snapshot_type=snapshot_type,
             play_date=play_date_value,
             character_ids=character_ids,
+            collection_scope=collection_scope,
         )
     except ValueError as exc:
         return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
@@ -139,6 +142,7 @@ def sync_snapshots(request):
             "status": "saved",
             "bundle": result["bundle_name"],
             "snapshotType": result["snapshot_type"],
+            "collectionScope": result["collection_scope"],
             "total": result["total"],
             "apiCallsUsed": result["api_calls_used"],
             "failed": result["failed"],
@@ -170,6 +174,18 @@ def character_detail(request, character_id):
         return Response(CharacterSerializer(character).data)
 
     serializer = CharacterSerializer(character, data=request.data, partial=True)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response(serializer.data)
+
+
+@api_view(["GET", "PATCH"])
+def character_tags(request, character_id):
+    character = get_object_or_404(Character, id=character_id)
+    if request.method == "GET":
+        return Response(CharacterTagsSerializer(character).data)
+
+    serializer = CharacterTagsSerializer(character, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)
     serializer.save()
     return Response(serializer.data)

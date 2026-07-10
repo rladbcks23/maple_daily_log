@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Character, CharacterSnapshot, PlaySession, Report, SchedulerNotification
+from .models import CHARACTER_TAGS, Character, CharacterSnapshot, PlaySession, Report, SchedulerNotification
 
 
 class CharacterSerializer(serializers.ModelSerializer):
@@ -21,6 +21,23 @@ class CharacterSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "last_synced_at", "created_at", "updated_at"]
+
+
+class CharacterTagsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Character
+        fields = ["id", "character_name", "tags", "is_ignored"]
+        read_only_fields = ["id", "character_name"]
+
+    def validate_tags(self, tags):
+        if not isinstance(tags, list):
+            raise serializers.ValidationError("tags must be a list")
+        invalid_tags = [tag for tag in tags if tag not in CHARACTER_TAGS]
+        if invalid_tags:
+            raise serializers.ValidationError(f"unsupported tags: {invalid_tags}")
+        if len(tags) != len(set(tags)):
+            raise serializers.ValidationError("tags must not contain duplicates")
+        return tags
 
 
 class CharacterSnapshotSerializer(serializers.ModelSerializer):

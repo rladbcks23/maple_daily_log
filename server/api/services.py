@@ -6,8 +6,16 @@ from typing import Any
 from django.db.models import Sum
 from django.utils import timezone
 
-from .models import Character, CharacterSnapshot, PlaySession, Report
+from .models import CHARACTER_TAG_IGNORE, CHARACTER_TAG_MAIN, CHARACTER_TAG_SUB, CHARACTER_TAG_WEEKLY_BOSS, Character, CharacterSnapshot, PlaySession, Report
 from .nexon import NexonClient
+
+
+COLLECTION_SCOPES = {
+    "main": {CHARACTER_TAG_MAIN},
+    "daily_report": {CHARACTER_TAG_MAIN, CHARACTER_TAG_SUB},
+    "weekly_report": {CHARACTER_TAG_MAIN, CHARACTER_TAG_WEEKLY_BOSS},
+    "all_classified": {CHARACTER_TAG_MAIN, CHARACTER_TAG_SUB, CHARACTER_TAG_WEEKLY_BOSS},
+}
 
 
 def today_play_date() -> date:
@@ -101,15 +109,21 @@ def sync_character_snapshot_from_nexon(
     }
 
 
-def collection_candidates(character_ids: list[str] | None = None):
+def collection_candidates(character_ids: list[str] | None = None, collection_scope: str = "main"):
+    if collection_scope not in COLLECTION_SCOPES:
+        raise ValueError(f"Unsupported collection_scope: {collection_scope}")
+
     queryset = Character.objects.filter(is_ignored=False)
     if character_ids:
         queryset = queryset.filter(id__in=character_ids)
 
+    allowed_tags = COLLECTION_SCOPES[collection_scope]
     candidates = []
     for character in queryset:
         tags = set(character.tags or [])
-        if tags.intersection({"ignored", "storage"}):
+        if CHARACTER_TAG_IGNORE in tags:
+            continue
+        if not tags.intersection(allowed_tags):
             continue
         candidates.append(character)
     return candidates
@@ -121,6 +135,7 @@ def sync_character_snapshots_from_nexon(
     snapshot_type: str,
     play_date: date,
     character_ids: list[str] | None = None,
+    collection_scope: str = "main",
     client: NexonClient | None = None,
 ) -> dict[str, Any]:
     client = client or NexonClient()
@@ -128,7 +143,7 @@ def sync_character_snapshots_from_nexon(
     failed = []
     api_calls_used = 0
 
-    for character in collection_candidates(character_ids):
+    for character in collection_candidates(character_ids, collection_scope=collection_scope):
         try:
             result = sync_character_snapshot_from_nexon(
                 character=character,
@@ -157,6 +172,7 @@ def sync_character_snapshots_from_nexon(
         "api_calls_used": api_calls_used,
         "bundle_name": bundle_name,
         "snapshot_type": snapshot_type,
+        "collection_scope": collection_scope,
     }
 
 

@@ -29,6 +29,7 @@ python manage.py runserver
 - `GET /api/meta/snapshot-bundles`
 - `GET /api/characters`
 - `POST /api/characters`
+- `PATCH /api/characters/{id}/tags`
 - `POST /api/sync/characters`
 - `POST /api/sync/snapshot`
 - `POST /api/sync/snapshots`

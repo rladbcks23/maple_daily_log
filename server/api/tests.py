@@ -1,7 +1,7 @@
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from .models import Character
+from .models import CHARACTER_TAG_IGNORE, CHARACTER_TAG_MAIN, CHARACTER_TAG_SUB, CHARACTER_TAG_WEEKLY_BOSS, Character
 from .services import collection_candidates, sync_character_snapshot_from_nexon, sync_character_snapshots_from_nexon, sync_characters_from_nexon
 from .nexon import extract_character_list
 
@@ -24,7 +24,7 @@ class PlanningFlowTests(TestCase):
         )
         self.assertEqual(character_response.status_code, 201)
         character_id = character_response.data["id"]
-        self.assertEqual(character_response.data["tags"], ["ignored"])
+        self.assertEqual(character_response.data["tags"], [CHARACTER_TAG_IGNORE])
 
         snapshot_response = self.client.post(
             "/api/snapshots",
@@ -125,6 +125,7 @@ class PlanningFlowTests(TestCase):
         character = Character.objects.get(ocid="ocid-1")
         self.assertEqual(character.character_name, "본캐")
         self.assertEqual(character.character_level, 280)
+        self.assertEqual(character.tags, [CHARACTER_TAG_IGNORE])
 
     def test_extract_character_list_supports_account_list_response(self):
         data = {
@@ -211,19 +212,22 @@ class PlanningFlowTests(TestCase):
         self.assertEqual(character.character_class, "아델")
         self.assertEqual(character.character_level, 280)
 
-    def test_collection_candidates_excludes_ignored_and_storage_tags(self):
-        main = Character.objects.create(ocid="main", character_name="본캐", tags=["main"])
-        Character.objects.create(ocid="ignored", character_name="제외", tags=["ignored"])
-        Character.objects.create(ocid="storage", character_name="창고", tags=["storage"])
-        Character.objects.create(ocid="flagged", character_name="플래그", tags=["main"], is_ignored=True)
+    def test_collection_candidates_uses_character_classification_scope(self):
+        main = Character.objects.create(ocid="main", character_name="본캐", tags=[CHARACTER_TAG_MAIN])
+        sub = Character.objects.create(ocid="sub", character_name="부캐", tags=[CHARACTER_TAG_SUB])
+        weekly = Character.objects.create(ocid="weekly", character_name="주보", tags=[CHARACTER_TAG_WEEKLY_BOSS])
+        Character.objects.create(ocid="ignore", character_name="제외", tags=[CHARACTER_TAG_IGNORE])
+        Character.objects.create(ocid="flagged", character_name="플래그", tags=[CHARACTER_TAG_MAIN], is_ignored=True)
 
-        candidates = collection_candidates()
+        self.assertEqual(collection_candidates(collection_scope="main"), [main])
+        self.assertEqual(collection_candidates(collection_scope="daily_report"), [main, sub])
+        self.assertEqual(collection_candidates(collection_scope="weekly_report"), [main, weekly])
+        self.assertEqual(collection_candidates(collection_scope="all_classified"), [main, sub, weekly])
 
-        self.assertEqual(candidates, [main])
-
-    def test_sync_character_snapshots_from_nexon_collects_non_ignored_only(self):
-        Character.objects.create(ocid="ignored", character_name="제외", tags=["ignored"])
-        main = Character.objects.create(ocid="main", character_name="본캐", tags=["main"])
+    def test_sync_character_snapshots_from_nexon_collects_matching_scope_only(self):
+        Character.objects.create(ocid="ignore", character_name="제외", tags=[CHARACTER_TAG_IGNORE])
+        Character.objects.create(ocid="sub", character_name="부캐", tags=[CHARACTER_TAG_SUB])
+        main = Character.objects.create(ocid="main", character_name="본캐", tags=[CHARACTER_TAG_MAIN])
 
         class FakeNexonClient:
             def collect_bundle_with_count(self, bundle_name, params):
@@ -244,6 +248,7 @@ class PlanningFlowTests(TestCase):
             bundle_name="light",
             snapshot_type="scheduled",
             play_date="2026-07-10",
+            collection_scope="main",
             client=FakeNexonClient(),
         )
 
@@ -252,11 +257,34 @@ class PlanningFlowTests(TestCase):
         self.assertEqual(result["synced"][0].character, main)
 
     def test_characters_can_filter_by_tag(self):
-        Character.objects.create(ocid="main", character_name="본캐", tags=["main"])
-        Character.objects.create(ocid="ignored", character_name="제외", tags=["ignored"])
+        Character.objects.create(ocid="main", character_name="본캐", tags=[CHARACTER_TAG_MAIN])
+        Character.objects.create(ocid="ignore", character_name="제외", tags=[CHARACTER_TAG_IGNORE])
 
-        response = self.client.get("/api/characters?tag=main")
+        response = self.client.get(f"/api/characters?tag={CHARACTER_TAG_MAIN}")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["character_name"], "본캐")
+
+    def test_character_tags_can_be_updated_with_supported_tags(self):
+        character = Character.objects.create(ocid="tag-edit", character_name="태그변경")
+
+        response = self.client.patch(
+            f"/api/characters/{character.id}/tags",
+            {"tags": [CHARACTER_TAG_MAIN]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["tags"], [CHARACTER_TAG_MAIN])
+
+    def test_character_tags_reject_unsupported_tags(self):
+        character = Character.objects.create(ocid="tag-invalid", character_name="태그오류")
+
+        response = self.client.patch(
+            f"/api/characters/{character.id}/tags",
+            {"tags": ["main"]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)

@@ -11,6 +11,7 @@ urlpatterns = [
     path("sync/snapshots", views.sync_snapshots),
     path("characters", views.characters),
     path("characters/<uuid:character_id>", views.character_detail),
+    path("characters/<uuid:character_id>/tags", views.character_tags),
     path("snapshots", views.create_snapshot),
     path("snapshots/latest", views.latest_snapshot),
     path("play-sessions/start", views.start_session),

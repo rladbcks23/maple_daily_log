@@ -3,8 +3,20 @@ import uuid
 from django.db import models
 
 
+CHARACTER_TAG_MAIN = "본캐"
+CHARACTER_TAG_SUB = "부캐"
+CHARACTER_TAG_WEEKLY_BOSS = "주보돌이"
+CHARACTER_TAG_IGNORE = "ignore"
+CHARACTER_TAGS = [
+    CHARACTER_TAG_MAIN,
+    CHARACTER_TAG_SUB,
+    CHARACTER_TAG_WEEKLY_BOSS,
+    CHARACTER_TAG_IGNORE,
+]
+
+
 def default_character_tags():
-    return ["ignored"]
+    return [CHARACTER_TAG_IGNORE]
 
 
 class Character(models.Model):
