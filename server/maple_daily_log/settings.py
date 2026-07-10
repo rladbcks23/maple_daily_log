@@ -48,6 +48,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [],
     "DEFAULT_PERMISSION_CLASSES": [],
+    "DEFAULT_CONTENT_NEGOTIATION_CLASS": "api.negotiation.JsonOnlyContentNegotiation",
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
 }
 
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")

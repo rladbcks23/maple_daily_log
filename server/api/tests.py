@@ -84,3 +84,10 @@ class PlanningFlowTests(TestCase):
         self.assertEqual(report_response.status_code, 201)
         self.assertEqual(report_response.data[0]["play_minutes"], 90)
         self.assertEqual(report_response.data[0]["summary_json"]["play_time"]["total_minutes"], 90)
+
+    def test_browser_requests_return_json_without_template_renderer(self):
+        response = self.client.get("/api/characters", HTTP_ACCEPT="text/html")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json(), [])
