@@ -101,6 +101,65 @@ def sync_character_snapshot_from_nexon(
     }
 
 
+def collection_candidates(character_ids: list[str] | None = None):
+    queryset = Character.objects.filter(is_ignored=False)
+    if character_ids:
+        queryset = queryset.filter(id__in=character_ids)
+
+    candidates = []
+    for character in queryset:
+        tags = set(character.tags or [])
+        if tags.intersection({"ignored", "storage"}):
+            continue
+        candidates.append(character)
+    return candidates
+
+
+def sync_character_snapshots_from_nexon(
+    *,
+    bundle_name: str,
+    snapshot_type: str,
+    play_date: date,
+    character_ids: list[str] | None = None,
+    client: NexonClient | None = None,
+) -> dict[str, Any]:
+    client = client or NexonClient()
+    synced = []
+    failed = []
+    api_calls_used = 0
+
+    for character in collection_candidates(character_ids):
+        try:
+            result = sync_character_snapshot_from_nexon(
+                character=character,
+                bundle_name=bundle_name,
+                snapshot_type=snapshot_type,
+                play_date=play_date,
+                client=client,
+            )
+        except Exception as exc:
+            failed.append(
+                {
+                    "character_id": str(character.id),
+                    "character_name": character.character_name,
+                    "message": str(exc),
+                }
+            )
+            continue
+
+        synced.append(result["snapshot"])
+        api_calls_used += result["api_calls_used"]
+
+    return {
+        "synced": synced,
+        "failed": failed,
+        "total": len(synced),
+        "api_calls_used": api_calls_used,
+        "bundle_name": bundle_name,
+        "snapshot_type": snapshot_type,
+    }
+
+
 def extract_snapshot_columns(snapshot_json: dict[str, Any]) -> dict[str, Any]:
     basic = snapshot_json.get("character_basic") or {}
     stat = snapshot_json.get("character_stat") or {}

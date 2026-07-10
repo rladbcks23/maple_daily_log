@@ -2,7 +2,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from .models import Character
-from .services import sync_character_snapshot_from_nexon, sync_characters_from_nexon
+from .services import collection_candidates, sync_character_snapshot_from_nexon, sync_character_snapshots_from_nexon, sync_characters_from_nexon
 from .nexon import extract_character_list
 
 
@@ -210,3 +210,53 @@ class PlanningFlowTests(TestCase):
         self.assertEqual(snapshot.combat_power, "987654321")
         self.assertEqual(character.character_class, "아델")
         self.assertEqual(character.character_level, 280)
+
+    def test_collection_candidates_excludes_ignored_and_storage_tags(self):
+        main = Character.objects.create(ocid="main", character_name="본캐", tags=["main"])
+        Character.objects.create(ocid="ignored", character_name="제외", tags=["ignored"])
+        Character.objects.create(ocid="storage", character_name="창고", tags=["storage"])
+        Character.objects.create(ocid="flagged", character_name="플래그", tags=["main"], is_ignored=True)
+
+        candidates = collection_candidates()
+
+        self.assertEqual(candidates, [main])
+
+    def test_sync_character_snapshots_from_nexon_collects_non_ignored_only(self):
+        Character.objects.create(ocid="ignored", character_name="제외", tags=["ignored"])
+        main = Character.objects.create(ocid="main", character_name="본캐", tags=["main"])
+
+        class FakeNexonClient:
+            def collect_bundle_with_count(self, bundle_name, params):
+                return (
+                    {
+                        "character_basic": {
+                            "character_name": "본캐",
+                            "world_name": "스카니아",
+                            "character_class": "아델",
+                            "character_level": 280,
+                        },
+                        "character_stat": {},
+                    },
+                    2,
+                )
+
+        result = sync_character_snapshots_from_nexon(
+            bundle_name="light",
+            snapshot_type="scheduled",
+            play_date="2026-07-10",
+            client=FakeNexonClient(),
+        )
+
+        self.assertEqual(result["total"], 1)
+        self.assertEqual(result["api_calls_used"], 2)
+        self.assertEqual(result["synced"][0].character, main)
+
+    def test_characters_can_filter_by_tag(self):
+        Character.objects.create(ocid="main", character_name="본캐", tags=["main"])
+        Character.objects.create(ocid="ignored", character_name="제외", tags=["ignored"])
+
+        response = self.client.get("/api/characters?tag=main")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["character_name"], "본캐")

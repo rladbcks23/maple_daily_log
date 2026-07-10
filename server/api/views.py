@@ -10,7 +10,7 @@ from rest_framework import status
 from .models import Character, CharacterSnapshot, PlaySession, Report
 from .nexon import NEXON_ENDPOINTS, SNAPSHOT_BUNDLES
 from .serializers import CharacterSerializer, CharacterSnapshotSerializer, PlaySessionSerializer, ReportSerializer
-from .services import create_report, end_play_session, find_missing_scheduler_tasks, latest_snapshot_for_date, start_play_session, sync_character_snapshot_from_nexon, sync_characters_from_nexon, today_play_date
+from .services import create_report, end_play_session, find_missing_scheduler_tasks, latest_snapshot_for_date, start_play_session, sync_character_snapshot_from_nexon, sync_character_snapshots_from_nexon, sync_characters_from_nexon, today_play_date
 
 
 @api_view(["GET"])
@@ -98,9 +98,63 @@ def sync_snapshot(request):
 
 
 @api_view(["GET", "POST"])
+def sync_snapshots(request):
+    if request.method == "GET":
+        return Response(
+            {
+                "detail": "POST 요청을 보내면 ignored/storage가 아닌 캐릭터들의 스냅샷을 일괄 수집한다.",
+                "method": "POST",
+                "url": "/api/sync/snapshots",
+                "body": {
+                    "bundle": "light | daily | full | history",
+                    "snapshot_type": "scheduled | app_start | hourly_auto",
+                    "play_date": "YYYY-MM-DD optional",
+                    "character_ids": "optional list; omitted means every non-ignored character",
+                },
+            }
+        )
+
+    bundle_name = request.data.get("bundle") or request.data.get("bundle_name") or "daily"
+    snapshot_type = request.data.get("snapshot_type") or CharacterSnapshot.SnapshotType.SCHEDULED
+    if snapshot_type not in CharacterSnapshot.SnapshotType.values:
+        return Response({"detail": "unsupported snapshot_type"}, status=status.HTTP_400_BAD_REQUEST)
+
+    character_ids = request.data.get("character_ids")
+    if character_ids is not None and not isinstance(character_ids, list):
+        return Response({"detail": "character_ids must be a list"}, status=status.HTTP_400_BAD_REQUEST)
+
+    play_date_value = parse_date(request.data.get("play_date", "")) or today_play_date()
+    try:
+        result = sync_character_snapshots_from_nexon(
+            bundle_name=bundle_name,
+            snapshot_type=snapshot_type,
+            play_date=play_date_value,
+            character_ids=character_ids,
+        )
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(
+        {
+            "status": "saved",
+            "bundle": result["bundle_name"],
+            "snapshotType": result["snapshot_type"],
+            "total": result["total"],
+            "apiCallsUsed": result["api_calls_used"],
+            "failed": result["failed"],
+            "snapshots": CharacterSnapshotSerializer(result["synced"], many=True).data,
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(["GET", "POST"])
 def characters(request):
     if request.method == "GET":
         queryset = Character.objects.all()
+        tag = request.query_params.get("tag")
+        if tag:
+            queryset = [character for character in queryset if tag in (character.tags or [])]
         return Response(CharacterSerializer(queryset, many=True).data)
 
     serializer = CharacterSerializer(data=request.data)
