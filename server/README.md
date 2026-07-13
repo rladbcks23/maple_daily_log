@@ -1,6 +1,6 @@
-# Maple Daily Log Server
+# 메이플 숙제알리미 Server
 
-문서 기준으로 다시 만든 Django REST 서버다.
+메이플 숙제알리미의 Django REST 서버다.
 
 ## 역할
 
