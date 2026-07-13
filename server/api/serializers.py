@@ -32,6 +32,8 @@ class CharacterTagsSerializer(serializers.ModelSerializer):
     def validate_tags(self, tags):
         if not isinstance(tags, list):
             raise serializers.ValidationError("tags must be a list")
+        if len(tags) > 1:
+            raise serializers.ValidationError("only one tag is allowed")
         invalid_tags = [tag for tag in tags if tag not in CHARACTER_TAGS]
         if invalid_tags:
             raise serializers.ValidationError(f"unsupported tags: {invalid_tags}")

@@ -288,3 +288,14 @@ class PlanningFlowTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+
+    def test_character_tags_reject_multiple_tags(self):
+        character = Character.objects.create(ocid="tag-multiple", character_name="태그여러개")
+
+        response = self.client.patch(
+            f"/api/characters/{character.id}/tags",
+            {"tags": [CHARACTER_TAG_MAIN, CHARACTER_TAG_SUB]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
