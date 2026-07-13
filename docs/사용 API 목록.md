@@ -1,217 +1,111 @@
-# Nexon API Used Endpoints
+# 사용 API 목록
 
-이 문서는 현재 프로젝트에서 실제로 사용할 Nexon OpenAPI 정보만 정리한다.
+이 문서는 새 기획에서 실제로 사용할 Nexon OpenAPI를 정리한다.
+현재 방향은 정보 조회 서비스가 아니라, 놓친 이벤트와 공지를 알려주는 알림 앱이다.
 
-## 공통
-
-### OCID 조회
-
-- Endpoint: `/maplestory/v1/id`
-- 사용 정보:
-  - `ocid`: 캐릭터마다 부여된 고유 번호
-
-## 캐릭터
-
-### 캐릭터 목록 조회
-
-- Endpoint: `/maplestory/v1/character/list`
-- 사용 정보:
-  - 계정
-  - 캐릭터명
-  - 월드
-  - 직업
-  - 레벨
-
-### 캐릭터 기본 정보 조회
-
-- Endpoint: `/maplestory/v1/character/basic`
-- 사용 정보:
-  - 캐릭터명
-  - 월드
-  - 직업
-  - 레벨
-  - 보유 경험치
-  - 경험치 퍼센트
-  - 길드
-  - 사진/외형
-
-### 능력치 조회
-
-- Endpoint: `/maplestory/v1/character/stat`
-- 사용 정보:
-  - 캐릭터 능력치 정보
-
-### 하이퍼스탯 조회
-
-- Endpoint: `/maplestory/v1/character/hyper-stat`
-- 사용 정보:
-  - 프리셋별 하이퍼스탯
-  - 현재 적용 중인 프리셋
-
-### 어빌리티 조회
-
-- Endpoint: `/maplestory/v1/character/ability`
-- 사용 정보:
-  - 프리셋별 어빌리티
-  - 현재 적용 중인 프리셋
-
-### 장착 장비 조회
-
-- Endpoint: `/maplestory/v1/character/item-equipment`
-- 범위:
-  - 캐시 장비 제외
-- 사용 정보:
-  - 장비 프리셋
-  - 아이템별 상세 정보
-
-### 캐시 장비 조회
-
-- Endpoint: `/maplestory/v1/character/cashitem-equipment`
-- 사용 정보:
-  - 캐시 장비 프리셋
-  - 캐시 아이템별 상세 정보
-
-### 장착 심볼 조회
-
-- Endpoint: `/maplestory/v1/character/symbol-equipment`
-- 사용 정보:
-  - 심볼 이름
-  - 아이콘
-  - 심볼 레벨
-
-### 적용 세트 효과 조회
-
-- Endpoint: `/maplestory/v1/character/set-effect`
-- 사용 정보:
-  - 효과명
-  - 세트 개수
-  - 세트 레벨
-  - 세트 효과
-
-### 스킬 정보 조회
-
-- Endpoint: `/maplestory/v1/character/skill`
-- 사용 범위:
-  - 하이퍼 스킬
-  - 5차 스킬
-  - 6차 스킬
-
-### V매트릭스 조회
-
-- Endpoint: `/maplestory/v1/character/vmatrix`
-- 사용 정보:
-  - 코어 이름
-  - 코어 타입
-  - 코어 레벨
-  - 슬롯 인덱스
-
-### HEXA 매트릭스 조회
-
-- Endpoint: `/maplestory/v1/character/hexamatrix`
-- 사용 정보:
-  - 코어 이름
-  - 코어 레벨
-  - 이벤트 레벨
-  - 코어 타입
-  - 연결된 스킬
-
-### HEXA 스탯 조회
-
-- Endpoint: `/maplestory/v1/character/hexamatrix-stat`
-- 사용 정보:
-  - HEXA 스탯 정보
-
-### 기타 능력치 영향 요소 조회
-
-- Endpoint: `/maplestory/v1/character/other-stat`
-- 사용 정보:
-  - 제네시스 패스
-  - 챌린저스 패스
-
-### 장착 중인 시드링 조회
-
-- Endpoint: `/maplestory/v1/character/ring-exchange-skill-equipment`
-- 사용 정보:
-  - 링 익스체인지 정보
-
-### 예비 특수 반지 조회
-
-- Endpoint: `/maplestory/v1/character/ring-reserve-skill-equipment`
-- 사용 정보:
-  - 링 이름
-  - 반지 레벨
-  - 아이콘
-  - 설명
-
-## 유니온
-
-### 유니온 정보 조회
-
-- Endpoint: `/maplestory/v1/user/union`
-- 사용 정보:
-  - 유니온 정보
-
-### 유니온 아티팩트 조회
-
-- Endpoint: `/maplestory/v1/user/union-artifact`
-- 사용 정보:
-  - 아티팩트 정보
-
-### 유니온 챔피언 조회
-
-- Endpoint: `/maplestory/v1/user/union-champion`
-- 사용 정보:
-  - 유니온 챔피언 정보
-
-## 강화 이력
-
-강화 이력은 공식 가격표와 조합해서 비용을 계산한다.
-아이템 정보와 횟수 중심으로 저장한다.
-
-### 스타포스 이력 조회
-
-- Endpoint: `/maplestory/v1/history/starforce`
-- 사용 정보:
-  - 스타포스 강화 이력
-
-### 잠재능력 재설정 이력 조회
-
-- Endpoint: `/maplestory/v1/history/potential`
-- 사용 정보:
-  - 잠재능력 재설정 이력
-
-### 큐브 이력 조회
-
-- Endpoint: `/maplestory/v1/history/cube`
-- 사용 정보:
-  - 큐브 사용 이력
-
-## 스케줄러
+## 1. 스케줄러 API
 
 ### 캐릭터 진행 상태 조회
 
-- Endpoint: `/maplestory/v1/scheduler/character-state`
-- 일일 사용 정보:
-  - 콘텐츠명
-  - 타입: `contents`, `quest`
-  - 인게임 등록 여부
-  - 현재 완료 횟수/점수
-  - 최대 가능 횟수
-  - 퀘스트 진행 상태
-- 주간 사용 정보:
-  - 콘텐츠명
-  - 타입: `contents`, `quest`
-  - 인게임 등록 여부
-  - 현재 완료 횟수/점수
-  - 최대 가능 횟수
-  - 퀘스트 진행 상태
-- 보스 사용 정보:
-  - 보스명
-  - 난이도
-  - 초기화 주기
-  - 리스트 순서
-  - 등록 여부
-  - 완료 여부
-- 기타 사용 정보:
-  - 주간 보스 처치 완료 횟수
-  - 주간 보스 처치 제한 횟수
+- API: `/maplestory/v1/scheduler/character-state`
+- 사용 목적:
+  - 일일 콘텐츠 완료 여부 확인
+  - 주간 콘텐츠 완료 여부 확인
+  - 보스 콘텐츠 완료 여부 확인
+  - 오늘 접속 여부와 숙제 미완료 여부 판단
+  - 메이플 런처 종료 시 남은 일일 이벤트 확인
+
+### 기본 사용 정보
+
+- 조회 기준일
+- 캐릭터명
+- 월드명
+- 레벨
+- 직업
+- 일일 콘텐츠 정보
+- 주간 콘텐츠 정보
+- 보스 콘텐츠 정보
+- 주간 보스 처치 완료 횟수
+- 주간 보스 처치 제한 횟수
+
+### 공통 세부 정보
+
+일일 콘텐츠 정보, 주간 콘텐츠 정보, 보스 콘텐츠 정보는 세부 내용을 가진다.
+
+- 콘텐츠명 또는 보스명
+- 인게임 등록 여부
+- 현재 완료 횟수 또는 점수
+- 최대 완료 가능 횟수 또는 점수
+
+### 일일 콘텐츠 세부 정보
+
+- 타입: `contents`, `quest`
+- 퀘스트 진행 상태:
+  - `0`: 기타
+  - `1`: 진행 중
+  - `2`: 완료
+
+### 주간 콘텐츠 세부 정보
+
+- 퀘스트 진행 상태:
+  - `0`: 기타
+  - `1`: 진행 중
+  - `2`: 완료
+
+### 보스 콘텐츠 세부 정보
+
+- 완료 여부: `true`, `false`
+- 리스트 순서
+- 보스 초기화 주기
+- 보스 난이도
+
+## 2. 공지 정보 조회 API
+
+공지 정보는 목록 조회와 상세 조회로 나누어 관리한다.
+목록에서 식별자를 가져오고, 상세 조회에서 본문과 기간 정보를 확인한다.
+
+### 목록 조회
+
+- 공지사항 목록 조회: `/maplestory/v1/notice`
+- 진행 중 이벤트 목록 조회: `/maplestory/v1/notice-event`
+- 캐시샵 공지 목록 조회: `/maplestory/v1/notice-cashshop`
+- 업데이트 목록 조회: `/maplestory/v1/notice-update`
+
+### 상세 조회
+
+- 공지사항 상세 조회: `/maplestory/v1/notice/detail`
+- 진행 중 이벤트 상세 조회: `/maplestory/v1/notice-event/detail`
+- 캐시샵 공지 상세 조회: `/maplestory/v1/notice-cashshop/detail`
+- 업데이트 상세 조회: `/maplestory/v1/notice-update/detail`
+
+### 목록 공통 사용 정보
+
+- 제목
+- 링크
+- 식별자
+- 등록일
+
+### 상세 공통 사용 정보
+
+- 제목
+- 링크
+- 본문
+- 등록일
+
+### 진행 중 이벤트 추가 정보
+
+- 이벤트 시작일
+- 이벤트 종료일
+
+### 캐시샵 공지 추가 정보
+
+- 판매 시작일
+- 판매 종료일
+- 상시 판매 여부
+
+## 3. 사용 예정 기준
+
+- 스케줄러 API의 일일 콘텐츠, 주간 콘텐츠, 보스 콘텐츠 정보는 모두 사용한다.
+- 공지 목록 API는 새 글 감지와 알림 후보 수집에 사용한다.
+- 공지 상세 API는 이벤트 기간, 캐시샵 판매 기간, 본문 확인이 필요할 때 사용한다.
+- 성장 리포트나 장비 비교 중심 API는 새 기획의 1차 범위에서 제외한다.
