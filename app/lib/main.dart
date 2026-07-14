@@ -82,7 +82,7 @@ class NoticeInfo {
   final Color color;
 }
 
-enum NoticeFilter { all, notice, event, cashshop, update }
+enum NoticeFilter { all, notice, event, cashshop }
 
 class EventInfo {
   const EventInfo({
@@ -1001,7 +1001,6 @@ class _NoticesPageState extends State<_NoticesPage> {
         NoticeFilter.notice => notice.tag == '공지',
         NoticeFilter.event => notice.tag == '이벤트',
         NoticeFilter.cashshop => notice.tag == '캐시샵',
-        NoticeFilter.update => notice.tag == '업데이트',
       };
     }).toList();
   }
@@ -1038,11 +1037,6 @@ class _NoticesPageState extends State<_NoticesPage> {
                 label: '캐시샵',
                 active: selectedFilter == NoticeFilter.cashshop,
                 onTap: () => setState(() => selectedFilter = NoticeFilter.cashshop),
-              ),
-              _NoticeFilter(
-                label: '업데이트',
-                active: selectedFilter == NoticeFilter.update,
-                onTap: () => setState(() => selectedFilter = NoticeFilter.update),
               ),
             ],
           ),
