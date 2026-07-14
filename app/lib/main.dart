@@ -208,9 +208,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String get pageTitle {
     return switch (page) {
       AppPage.scheduler => '스케줄러',
-      AppPage.events => '이벤트',
+      AppPage.events => '진행중인 이벤트',
       AppPage.notices => '공지사항',
-      AppPage.sunday => '이번주 선데이',
+      AppPage.sunday => '이번주 썬데이',
       AppPage.characters => '캐릭터 선택',
     };
   }
@@ -336,7 +336,7 @@ class _Sidebar extends StatelessWidget {
             onTap: () => onPageChanged(AppPage.scheduler),
           ),
           _NavButton(
-            label: '이벤트',
+            label: '진행중인 이벤트',
             selected: currentPage == AppPage.events,
             onTap: () => onPageChanged(AppPage.events),
           ),
@@ -346,7 +346,7 @@ class _Sidebar extends StatelessWidget {
             onTap: () => onPageChanged(AppPage.notices),
           ),
           _NavButton(
-            label: '이번주 선데이',
+            label: '이번주 썬데이',
             selected: currentPage == AppPage.sunday,
             onTap: () => onPageChanged(AppPage.sunday),
           ),
