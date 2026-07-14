@@ -1130,11 +1130,12 @@ class _SundayPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return AspectRatio(
+      aspectRatio: 1587 / 788,
       child: Image.asset(
         'assets/images/sunday_maple.png',
         fit: BoxFit.contain,
-        width: double.infinity,
+        alignment: Alignment.topCenter,
       ),
     );
   }
