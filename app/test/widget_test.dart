@@ -7,8 +7,9 @@ void main() {
     await tester.pumpWidget(const MapleTaskReminderApp());
 
     expect(find.text('메이플 숙제알리미'), findsWidgets);
-    expect(find.text('오늘 확인할 알림'), findsOneWidget);
-    expect(find.text('오늘 아직 접속하지 않았어요'), findsOneWidget);
+    expect(find.text('스케줄러'), findsWidgets);
+    expect(find.text('일일 콘텐츠'), findsOneWidget);
+    expect(find.text('보스 콘텐츠'), findsOneWidget);
   });
 
   testWidgets('opens character page from navigation', (WidgetTester tester) async {
@@ -17,7 +18,7 @@ void main() {
     await tester.tap(find.text('캐릭터'));
     await tester.pump();
 
-    expect(find.text('캐릭터 선택'), findsOneWidget);
-    expect(find.text('넥슨 계정에서 불러오기'), findsOneWidget);
+    expect(find.text('캐릭터 선택'), findsWidgets);
+    expect(find.text('캐릭터 추가'), findsOneWidget);
   });
 }
