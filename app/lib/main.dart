@@ -107,8 +107,8 @@ class AppColors {
   static const selected = Color(0xFFEAF0FF);
   static const selectedBorder = Color(0xFFB8C8F8);
   static const section = Color(0xFFAAB2B8);
-  static const doneBg = Color(0xFFF4F8F2);
-  static const doneText = Color(0xFF5D7B4F);
+  static const doneBg = Color(0xFFFFFFFF);
+  static const doneText = Color(0xFF3D4048);
   static const missingBg = Color(0xFFFFF5F0);
   static const missingText = Color(0xFFB85F47);
 }
