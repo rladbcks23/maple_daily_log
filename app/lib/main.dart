@@ -1130,13 +1130,27 @@ class _SundayPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 1587 / 788,
-      child: Image.asset(
-        'assets/images/sunday_maple.png',
-        fit: BoxFit.contain,
-        alignment: Alignment.topCenter,
-      ),
+    const imageRatio = 1587 / 788;
+    final visibleHeight = MediaQuery.sizeOf(context).height - 150;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final widthByHeight = visibleHeight * imageRatio;
+        final imageWidth = constraints.maxWidth < widthByHeight ? constraints.maxWidth : widthByHeight;
+
+        return Align(
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: imageWidth,
+            height: imageWidth / imageRatio,
+            child: Image.asset(
+              'assets/images/sunday_maple.png',
+              fit: BoxFit.contain,
+              alignment: Alignment.topCenter,
+            ),
+          ),
+        );
+      },
     );
   }
 }
