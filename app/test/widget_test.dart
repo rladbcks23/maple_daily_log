@@ -21,4 +21,19 @@ void main() {
     expect(find.text('캐릭터 선택'), findsWidgets);
     expect(find.text('캐릭터 추가'), findsOneWidget);
   });
+
+  testWidgets('filters notices by category', (WidgetTester tester) async {
+    await tester.pumpWidget(const MapleTaskReminderApp());
+
+    await tester.tap(find.text('공지사항'));
+    await tester.pump();
+
+    expect(find.text('캐시샵 판매 안내가 갱신되었습니다.'), findsOneWidget);
+
+    await tester.tap(find.text('캐시샵'));
+    await tester.pump();
+
+    expect(find.text('캐시샵 판매 안내가 갱신되었습니다.'), findsOneWidget);
+    expect(find.text('진행 중인 출석 이벤트가 새로 추가되었습니다.'), findsNothing);
+  });
 }

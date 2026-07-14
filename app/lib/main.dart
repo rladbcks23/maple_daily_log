@@ -82,6 +82,8 @@ class NoticeInfo {
   final Color color;
 }
 
+enum NoticeFilter { all, notice, event, cashshop, update }
+
 class EventInfo {
   const EventInfo({
     required this.title,
@@ -528,7 +530,7 @@ class _SchedulerPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 940;
+        final compact = constraints.maxWidth < 760;
         final left = Column(
           children: const [
             _TaskCard(
@@ -966,7 +968,7 @@ class _EventCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: event.newItem ? AppColors.blue : AppColors.text,
+                    color: AppColors.text,
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
                   ),
@@ -982,8 +984,27 @@ class _EventCard extends StatelessWidget {
   }
 }
 
-class _NoticesPage extends StatelessWidget {
+class _NoticesPage extends StatefulWidget {
   const _NoticesPage();
+
+  @override
+  State<_NoticesPage> createState() => _NoticesPageState();
+}
+
+class _NoticesPageState extends State<_NoticesPage> {
+  NoticeFilter selectedFilter = NoticeFilter.all;
+
+  List<NoticeInfo> get filteredNotices {
+    return notices.where((notice) {
+      return switch (selectedFilter) {
+        NoticeFilter.all => true,
+        NoticeFilter.notice => notice.tag == '공지',
+        NoticeFilter.event => notice.tag == '이벤트',
+        NoticeFilter.cashshop => notice.tag == '캐시샵',
+        NoticeFilter.update => notice.tag == '업데이트',
+      };
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -997,15 +1018,36 @@ class _NoticesPage extends StatelessWidget {
       child: Column(
         children: [
           Row(
-            children: const [
-              _NoticeFilter(label: '전체', active: true),
-              _NoticeFilter(label: '공지', active: false),
-              _NoticeFilter(label: '이벤트', active: false),
-              _NoticeFilter(label: '캐시샵', active: false),
+            children: [
+              _NoticeFilter(
+                label: '전체',
+                active: selectedFilter == NoticeFilter.all,
+                onTap: () => setState(() => selectedFilter = NoticeFilter.all),
+              ),
+              _NoticeFilter(
+                label: '공지',
+                active: selectedFilter == NoticeFilter.notice,
+                onTap: () => setState(() => selectedFilter = NoticeFilter.notice),
+              ),
+              _NoticeFilter(
+                label: '이벤트',
+                active: selectedFilter == NoticeFilter.event,
+                onTap: () => setState(() => selectedFilter = NoticeFilter.event),
+              ),
+              _NoticeFilter(
+                label: '캐시샵',
+                active: selectedFilter == NoticeFilter.cashshop,
+                onTap: () => setState(() => selectedFilter = NoticeFilter.cashshop),
+              ),
+              _NoticeFilter(
+                label: '업데이트',
+                active: selectedFilter == NoticeFilter.update,
+                onTap: () => setState(() => selectedFilter = NoticeFilter.update),
+              ),
             ],
           ),
           const Divider(height: 1, color: AppColors.softBorder),
-          ...notices.map((notice) => _NoticeRow(notice: notice)),
+          ...filteredNotices.map((notice) => _NoticeRow(notice: notice)),
         ],
       ),
     );
@@ -1016,28 +1058,34 @@ class _NoticeFilter extends StatelessWidget {
   const _NoticeFilter({
     required this.label,
     required this.active,
+    required this.onTap,
   });
 
   final String label;
   final bool active;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 4, 0),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(2, 0, 2, 10),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: active ? AppColors.blue : Colors.transparent, width: 3),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(2, 0, 2, 10),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: active ? AppColors.blue : Colors.transparent, width: 3),
+            ),
           ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: active ? AppColors.blue : AppColors.muted,
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: active ? AppColors.blue : AppColors.muted,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
       ),
@@ -1088,14 +1136,12 @@ class _SundayPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 120),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.softBorder),
+    return Center(
+      child: Image.asset(
+        'assets/images/sunday_maple.png',
+        fit: BoxFit.contain,
+        width: double.infinity,
       ),
-      child: Image.asset('assets/images/sunday_maple.png', fit: BoxFit.contain),
     );
   }
 }
