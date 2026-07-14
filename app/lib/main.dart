@@ -107,10 +107,10 @@ class AppColors {
   static const selected = Color(0xFFEAF0FF);
   static const selectedBorder = Color(0xFFB8C8F8);
   static const section = Color(0xFFAAB2B8);
-  static const doneBg = Color(0xFFFFFFFF);
-  static const doneText = Color(0xFF3D4048);
-  static const missingBg = Color(0xFFFFF5F0);
-  static const missingText = Color(0xFFB85F47);
+  static const doneBg = Color(0xFF7A818A);
+  static const doneText = Color(0xFFFFFFFF);
+  static const missingBg = Color(0xFFFFFFFF);
+  static const missingText = Color(0xFF111111);
 }
 
 const characters = [
@@ -699,7 +699,15 @@ class _BossRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = item.done ? AppColors.doneText : AppColors.missingText;
+    final textColor = item.done ? AppColors.doneText : AppColors.missingText;
+    final badgeColor = switch (item.difficulty) {
+      'CHAOS' => const Color(0xFF8B5BB7),
+      'HARD' => const Color(0xFFC1664D),
+      'NORMAL' => const Color(0xFF4D535D),
+      'EASY' => const Color(0xFFC1664D),
+      'MONTHLY' => const Color(0xFF5E76B7),
+      _ => AppColors.blue,
+    };
 
     return Container(
       margin: const EdgeInsets.only(top: 8),
@@ -716,7 +724,7 @@ class _BossRow extends StatelessWidget {
             height: 30,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: color,
+              color: badgeColor,
               borderRadius: BorderRadius.circular(9),
             ),
             child: Text(
@@ -728,7 +736,7 @@ class _BossRow extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
             decoration: BoxDecoration(
-              color: color,
+              color: badgeColor,
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(
@@ -740,7 +748,7 @@ class _BossRow extends StatelessWidget {
           Expanded(
             child: Text(
               item.name,
-              style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w800),
+              style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.w800),
             ),
           ),
         ],
@@ -1206,7 +1214,7 @@ class _FloatingAlert extends StatelessWidget {
             height: 38,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.missingText,
+              color: const Color(0xFFB85F47),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.notifications_active_rounded, color: Colors.white, size: 21),
