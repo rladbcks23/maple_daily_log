@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Nunito', sans-serif; }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-thumb { background: oklch(0.88 0.01 270); border-radius: 8px; }
+    @keyframes floatIn { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes popPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+  </style>
+</helmet>
+
+<div style="width:1440px;height:900px;background:white;display:flex;overflow:hidden;position:relative;font-family:'Nunito',sans-serif;color:oklch(0.32 0.015 270);">
+
+  <!-- SIDEBAR -->
+  <div style="width:264px;flex-shrink:0;background:oklch(0.995 0.004 60);padding:22px 16px;display:flex;flex-direction:column;gap:16px;border-right:1px solid oklch(0.95 0.008 60);">
+    <div style="display:flex;align-items:center;gap:10px;padding:2px 6px 8px;">
+      <div style="width:36px;height:36px;border-radius:11px;background:oklch(0.62 0.09 250);display:flex;align-items:center;justify-content:center;font-family:'Baloo 2',sans-serif;font-weight:800;color:white;font-size:16px;">숙</div>
+      <div>
+        <div style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:16px;color:oklch(0.32 0.02 270);line-height:1.1;">메이플 숙제알리미</div>
+        <div style="font-size:10.5px;color:oklch(0.55 0.015 270);">놓친 숙제, 이제 안 놓쳐요</div>
+      </div>
+    </div>
+
+    <!-- NAV -->
+    <div style="display:flex;flex-direction:column;gap:4px;margin-top:4px;">
+      <div onClick="{{ charNav.select }}" style="display:flex;align-items:center;gap:10px;padding:8px 14px;border:1px solid oklch(0.85 0.05 60);border-radius:13px;cursor:pointer;">
+        <div style="width:32px;height:32px;border-radius:9px;flex-shrink:0;background:repeating-linear-gradient(135deg, oklch(0.9 0.012 270), oklch(0.9 0.012 270) 5px, oklch(0.86 0.014 270) 5px, oklch(0.86 0.014 270) 10px);"></div>
+        <div style="min-width:0;flex:1;">
+          <div style="font-weight:800;font-size:13px;color:oklch(0.3 0.02 270);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ selectedCharacter.name }}</div>
+          <div style="font-size:10.5px;color:oklch(0.55 0.015 270);">{{ selectedCharacter.job }} · Lv.{{ selectedCharacter.level }}</div>
+        </div>
+        <div style="font-size:14px;color:oklch(0.6 0.02 270);flex-shrink:0;">›</div>
+      </div>
+
+      <div style="height:1px;background:oklch(0.85 0.05 60);margin:6px 4px 8px;"></div>
+
+      <sc-for list="{{ navItems }}" as="nav" hint-placeholder-count="4">
+        <div onClick="{{ nav.select }}" style="padding:12px 14px;border-radius:13px;font-weight:800;font-size:14px;cursor:pointer;background:{{ nav.bg }};color:{{ nav.color }};border:1px solid {{ nav.border }};">{{ nav.label }}</div>
+      </sc-for>
+    </div>
+
+    <div style="flex:1;"></div>
+
+    <div onClick="{{ requestLogout }}" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:14px;background:white;border:1px solid oklch(0.85 0.05 60);color:oklch(0.5 0.02 270);font-weight:800;font-size:13px;cursor:pointer;">
+      로그아웃
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+
+    <div style="padding:24px 32px 14px;display:flex;align-items:center;justify-content:space-between;gap:20px;">
+      <div style="font-family:'Baloo 2',sans-serif;font-size:22px;font-weight:700;color:oklch(0.3 0.02 270);">{{ pageTitle }}</div>
+      <div onClick="{{ triggerDemoAlert }}" style="padding:10px 16px;border-radius:13px;background:white;border:1px solid oklch(0.9 0.01 270);color:oklch(0.45 0.02 270);font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap;">🔔 놓친 알림 미리보기</div>
+    </div>
+
+    <div style="flex:1;overflow-y:auto;padding:6px 32px 32px;">
+
+      <!-- CHARACTER SELECT PAGE -->
+      <sc-if value="{{ isCharacters }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(190px, 1fr));gap:18px;">
+          <sc-for list="{{ characterCards }}" as="char" hint-placeholder-count="3">
+            <div onClick="{{ char.select }}" style="background:{{ char.cardBg }};border-radius:18px;border:2px solid {{ char.border }};padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:10px;">
+              <div style="width:100%;aspect-ratio:1;border-radius:12px;background:repeating-linear-gradient(135deg, oklch(0.9 0.012 270), oklch(0.9 0.012 270) 8px, oklch(0.86 0.014 270) 8px, oklch(0.86 0.014 270) 16px);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:10px;color:oklch(0.55 0.015 270);">CHAR IMAGE</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <div style="font-weight:800;font-size:14.5px;color:oklch(0.3 0.02 270);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ char.name }}</div>
+                <sc-if value="{{ char.isSelected }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:10.5px;font-weight:800;color:white;background:oklch(0.62 0.09 250);padding:3px 9px;border-radius:999px;flex-shrink:0;">선택됨</div>
+                </sc-if>
+              </div>
+              <div style="font-size:12px;color:oklch(0.55 0.015 270);">{{ char.job }} · Lv.{{ char.level }}</div>
+            </div>
+          </sc-for>
+          <div onClick="{{ addCharacter }}" style="border-radius:18px;border:2px dashed oklch(0.85 0.02 270);padding:14px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:190px;color:oklch(0.55 0.015 270);">
+            <div style="font-size:28px;font-weight:700;line-height:1;color:oklch(0.62 0.09 250);">+</div>
+            <div style="font-weight:800;font-size:13.5px;">캐릭터 추가</div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- SCHEDULER PAGE -->
+      <sc-if value="{{ isScheduler }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+          <div style="display:flex;flex-direction:column;gap:20px;">
+
+            <!-- DAILY CARD -->
+            <div style="background:white;border-radius:20px;border:1px solid oklch(0.9 0.01 270);overflow:hidden;">
+              <div style="background:oklch(0.62 0.09 250);color:white;padding:13px 18px;font-family:'Baloo 2',sans-serif;font-weight:700;font-size:16.5px;">일일 컨텐츠</div>
+              <div style="padding:14px 18px 18px;display:flex;flex-direction:column;gap:8px;">
+                <div style="font-size:15.5px;font-weight:800;color:white;background:#a5afb5;letter-spacing:0.03em;padding:12px 14px;border-radius:12px;">QUEST</div>
+                <sc-for list="{{ dailyQuestItems }}" as="item" hint-placeholder-count="1">
+                  <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;border:1px solid oklch(0.91 0.01 270);background:{{ item.cardBg }};">
+                    <div style="flex:1;font-size:16px;font-weight:700;color:{{ item.color }};">{{ item.title }}</div>
+                    <sc-if value="{{ item.hasMeta }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:15px;font-weight:700;color:{{ item.color }};flex-shrink:0;">{{ item.meta }}</div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+                <div style="font-size:15.5px;font-weight:800;color:white;background:#a5afb5;letter-spacing:0.03em;padding:12px 14px;border-radius:12px;margin-top:6px;">CONTENTS</div>
+                <sc-for list="{{ dailyContentsItems }}" as="item" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;border:1px solid oklch(0.91 0.01 270);background:{{ item.cardBg }};">
+                    <div style="flex:1;font-size:16px;font-weight:700;color:{{ item.color }};">{{ item.title }}</div>
+                    <sc-if value="{{ item.hasMeta }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:15px;font-weight:700;color:{{ item.color }};flex-shrink:0;">{{ item.meta }}</div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- WEEKLY CARD -->
+            <div style="background:white;border-radius:20px;border:1px solid oklch(0.9 0.01 270);overflow:hidden;">
+              <div style="background:oklch(0.62 0.09 250);color:white;padding:13px 18px;font-family:'Baloo 2',sans-serif;font-weight:700;font-size:16.5px;">주간 컨텐츠</div>
+              <div style="padding:14px 18px 18px;display:flex;flex-direction:column;gap:8px;">
+                <div style="font-size:15.5px;font-weight:800;color:white;background:#a5afb5;letter-spacing:0.03em;padding:12px 14px;border-radius:12px;">QUEST</div>
+                <sc-for list="{{ weeklyQuestItems }}" as="item" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;border:1px solid oklch(0.91 0.01 270);background:{{ item.cardBg }};">
+                    <div style="flex:1;font-size:16px;font-weight:700;color:{{ item.color }};">{{ item.title }}</div>
+                    <sc-if value="{{ item.hasMeta }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:15px;font-weight:700;color:{{ item.color }};flex-shrink:0;">{{ item.meta }}</div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+                <div style="font-size:15.5px;font-weight:800;color:white;background:#a5afb5;letter-spacing:0.03em;padding:12px 14px;border-radius:12px;margin-top:6px;">CONTENTS</div>
+                <sc-for list="{{ weeklyContentsItems }}" as="item" hint-placeholder-count="5">
+                  <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;border:1px solid oklch(0.91 0.01 270);background:{{ item.cardBg }};">
+                    <div style="flex:1;font-size:16px;font-weight:700;color:{{ item.color }};">{{ item.title }}</div>
+                    <sc-if value="{{ item.hasMeta }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:15px;font-weight:700;color:{{ item.color }};flex-shrink:0;">{{ item.meta }}</div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+
+          <!-- BOSS CARD -->
+          <div style="background:white;border-radius:20px;border:1px solid oklch(0.9 0.01 270);overflow:hidden;">
+            <div style="background:oklch(0.62 0.09 250);color:white;padding:13px 18px;font-family:'Baloo 2',sans-serif;font-weight:700;font-size:16.5px;">보스 컨텐츠</div>
+            <div style="padding:14px 18px 18px;display:flex;flex-direction:column;gap:8px;">
+              <div style="font-size:15.5px;font-weight:800;color:white;background:#a5afb5;letter-spacing:0.03em;padding:12px 14px;border-radius:12px;">DAILY</div>
+              <sc-for list="{{ dailyBossItems }}" as="item" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;border:1px solid oklch(0.91 0.01 270);background:{{ item.cardBg }};">
+                  <div style="width:30px;height:30px;border-radius:9px;background:{{ item.avatarBg }};display:flex;align-items:center;justify-content:center;font-family:'Baloo 2',sans-serif;font-weight:800;color:white;font-size:12px;flex-shrink:0;">{{ item.initial }}</div>
+                  <div style="font-size:12px;font-weight:800;color:white;background:{{ item.badgeColor }};padding:4px 9px;border-radius:999px;flex-shrink:0;">{{ item.diff }}</div>
+                  <div style="flex:1;font-size:16px;font-weight:700;color:{{ item.color }};">{{ item.title }}</div>
+                </div>
+              </sc-for>
+              <div style="font-size:15.5px;font-weight:800;color:white;background:#a5afb5;letter-spacing:0.03em;padding:12px 14px;border-radius:12px;margin-top:6px;">WEEKLY</div>
+              <sc-for list="{{ weeklyBossItems }}" as="item" hint-placeholder-count="12">
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;border:1px solid oklch(0.91 0.01 270);background:{{ item.cardBg }};">
+                  <div style="width:30px;height:30px;border-radius:9px;background:{{ item.avatarBg }};display:flex;align-items:center;justify-content:center;font-family:'Baloo 2',sans-serif;font-weight:800;color:white;font-size:12px;flex-shrink:0;">{{ item.initial }}</div>
+                  <div style="font-size:12px;font-weight:800;color:white;background:{{ item.badgeColor }};padding:4px 9px;border-radius:999px;flex-shrink:0;">{{ item.diff }}</div>
+                  <div style="flex:1;font-size:16px;font-weight:700;color:{{ item.color }};">{{ item.title }}</div>
+                </div>
+              </sc-for>
+              <div style="font-size:15.5px;font-weight:800;color:white;background:#a5afb5;letter-spacing:0.03em;padding:12px 14px;border-radius:12px;margin-top:6px;">MONTHLY</div>
+              <sc-for list="{{ monthlyBossItems }}" as="item" hint-placeholder-count="1">
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;border:1px solid oklch(0.91 0.01 270);background:{{ item.cardBg }};">
+                  <div style="width:30px;height:30px;border-radius:9px;background:{{ item.avatarBg }};display:flex;align-items:center;justify-content:center;font-family:'Baloo 2',sans-serif;font-weight:800;color:white;font-size:12px;flex-shrink:0;">{{ item.initial }}</div>
+                  <div style="font-size:12px;font-weight:800;color:white;background:{{ item.badgeColor }};padding:4px 9px;border-radius:999px;flex-shrink:0;">{{ item.diff }}</div>
+                  <div style="flex:1;font-size:16px;font-weight:700;color:{{ item.color }};">{{ item.title }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- EVENTS PAGE -->
+      <sc-if value="{{ isEvents }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:20px;">
+          <sc-for list="{{ eventItems }}" as="item" hint-placeholder-count="6">
+            <div style="background:white;border-radius:16px;border:1px solid oklch(0.9 0.01 270);overflow:hidden;display:flex;flex-direction:column;">
+              <div style="position:relative;aspect-ratio:26/11;background:repeating-linear-gradient(135deg, oklch(0.92 0.012 270), oklch(0.92 0.012 270) 10px, oklch(0.89 0.014 270) 10px, oklch(0.89 0.014 270) 20px);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:10px;color:oklch(0.55 0.015 270);">
+                EVENT THUMBNAIL
+              </div>
+              <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px;">
+                <div style="font-weight:800;font-size:14.5px;color:{{ item.color }};line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.7em;">{{ item.title }}</div>
+                <div style="font-size:12px;color:oklch(0.58 0.015 270);">{{ item.dateRange }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <!-- NOTICES PAGE -->
+      <sc-if value="{{ isNotices }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:0;width:100%;background:white;border-radius:20px;border:1px solid oklch(0.9 0.01 270);overflow:hidden;">
+          <div style="display:flex;gap:6px;padding:14px 20px 0;border-bottom:1px solid oklch(0.93 0.01 270);">
+            <sc-for list="{{ noticeFilters }}" as="f" hint-placeholder-count="4">
+              <div onClick="{{ f.select }}" style="padding:10px 14px;font-weight:800;font-size:13px;cursor:pointer;color:{{ f.color }};border-bottom:3px solid {{ f.underline }};">{{ f.label }}</div>
+            </sc-for>
+          </div>
+          <sc-for list="{{ noticeItems }}" as="item" hint-placeholder-count="4">
+            <div style="display:flex;gap:14px;align-items:center;padding:16px 20px;border-bottom:1px solid oklch(0.95 0.008 270);">
+              <div style="font-size:11px;font-weight:800;color:white;background:{{ item.tagColor }};padding:6px 0;width:52px;text-align:center;border-radius:999px;flex-shrink:0;">{{ item.tag }}</div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:800;font-size:14px;color:{{ item.color }};text-decoration:{{ item.strike }};">{{ item.title }}</div>
+              </div>
+              <div style="font-size:12px;color:oklch(0.58 0.015 270);flex-shrink:0;">{{ item.date }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <!-- SUNDAY PAGE -->
+      <sc-if value="{{ isSunday }}" hint-placeholder-val="{{ false }}">
+        <div style="position:relative;border-radius:20px;overflow:hidden;background:white;padding:0 162px;">
+          <img src="https://lwi.nexon.com/maplestory/2026/0712_board/ADF1D545CB1A6522.png" alt="이번주 선데이 메이플" style="width:100%;height:auto;display:block;">
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+
+  <!-- FLOATING ALERT -->
+  <sc-if value="{{ showAlert }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;right:28px;bottom:28px;width:340px;background:white;border-radius:22px;padding:20px;box-shadow:0 18px 40px oklch(0.3 0.02 270 / 0.22);border:1px solid oklch(0.9 0.01 270);animation:floatIn 0.35s ease-out;display:flex;flex-direction:column;gap:12px;z-index:20;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:44px;height:44px;border-radius:50%;background:oklch(0.62 0.09 250);display:flex;align-items:center;justify-content:center;flex-shrink:0;animation:popPulse 1.6s ease-in-out infinite;">
+          <span style="font-size:20px;">❗</span>
+        </div>
+        <div>
+          <div style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:15.5px;color:oklch(0.3 0.02 270);">놓친 숙제가 있어요!</div>
+          <div style="font-size:12px;color:oklch(0.55 0.015 270);">{{ selectedCharacter.name }} 님</div>
+        </div>
+      </div>
+      <div style="font-size:13.5px;color:oklch(0.4 0.015 270);line-height:1.5;background:oklch(0.96 0.012 250);padding:12px 14px;border-radius:14px;">{{ alertMessage }}</div>
+      <div style="display:flex;gap:8px;">
+        <div onClick="{{ dismissAlert }}" style="flex:1;text-align:center;padding:11px;border-radius:12px;background:oklch(0.95 0.008 270);color:oklch(0.5 0.015 270);font-weight:800;font-size:13px;cursor:pointer;">닫기</div>
+        <div onClick="{{ goToAlertTarget }}" style="flex:1.4;text-align:center;padding:11px;border-radius:12px;background:oklch(0.62 0.09 250);color:white;font-weight:800;font-size:13px;cursor:pointer;">지금 확인하기</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- LOGOUT CONFIRM -->
+  <sc-if value="{{ showLogoutConfirm }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:oklch(0.2 0.015 270 / 0.32);display:flex;align-items:center;justify-content:center;z-index:30;">
+      <div style="width:320px;background:white;border-radius:22px;padding:26px;box-shadow:0 20px 50px oklch(0.2 0.015 270 / 0.28);display:flex;flex-direction:column;gap:16px;align-items:center;text-align:center;">
+        <div style="font-family:'Baloo 2',sans-serif;font-weight:700;font-size:17px;color:oklch(0.3 0.02 270);">로그아웃 하시겠어요?</div>
+        <div style="font-size:13px;color:oklch(0.55 0.015 270);">넥슨 계정 세션이 종료되고 알림도 함께 꺼져요.</div>
+        <div style="display:flex;gap:10px;width:100%;">
+          <div onClick="{{ cancelLogout }}" style="flex:1;text-align:center;padding:12px;border-radius:12px;background:oklch(0.95 0.008 270);color:oklch(0.5 0.015 270);font-weight:800;font-size:13.5px;cursor:pointer;">취소</div>
+          <div onClick="{{ confirmLogout }}" style="flex:1;text-align:center;padding:12px;border-radius:12px;background:oklch(0.55 0.02 270);color:white;font-weight:800;font-size:13.5px;cursor:pointer;">로그아웃</div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 1440, &quot;height&quot;: 900}, &quot;demoAlertOnLoad&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;동작&quot;}, &quot;accentMood&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;pastel&quot;, &quot;vivid&quot;], &quot;default&quot;: &quot;pastel&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;동작&quot;}}">
+const CHAR_SEED = [
+  { id: 'c1', name: '달빛나이트', job: '다크나이트', level: 275 },
+  { id: 'c2', name: '바람의그림자', job: '나이트로드', level: 261 },
+  { id: 'c3', name: '새벽비숍', job: '비숍', level: 253 },
+];
+
+const DAILY_QUEST = [{ title: '일일퀘스트', done: true }];
+const DAILY_CONTENTS = [{ title: '일일보스', done: true }, { title: '몬스터 파크', progress: 3, progressMax: 14 }, { title: '오늘 로그인 정보', done: true }];
+const WEEKLY_QUEST = [{ title: '주간퀘스트' }, { title: '심볼퀘스트', done: true }];
+const WEEKLY_CONTENTS = [{ title: '익스트림 몬스터 파크', done: true }, { title: '에픽 던전' }, { title: '길드 숙제' }, { title: '수로', done: true }, { title: '플래그 레이스' }];
+
+const WEEKLY_BOSSES = [
+  { title: '파풀라투스', diff: 'CHAOS', done: true },
+  { title: '벨룸', diff: 'CHAOS', done: true },
+  { title: '핑크빈', diff: 'CHAOS' },
+  { title: '시그너스', diff: 'NORMAL' },
+  { title: '스우', diff: 'HARD', done: true },
+  { title: '데미안', diff: 'HARD' },
+  { title: '가디언 엔젤 슬라임', diff: 'CHAOS' },
+  { title: '루시드', diff: 'EASY' },
+  { title: '윌', diff: 'HARD' },
+  { title: '더스크', diff: 'CHAOS' },
+  { title: '진 힐라', diff: 'HARD' },
+  { title: '듄켈', diff: 'HARD' },
+];
+const MONTHLY_BOSSES = [{ title: '검은 마법사', diff: 'HARD' }];
+const DAILY_BOSSES = [
+  { title: '자쿰', diff: 'NORMAL', done: true },
+  { title: '무릉도장', diff: 'NORMAL' },
+];
+
+const EVENTS_SEED = [
+  { title: '메이플스토리 여름맞이 출석 이벤트', dateRange: '2026.06.24 ~ 2026.07.07', tag: '신규' },
+  { title: '뉴네임 옥션', dateRange: '2026.06.25 ~ 2026.07.15', tag: '진행중' },
+  { title: '챌린저스 월드 시즌4', dateRange: '2026.06.18 ~ 2026.09.17', tag: '진행중' },
+  { title: '메이린 격파 이벤트', dateRange: '2026.06.18 ~ 2026.09.16', tag: '종료임박' },
+  { title: '챌린저스 패스', dateRange: '2026.06.18 ~ 2026.09.16', tag: '진행중' },
+  { title: '하이퍼 버닝 MAX', dateRange: '2026.06.18 ~ 2026.09.16', tag: '종료임박' },
+];
+
+const NOTICES_SEED = [
+  { title: '클린 캠페인 결과 발표', date: '2026.07.12', tag: '공지' },
+  { title: '7월 정기 점검 안내', date: '2026.07.15', tag: '점검' },
+  { title: '밸런스 패치 노트 v1.2.88', date: '2026.07.10', tag: '점검' },
+  { title: 'GM 이벤트 당첨자 발표', date: '2026.07.08', tag: 'GM소식' },
+];
+
+const BADGE_COLOR = {
+  CHAOS: 'oklch(0.6 0.1 300)',
+  HARD: 'oklch(0.64 0.11 20)',
+  NORMAL: 'oklch(0.64 0.09 200)',
+  EASY: 'oklch(0.85 0.005 270)',
+};
+
+const TAG_COLOR = {
+  '공지': 'oklch(0.62 0.09 250)',
+  '점검': 'oklch(0.62 0.1 155)',
+  'GM소식': 'oklch(0.62 0.1 330)',
+};
+
+const EVENT_TAG_COLOR = {
+  '신규': 'oklch(0.62 0.1 330)',
+  '진행중': 'oklch(0.62 0.09 250)',
+  '종료임박': 'oklch(0.62 0.11 20)',
+};
+
+const NAV = [
+  { id: 'characters', label: '캐릭터 선택' },
+  { id: 'scheduler', label: '스케줄러' },
+  { id: 'events', label: '이벤트' },
+  { id: 'notices', label: '공지사항' },
+  { id: 'sunday', label: '이번주 선데이' },
+];
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      selectedChar: 'c1',
+      page: 'scheduler',
+      noticeFilter: '전체',
+      showAlert: this.props.demoAlertOnLoad ?? true,
+      showLogoutConfirm: false,
+    };
+  }
+
+  hue(id) {
+    return (id.charCodeAt(1) * 47) % 360;
+  }
+  chroma() {
+    return (this.props.accentMood ?? 'pastel') === 'vivid' ? 0.14 : 0.09;
+  }
+
+  buildRows(seed) {
+    return seed.map(it => {
+      const hasProgress = it.progress !== undefined;
+      const done = hasProgress ? it.progress >= 2 : !!it.done;
+      return {
+        title: it.title,
+        hasMeta: hasProgress,
+        meta: hasProgress ? `${it.progress} / ${it.progressMax}` : '',
+        color: done ? 'white' : 'black',
+        cardBg: done ? '#7a818a' : 'white',
+      };
+    });
+  }
+
+  buildBossRows(seed) {
+    const C = this.chroma();
+    return seed.map(it => ({
+      title: it.title,
+      diff: it.diff,
+      initial: it.title[0],
+      avatarBg: `oklch(0.68 ${C} ${(it.title.charCodeAt(0) * 53) % 360})`,
+      badgeColor: BADGE_COLOR[it.diff],
+      color: it.done ? 'white' : 'black',
+      cardBg: it.done ? '#7a818a' : 'white',
+    }));
+  }
+
+  renderVals() {
+    const C = this.chroma();
+    const selectedChar = this.state.selectedChar;
+    const selectedCharacterSeed = CHAR_SEED.find(c => c.id === selectedChar);
+    const selectedCharacter = {
+      ...selectedCharacterSeed,
+      initial: selectedCharacterSeed.name[0],
+      avatarBg: `oklch(0.7 ${C} ${this.hue(selectedCharacterSeed.id)})`,
+    };
+    const characterCards = CHAR_SEED.slice().sort((a, b) => b.level - a.level).map(c => {
+      const isSelected = c.id === selectedChar;
+      return {
+        ...c,
+        isSelected,
+        cardBg: isSelected ? 'oklch(0.96 0.03 250)' : 'white',
+        border: isSelected ? 'oklch(0.62 0.09 250)' : 'oklch(0.9 0.01 270)',
+        select: () => this.setState({ selectedChar: c.id, page: 'scheduler' }),
+      };
+    });
+
+    const navBuild = n => {
+      const active = n.id === this.state.page;
+      return {
+        id: n.id, label: n.label,
+        bg: active ? 'oklch(0.72 0.13 55)' : 'transparent',
+        color: active ? 'white' : 'oklch(0.42 0.015 270)',
+        border: active ? 'oklch(0.72 0.13 55)' : 'oklch(0.85 0.05 60)',
+        select: () => this.setState({ page: n.id }),
+      };
+    };
+    const charNav = navBuild(NAV.find(n => n.id === 'characters'));
+    const navItems = NAV.filter(n => n.id !== 'characters').map(navBuild);
+
+    const eventItems = EVENTS_SEED.map(it => ({
+      ...it,
+      color: 'oklch(0.3 0.02 270)',
+      strike: 'none',
+    }));
+
+    const noticeTagList = ['전체', ...Array.from(new Set(NOTICES_SEED.map(n => n.tag)))];
+    const noticeFilters = noticeTagList.map(tag => {
+      const active = tag === this.state.noticeFilter;
+      return {
+        label: tag,
+        color: active ? 'oklch(0.4 0.09 250)' : 'oklch(0.55 0.015 270)',
+        underline: active ? 'oklch(0.62 0.09 250)' : 'transparent',
+        select: () => this.setState({ noticeFilter: tag }),
+      };
+    });
+    const noticeItems = NOTICES_SEED
+      .filter(it => this.state.noticeFilter === '전체' || it.tag === this.state.noticeFilter)
+      .map(it => ({
+        ...it,
+        tagColor: TAG_COLOR[it.tag],
+        color: 'oklch(0.3 0.02 270)',
+        strike: 'none',
+      }));
+
+    const alertMessage = `아직 처리하지 않은 숙제가 있어요: 주간보스, 심볼퀘스트 외 3건`;
+
+    const pageTitleMap = { characters: '캐릭터 선택', scheduler: '스케줄러', events: '이벤트', notices: '공지사항', sunday: '이번주 선데이' };
+
+    return {
+      selectedCharacter, characterCards, navItems, charNav,
+      addCharacter: () => {},
+      pageTitle: pageTitleMap[this.state.page],
+      isCharacters: this.state.page === 'characters',
+      isScheduler: this.state.page === 'scheduler',
+      isEvents: this.state.page === 'events',
+      isNotices: this.state.page === 'notices',
+      isSunday: this.state.page === 'sunday',
+      dailyQuestItems: this.buildRows(DAILY_QUEST),
+      dailyContentsItems: this.buildRows(DAILY_CONTENTS),
+      weeklyQuestItems: this.buildRows(WEEKLY_QUEST),
+      weeklyContentsItems: this.buildRows(WEEKLY_CONTENTS),
+      dailyBossItems: this.buildBossRows(DAILY_BOSSES),
+      weeklyBossItems: this.buildBossRows(WEEKLY_BOSSES),
+      monthlyBossItems: this.buildBossRows(MONTHLY_BOSSES),
+      eventItems, noticeItems, noticeFilters,
+      alertMessage,
+      showAlert: this.state.showAlert,
+      showLogoutConfirm: this.state.showLogoutConfirm,
+      triggerDemoAlert: () => this.setState({ showAlert: true }),
+      dismissAlert: () => this.setState({ showAlert: false }),
+      goToAlertTarget: () => this.setState({ showAlert: false, page: 'scheduler' }),
+      requestLogout: () => this.setState({ showLogoutConfirm: true }),
+      cancelLogout: () => this.setState({ showLogoutConfirm: false }),
+      confirmLogout: () => this.setState({ showLogoutConfirm: false }),
+    };
+  }
+}
+
+</script>
+</body>
+</html>
