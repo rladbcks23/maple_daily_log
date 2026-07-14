@@ -361,8 +361,8 @@ class _SummaryStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: const [
+    return const Row(
+      children: [
         Expanded(
           child: _MetricCard(
             title: '선택 캐릭터',
@@ -405,7 +405,7 @@ class _MetricCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 96,
+      height: 104,
       padding: const EdgeInsets.all(18),
       decoration: cardDecoration(),
       child: Row(
@@ -527,7 +527,7 @@ class _ReminderTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.$1,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colors.$2.withOpacity(0.2)),
+        border: Border.all(color: colors.$2.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -584,7 +584,7 @@ class _Chip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -884,12 +884,12 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(28),
+    return const SingleChildScrollView(
+      padding: EdgeInsets.all(28),
       child: _SectionCard(
         title: '앱 설정',
         child: Column(
-          children: const [
+          children: [
             _SettingRow(
               icon: Icons.login,
               title: '넥슨 로그인',

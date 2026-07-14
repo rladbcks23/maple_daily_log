@@ -12,10 +12,9 @@ Flutter 데스크톱 앱 초안입니다. 현재 단계는 서버 API와 런처 
 
 ## 실행 준비
 
-현재 작업 환경에는 Flutter SDK가 잡혀 있지 않습니다. Flutter 설치 후 `app` 폴더에서 아래 명령을 실행하면 됩니다.
+Flutter SDK 설치 후 `app` 폴더에서 아래 명령을 실행하면 됩니다.
 
 ```powershell
-flutter create --platforms=windows .
 flutter run -d windows
 ```
 
