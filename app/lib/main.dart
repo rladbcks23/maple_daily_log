@@ -1178,13 +1178,27 @@ class _CharacterImage extends StatelessWidget {
         : Image.network(
             imageUrl,
             fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
             errorBuilder: (context, error, stackTrace) =>
                 _CharacterImageFallback(character: character),
           );
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
-      child: SizedBox.expand(child: image),
+      child: SizedBox.expand(
+        child: FittedBox(
+          fit: BoxFit.cover,
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: 96,
+            height: 96,
+            child: Transform.scale(
+              scale: 1.45,
+              child: image,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
