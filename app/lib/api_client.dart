@@ -269,9 +269,9 @@ class SchedulerSnapshot {
       if (value is List) {
         return value
             .whereType<Map>()
-            .map((item) => SchedulerItemSummary.fromJson(
-                  Map<String, dynamic>.from(item),
-                ))
+            .map((item) => Map<String, dynamic>.from(item))
+            .where(SchedulerItemSummary.isRegistered)
+            .map(SchedulerItemSummary.fromJson)
             .toList();
       }
     }
@@ -327,6 +327,42 @@ class SchedulerItemSummary {
           : (done ? '완료' : '미완료'),
       done: done,
     );
+  }
+
+  static bool isRegistered(Map<String, dynamic> json) {
+    const keys = [
+      'is_registered',
+      'registered',
+      'is_ingame_registered',
+      'is_in_game_registered',
+      'ingame_registered',
+      'in_game_registered',
+      'is_available',
+    ];
+
+    for (final key in keys) {
+      if (!json.containsKey(key)) {
+        continue;
+      }
+
+      final value = json[key];
+      if (value is bool) {
+        return value;
+      }
+      if (value is num) {
+        return value != 0;
+      }
+      if (value is String) {
+        final normalized = value.toLowerCase();
+        return normalized == 'true' ||
+            normalized == '1' ||
+            normalized == 'y' ||
+            normalized == 'yes' ||
+            normalized == '등록';
+      }
+    }
+
+    return true;
   }
 
   static String _readString(Map<String, dynamic> json, List<String> keys) {
