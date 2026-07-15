@@ -12,7 +12,8 @@ class ApiClient {
   final String baseUrl;
 
   Future<List<NexonCharacterSummary>> fetchNexonCharacters() async {
-    final response = await _httpClient.get(Uri.parse('$baseUrl/api/nexon/characters'));
+    final response =
+        await _httpClient.get(Uri.parse('$baseUrl/api/nexon/characters'));
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException('캐릭터 목록을 불러오지 못했습니다. (${response.statusCode})');
@@ -90,12 +91,14 @@ class ApiClient {
 
 class NexonCharacterSummary {
   const NexonCharacterSummary({
+    required this.ocid,
     required this.characterName,
     required this.worldName,
     required this.characterClass,
     required this.characterLevel,
   });
 
+  final String ocid;
   final String characterName;
   final String worldName;
   final String characterClass;
@@ -103,10 +106,14 @@ class NexonCharacterSummary {
 
   factory NexonCharacterSummary.fromJson(Map<String, dynamic> json) {
     return NexonCharacterSummary(
-      characterName: _readString(json, ['character_name', 'characterName', 'name']),
+      ocid: _readString(json, ['ocid']),
+      characterName:
+          _readString(json, ['character_name', 'characterName', 'name']),
       worldName: _readString(json, ['world_name', 'worldName', 'world']),
-      characterClass: _readString(json, ['character_class', 'characterClass', 'class']),
-      characterLevel: _readInt(json, ['character_level', 'characterLevel', 'level']),
+      characterClass:
+          _readString(json, ['character_class', 'characterClass', 'class']),
+      characterLevel:
+          _readInt(json, ['character_level', 'characterLevel', 'level']),
     );
   }
 
