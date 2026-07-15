@@ -1357,29 +1357,32 @@ class _InfoCard extends StatelessWidget {
             child: _EventThumbnail(thumbnail: thumbnail),
           ),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.text,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      height: 1.35,
-                    ),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    height: 1.35,
                   ),
-                  const Spacer(),
-                  Text(
-                    meta,
-                    style:
-                        const TextStyle(color: AppColors.muted, fontSize: 12),
-                  ),
-                ],
+                ),
+              ),
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.border),
+          SizedBox(
+            height: 44,
+            child: Center(
+              child: Text(
+                meta,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.muted, fontSize: 12),
               ),
             ),
           ),
