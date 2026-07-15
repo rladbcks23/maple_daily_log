@@ -956,7 +956,7 @@ class _EventOverviewPanel extends StatelessWidget {
   }
 }
 
-class _NoticeOverviewPanel extends StatelessWidget {
+class _NoticeOverviewPanel extends StatefulWidget {
   const _NoticeOverviewPanel({
     required this.items,
     required this.loading,
@@ -968,16 +968,41 @@ class _NoticeOverviewPanel extends StatelessWidget {
   final String? errorMessage;
 
   @override
+  State<_NoticeOverviewPanel> createState() => _NoticeOverviewPanelState();
+}
+
+enum NoticeCategory {
+  all('전체', null),
+  notice('공지', 'notice'),
+  update('업데이트', 'update'),
+  cashshop('캐시샵', 'cashshop');
+
+  const NoticeCategory(this.label, this.type);
+
+  final String label;
+  final String? type;
+}
+
+class _NoticeOverviewPanelState extends State<_NoticeOverviewPanel> {
+  var selectedCategory = NoticeCategory.all;
+
+  @override
   Widget build(BuildContext context) {
-    if (loading) {
+    if (widget.loading) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       );
     }
 
-    if (errorMessage != null) {
-      return _InlineError(message: errorMessage!);
+    if (widget.errorMessage != null) {
+      return _InlineError(message: widget.errorMessage!);
     }
+
+    final filteredItems = selectedCategory.type == null
+        ? widget.items
+        : widget.items
+            .where((item) => item.noticeType == selectedCategory.type)
+            .toList();
 
     return Container(
       clipBehavior: Clip.antiAlias,
@@ -988,27 +1013,38 @@ class _NoticeOverviewPanel extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const _NoticeTabBar(),
+          _NoticeTabBar(
+            selectedCategory: selectedCategory,
+            onChanged: (category) {
+              setState(() {
+                selectedCategory = category;
+              });
+            },
+          ),
           const Divider(height: 1, color: AppColors.border),
-          if (items.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 32),
-              child: Text(
-                '공지사항이 없어요.',
-                style: TextStyle(
-                  color: AppColors.muted,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            )
-          else
-            ...items.map(
-              (item) => _NoticeListRow(
-                tag: item.label,
-                title: item.title,
-                date: item.registeredAt,
-              ),
-            ),
+          Expanded(
+            child: filteredItems.isEmpty
+                ? const Center(
+                    child: Text(
+                      '공지사항이 없어요.',
+                      style: TextStyle(
+                        color: AppColors.muted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  )
+                : ListView(
+                    children: filteredItems
+                        .map(
+                          (item) => _NoticeListRow(
+                            tag: item.label,
+                            title: item.title,
+                            date: item.registeredAt,
+                          ),
+                        )
+                        .toList(),
+                  ),
+          ),
         ],
       ),
     );
@@ -1172,17 +1208,26 @@ class _EventThumbnail extends StatelessWidget {
 }
 
 class _NoticeTabBar extends StatelessWidget {
-  const _NoticeTabBar();
+  const _NoticeTabBar({
+    required this.selectedCategory,
+    required this.onChanged,
+  });
+
+  final NoticeCategory selectedCategory;
+  final ValueChanged<NoticeCategory> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
-      children: [
-        _NoticeTab(label: '전체', active: true),
-        _NoticeTab(label: '공지', active: false),
-        _NoticeTab(label: '이벤트', active: false),
-        _NoticeTab(label: '캐시샵', active: false),
-      ],
+    return Row(
+      children: NoticeCategory.values
+          .map(
+            (category) => _NoticeTab(
+              label: category.label,
+              active: selectedCategory == category,
+              onTap: () => onChanged(category),
+            ),
+          )
+          .toList(),
     );
   }
 }
@@ -1191,31 +1236,37 @@ class _NoticeTab extends StatelessWidget {
   const _NoticeTab({
     required this.label,
     required this.active,
+    required this.onTap,
   });
 
   final String label;
   final bool active;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 14, 4, 0),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(2, 0, 2, 10),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(
-              color: active ? AppColors.primary : Colors.transparent,
-              width: 3,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(2, 0, 2, 10),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: active ? AppColors.primary : Colors.transparent,
+                width: 3,
+              ),
             ),
           ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: active ? AppColors.primary : AppColors.muted,
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: active ? AppColors.primary : AppColors.muted,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
       ),
