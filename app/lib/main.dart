@@ -802,7 +802,7 @@ class _SchedulerOverviewPanel extends StatelessWidget {
         );
         final right = Column(
           children: [
-            _SchedulerCard(title: '보스 콘텐츠', items: data.bossItems),
+            _BossSchedulerCard(title: '보스 콘텐츠', items: data.bossItems),
           ],
         );
 
@@ -818,7 +818,7 @@ class _SchedulerOverviewPanel extends StatelessWidget {
                 const SizedBox(height: 20),
                 _SchedulerCard(title: '주간 콘텐츠', items: data.weeklyItems),
                 const SizedBox(height: 20),
-                _SchedulerCard(title: '보스 콘텐츠', items: data.bossItems),
+                _BossSchedulerCard(title: '보스 콘텐츠', items: data.bossItems),
               ],
             ),
           );
@@ -892,6 +892,128 @@ class _SchedulerCard extends StatelessWidget {
                         .toList(),
                   ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BossSchedulerCard extends StatelessWidget {
+  const _BossSchedulerCard({
+    required this.title,
+    required this.items,
+  });
+
+  final String title;
+  final List<SchedulerItemSummary> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final groupedItems = {
+      'DAILY': items.where(_isDailyBoss).toList(),
+      'WEEKLY': items.where(_isWeeklyBoss).toList(),
+      'MONTHLY': items.where(_isMonthlyBoss).toList(),
+    };
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.softBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            color: AppColors.primary,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+            child: items.isEmpty
+                ? const Text(
+                    '조회된 항목이 없어요.',
+                    style: TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      height: 1.45,
+                    ),
+                  )
+                : Column(
+                    children: groupedItems.entries
+                        .where((entry) => entry.value.isNotEmpty)
+                        .map(
+                          (entry) => _BossCycleSection(
+                            title: entry.key,
+                            items: entry.value,
+                          ),
+                        )
+                        .toList(),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static bool _isDailyBoss(SchedulerItemSummary item) {
+    final cycle = item.cycle.toLowerCase();
+    return cycle.contains('daily') || cycle.contains('day');
+  }
+
+  static bool _isWeeklyBoss(SchedulerItemSummary item) {
+    final cycle = item.cycle.toLowerCase();
+    return cycle.contains('weekly') || cycle.contains('week');
+  }
+
+  static bool _isMonthlyBoss(SchedulerItemSummary item) {
+    final cycle = item.cycle.toLowerCase();
+    return cycle.contains('monthly') || cycle.contains('month');
+  }
+}
+
+class _BossCycleSection extends StatelessWidget {
+  const _BossCycleSection({
+    required this.title,
+    required this.items,
+  });
+
+  final String title;
+  final List<SchedulerItemSummary> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFA7B0B7),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          ...items.map((item) => _SchedulerItemRow(item: item)),
         ],
       ),
     );

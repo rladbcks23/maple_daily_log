@@ -284,12 +284,14 @@ class SchedulerItemSummary {
     required this.title,
     required this.meta,
     required this.difficulty,
+    required this.cycle,
     required this.done,
   });
 
   final String title;
   final String meta;
   final String difficulty;
+  final String cycle;
   final bool done;
 
   factory SchedulerItemSummary.fromJson(Map<String, dynamic> json) {
@@ -324,8 +326,12 @@ class SchedulerItemSummary {
       'boss_difficulty',
       'difficulty_name',
     ]);
-    final hasExplicitDone =
-        _readBool(json, [
+    final cycle = _readString(json, [
+      'cycle',
+      'reset_cycle',
+      'boss_reset_cycle',
+    ]);
+    final hasExplicitDone = _readBool(json, [
       'done',
       'is_done',
       'clear',
@@ -351,6 +357,7 @@ class SchedulerItemSummary {
       title: normalizedTitle,
       meta: meta,
       difficulty: difficulty,
+      cycle: cycle,
       done: done,
     );
   }
