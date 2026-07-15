@@ -24,6 +24,7 @@ def normalize_notice_items(notice_type, payload):
         title = first_value(item, ["title", "notice_title"], "")
         link = first_value(item, ["url", "link", "notice_url"], "")
         registered_at = first_value(item, ["date", "notice_date", "registered_at"], "")
+        thumbnail = first_value(item, ["thumbnail", "thumbnail_url", "image", "image_url", "banner_image"], "")
         if not notice_id and title:
             notice_id = f"{notice_type}:{title}:{registered_at}"
         if notice_id:
@@ -34,6 +35,7 @@ def normalize_notice_items(notice_type, payload):
                     "title": title,
                     "link": link,
                     "registeredAt": registered_at,
+                    "thumbnail": thumbnail,
                 }
             )
     return items

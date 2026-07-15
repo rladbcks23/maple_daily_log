@@ -949,6 +949,7 @@ class _EventOverviewPanel extends StatelessWidget {
                 title: item.title,
                 meta:
                     item.registeredAt.isEmpty ? item.label : item.registeredAt,
+                thumbnail: item.thumbnail,
               ))
           .toList(),
     );
@@ -1076,10 +1077,12 @@ class _InfoCard extends StatelessWidget {
   const _InfoCard({
     required this.title,
     required this.meta,
+    required this.thumbnail,
   });
 
   final String title;
   final String meta;
+  final String thumbnail;
 
   @override
   Widget build(BuildContext context) {
@@ -1094,18 +1097,7 @@ class _InfoCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            child: Container(
-              color: const Color(0xFFF0F2F6),
-              alignment: Alignment.center,
-              child: const Text(
-                'EVENT',
-                style: TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
+            child: _EventThumbnail(thumbnail: thumbnail),
           ),
           Padding(
             padding: const EdgeInsets.all(16),
@@ -1132,6 +1124,49 @@ class _InfoCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _EventThumbnail extends StatelessWidget {
+  const _EventThumbnail({required this.thumbnail});
+
+  final String thumbnail;
+
+  @override
+  Widget build(BuildContext context) {
+    if (thumbnail.isEmpty) {
+      return Container(
+        color: const Color(0xFFF0F2F6),
+        alignment: Alignment.center,
+        child: const Text(
+          'EVENT',
+          style: TextStyle(
+            color: AppColors.muted,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      );
+    }
+
+    return Image.network(
+      thumbnail,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          color: const Color(0xFFF0F2F6),
+          alignment: Alignment.center,
+          child: const Text(
+            'EVENT',
+            style: TextStyle(
+              color: AppColors.muted,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        );
+      },
     );
   }
 }

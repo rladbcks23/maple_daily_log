@@ -375,12 +375,14 @@ class NoticeItemSummary {
     required this.title,
     required this.link,
     required this.registeredAt,
+    required this.thumbnail,
   });
 
   final String noticeType;
   final String title;
   final String link;
   final String registeredAt;
+  final String thumbnail;
 
   factory NoticeItemSummary.fromJson(Map<String, dynamic> json) {
     return NoticeItemSummary(
@@ -389,6 +391,10 @@ class NoticeItemSummary {
       link: _readString(json, ['link', 'url']),
       registeredAt:
           _readString(json, ['registeredAt', 'registered_at', 'date']),
+      thumbnail: _readString(
+        json,
+        ['thumbnail', 'thumbnail_url', 'image', 'image_url', 'banner_image'],
+      ),
     );
   }
 
