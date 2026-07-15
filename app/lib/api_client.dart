@@ -53,6 +53,22 @@ class ApiClient {
     }
   }
 
+  Future<SchedulerSnapshot> fetchScheduler(String ocid) async {
+    final response =
+        await _httpClient.get(Uri.parse('$baseUrl/api/nexon/scheduler/$ocid'));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException('스케쥴러 정보를 불러오지 못했습니다. (${response.statusCode})');
+    }
+
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (decoded is! Map<String, dynamic>) {
+      throw const ApiException('스케쥴러 응답 형식이 올바르지 않습니다.');
+    }
+
+    return SchedulerSnapshot.fromJson(decoded);
+  }
+
   List<Map<String, dynamic>> _extractCharacterItems(Object? decoded) {
     if (decoded is List) {
       return _flattenCharacterMaps(decoded);
@@ -186,6 +202,149 @@ class NexonCharacterSummary {
       }
     }
     return null;
+  }
+}
+
+class SchedulerSnapshot {
+  const SchedulerSnapshot({
+    required this.dailyItems,
+    required this.weeklyItems,
+    required this.bossItems,
+  });
+
+  final List<SchedulerItemSummary> dailyItems;
+  final List<SchedulerItemSummary> weeklyItems;
+  final List<SchedulerItemSummary> bossItems;
+
+  factory SchedulerSnapshot.fromJson(Map<String, dynamic> json) {
+    return SchedulerSnapshot(
+      dailyItems: _readItems(json, [
+        'daily_contents',
+        'daily_content',
+        'daily_contents_info',
+        'daily_content_info',
+      ]),
+      weeklyItems: _readItems(json, [
+        'weekly_contents',
+        'weekly_content',
+        'weekly_contents_info',
+        'weekly_content_info',
+      ]),
+      bossItems: _readItems(json, [
+        'boss_contents',
+        'boss_content',
+        'boss_contents_info',
+        'boss_content_info',
+      ]),
+    );
+  }
+
+  static List<SchedulerItemSummary> _readItems(
+    Map<String, dynamic> json,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is List) {
+        return value
+            .whereType<Map>()
+            .map((item) => SchedulerItemSummary.fromJson(
+                  Map<String, dynamic>.from(item),
+                ))
+            .toList();
+      }
+    }
+    return const [];
+  }
+}
+
+class SchedulerItemSummary {
+  const SchedulerItemSummary({
+    required this.title,
+    required this.meta,
+    required this.done,
+  });
+
+  final String title;
+  final String meta;
+  final bool done;
+
+  factory SchedulerItemSummary.fromJson(Map<String, dynamic> json) {
+    final title = _readString(json, [
+      'content_name',
+      'boss_name',
+      'quest_name',
+      'name',
+      'title',
+    ]);
+    final current = _readInt(json, [
+      'current_clear_count',
+      'current_count',
+      'current_score',
+      'count',
+    ]);
+    final max = _readInt(json, [
+      'max_clear_count',
+      'max_count',
+      'max_score',
+      'limit_count',
+    ]);
+    final state = _readString(json, [
+      'progress_state',
+      'quest_state',
+      'state',
+      'status',
+    ]);
+    final done = _readBool(json, ['done', 'is_done', 'clear', 'completed']) ||
+        state == '2' ||
+        (current != null && max != null && max > 0 && current >= max);
+
+    return SchedulerItemSummary(
+      title: title.isEmpty ? '이름 없음' : title,
+      meta: current != null && max != null
+          ? '$current / $max'
+          : (done ? '완료' : '미완료'),
+      done: done,
+    );
+  }
+
+  static String _readString(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value != null) {
+        return value.toString();
+      }
+    }
+    return '';
+  }
+
+  static int? _readInt(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is int) {
+        return value;
+      }
+      if (value is num) {
+        return value.toInt();
+      }
+      if (value is String) {
+        return int.tryParse(value);
+      }
+    }
+    return null;
+  }
+
+  static bool _readBool(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is bool) {
+        return value;
+      }
+      if (value is String) {
+        return value.toLowerCase() == 'true';
+      }
+    }
+    return false;
   }
 }
 

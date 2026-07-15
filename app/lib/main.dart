@@ -64,8 +64,11 @@ class _MapleAppShellState extends State<MapleAppShell> {
 
   var currentSection = AppSection.character;
   var isLoading = false;
+  var isSchedulerLoading = false;
   String? errorMessage;
+  String? schedulerErrorMessage;
   NexonCharacterSummary? selectedCharacter;
+  SchedulerSnapshot? schedulerSnapshot;
 
   Future<void> openCharacterPicker() async {
     setState(() {
@@ -94,7 +97,10 @@ class _MapleAppShellState extends State<MapleAppShell> {
       if (selected != null && mounted) {
         setState(() {
           selectedCharacter = selected;
+          schedulerSnapshot = null;
+          schedulerErrorMessage = null;
         });
+        await loadScheduler(selected);
       }
     } catch (error) {
       if (!mounted) {
@@ -108,6 +114,38 @@ class _MapleAppShellState extends State<MapleAppShell> {
       if (mounted) {
         setState(() {
           isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> loadScheduler(NexonCharacterSummary character) async {
+    setState(() {
+      isSchedulerLoading = true;
+      schedulerErrorMessage = null;
+    });
+
+    try {
+      final snapshot = await apiClient.fetchScheduler(character.ocid);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        schedulerSnapshot = snapshot;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        schedulerErrorMessage = error.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          isSchedulerLoading = false;
         });
       }
     }
@@ -141,8 +179,11 @@ class _MapleAppShellState extends State<MapleAppShell> {
             child: _MainPanel(
               currentSection: currentSection,
               selectedCharacter: selectedCharacter,
+              schedulerSnapshot: schedulerSnapshot,
               isLoading: isLoading,
+              isSchedulerLoading: isSchedulerLoading,
               errorMessage: errorMessage,
+              schedulerErrorMessage: schedulerErrorMessage,
               onAddCharacter: openCharacterPicker,
             ),
           ),
@@ -433,15 +474,21 @@ class _MainPanel extends StatelessWidget {
   const _MainPanel({
     required this.currentSection,
     required this.selectedCharacter,
+    required this.schedulerSnapshot,
     required this.isLoading,
+    required this.isSchedulerLoading,
     required this.errorMessage,
+    required this.schedulerErrorMessage,
     required this.onAddCharacter,
   });
 
   final AppSection currentSection;
   final NexonCharacterSummary? selectedCharacter;
+  final SchedulerSnapshot? schedulerSnapshot;
   final bool isLoading;
+  final bool isSchedulerLoading;
   final String? errorMessage;
+  final String? schedulerErrorMessage;
   final VoidCallback onAddCharacter;
 
   @override
@@ -479,6 +526,9 @@ class _MainPanel extends StatelessWidget {
                   : _LockedFeaturePanel(
                       section: currentSection,
                       selectedCharacter: selectedCharacter,
+                      schedulerSnapshot: schedulerSnapshot,
+                      schedulerLoading: isSchedulerLoading,
+                      schedulerErrorMessage: schedulerErrorMessage,
                     ),
             ),
           ],
@@ -578,10 +628,16 @@ class _LockedFeaturePanel extends StatelessWidget {
   const _LockedFeaturePanel({
     required this.section,
     required this.selectedCharacter,
+    required this.schedulerSnapshot,
+    required this.schedulerLoading,
+    required this.schedulerErrorMessage,
   });
 
   final AppSection section;
   final NexonCharacterSummary? selectedCharacter;
+  final SchedulerSnapshot? schedulerSnapshot;
+  final bool schedulerLoading;
+  final String? schedulerErrorMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -598,31 +654,165 @@ class _LockedFeaturePanel extends StatelessWidget {
       };
     }
 
+    return _SchedulerOverviewPanel(
+      snapshot: schedulerSnapshot,
+      loading: schedulerLoading,
+      errorMessage: schedulerErrorMessage,
+    );
+  }
+}
+
+class _SchedulerOverviewPanel extends StatelessWidget {
+  const _SchedulerOverviewPanel({
+    required this.snapshot,
+    required this.loading,
+    required this.errorMessage,
+  });
+
+  final SchedulerSnapshot? snapshot;
+  final bool loading;
+  final String? errorMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
+    }
+
+    if (errorMessage != null) {
+      return _InlineError(message: errorMessage!);
+    }
+
+    final data = snapshot;
+    if (data == null) {
+      return const _BlockedPanel();
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 760;
+        final left = Column(
+          children: [
+            _SchedulerCard(title: '일일 콘텐츠', items: data.dailyItems),
+            const SizedBox(height: 20),
+            _SchedulerCard(title: '주간 콘텐츠', items: data.weeklyItems),
+          ],
+        );
+        final right = _SchedulerCard(title: '보스 콘텐츠', items: data.bossItems);
+
+        if (compact) {
+          return ListView(
+            children: [left, const SizedBox(height: 20), right],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: left),
+            const SizedBox(width: 20),
+            Expanded(child: right),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _SchedulerCard extends StatelessWidget {
+  const _SchedulerCard({
+    required this.title,
+    required this.items,
+  });
+
+  final String title;
+  final List<SchedulerItemSummary> items;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.softBorder),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            section.label,
-            style: const TextStyle(
-              color: AppColors.text,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
+          Container(
+            color: AppColors.primary,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
-          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+            child: items.isEmpty
+                ? const Text(
+                    '조회된 항목이 없어요.',
+                    style: TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  )
+                : Column(
+                    children: items
+                        .map((item) => _SchedulerItemRow(item: item))
+                        .toList(),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SchedulerItemRow extends StatelessWidget {
+  const _SchedulerItemRow({required this.item});
+
+  final SchedulerItemSummary item;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = item.done ? const Color(0xFFFFFFFF) : const Color(0xFF111111);
+    final background = item.done ? const Color(0xFF7A818A) : AppColors.surface;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.softBorder),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              item.title,
+              style: TextStyle(
+                color: color,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
           Text(
-            '${_displayCharacterName(selectedCharacter!)} 기준 데이터 연결을 준비 중입니다.',
-            style: const TextStyle(
-              color: AppColors.muted,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+            item.meta,
+            style: TextStyle(
+              color: color,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
