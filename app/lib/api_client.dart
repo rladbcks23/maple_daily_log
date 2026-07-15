@@ -443,6 +443,11 @@ class NoticeItemSummary {
     };
   }
 
+  String get dateText {
+    final match = RegExp(r'\d{4}-\d{2}-\d{2}').firstMatch(registeredAt);
+    return match?.group(0) ?? registeredAt;
+  }
+
   static String _readString(Map<String, dynamic> json, List<String> keys) {
     for (final key in keys) {
       final value = json[key];

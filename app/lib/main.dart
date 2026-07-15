@@ -951,8 +951,7 @@ class _EventOverviewPanel extends StatelessWidget {
       children: items
           .map((item) => _InfoCard(
                 title: item.title,
-                meta:
-                    item.registeredAt.isEmpty ? item.label : item.registeredAt,
+                meta: item.dateText.isEmpty ? item.label : item.dateText,
                 thumbnail: item.thumbnail,
               ))
           .toList(),
@@ -1043,7 +1042,7 @@ class _NoticeOverviewPanelState extends State<_NoticeOverviewPanel> {
                           (item) => _NoticeListRow(
                             tag: item.label,
                             title: item.title,
-                            date: item.registeredAt,
+                            date: item.dateText,
                           ),
                         )
                         .toList(),
