@@ -791,7 +791,11 @@ class _SchedulerOverviewPanel extends StatelessWidget {
         final compact = constraints.maxWidth < 760;
         final left = Column(
           children: [
-            _SchedulerCard(title: '일일 콘텐츠', items: data.dailyItems),
+            _SchedulerCard(
+              title: '일일 콘텐츠',
+              items: data.dailyItems,
+              emptyMessage: '오늘 접속 기록이 없어요.\n접속하고 일일 퀘스트를 완료해 주세요.',
+            ),
             const SizedBox(height: 20),
             _SchedulerCard(title: '주간 콘텐츠', items: data.weeklyItems),
           ],
@@ -806,7 +810,11 @@ class _SchedulerOverviewPanel extends StatelessWidget {
           return SingleChildScrollView(
             child: Column(
               children: [
-                _SchedulerCard(title: '일일 콘텐츠', items: data.dailyItems),
+                _SchedulerCard(
+                  title: '일일 콘텐츠',
+                  items: data.dailyItems,
+                  emptyMessage: '오늘 접속 기록이 없어요.\n접속하고 일일 퀘스트를 완료해 주세요.',
+                ),
                 const SizedBox(height: 20),
                 _SchedulerCard(title: '주간 콘텐츠', items: data.weeklyItems),
                 const SizedBox(height: 20),
@@ -835,10 +843,12 @@ class _SchedulerCard extends StatelessWidget {
   const _SchedulerCard({
     required this.title,
     required this.items,
+    this.emptyMessage = '조회된 항목이 없어요.',
   });
 
   final String title;
   final List<SchedulerItemSummary> items;
+  final String emptyMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -867,12 +877,13 @@ class _SchedulerCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
             child: items.isEmpty
-                ? const Text(
-                    '조회된 항목이 없어요.',
-                    style: TextStyle(
+                ? Text(
+                    emptyMessage,
+                    style: const TextStyle(
                       color: AppColors.muted,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
+                      height: 1.45,
                     ),
                   )
                 : Column(
