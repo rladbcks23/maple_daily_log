@@ -571,6 +571,15 @@ class _LockedFeaturePanel extends StatelessWidget {
       return const _BlockedPanel();
     }
 
+    if (section != AppSection.scheduler) {
+      return switch (section) {
+        AppSection.events => const _EventOverviewPanel(),
+        AppSection.notices => const _NoticeOverviewPanel(),
+        AppSection.sunday => const _SundayOverviewPanel(),
+        AppSection.character || AppSection.scheduler => const SizedBox.shrink(),
+      };
+    }
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -597,6 +606,256 @@ class _LockedFeaturePanel extends StatelessWidget {
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EventOverviewPanel extends StatelessWidget {
+  const _EventOverviewPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: MediaQuery.sizeOf(context).width > 1180 ? 3 : 2,
+      childAspectRatio: 1.55,
+      crossAxisSpacing: 20,
+      mainAxisSpacing: 20,
+      children: const [
+        _InfoCard(title: '출석 체크 이벤트', meta: '진행 중인 이벤트'),
+        _InfoCard(title: '몬스터 처치 주간 미션', meta: '주간 이벤트'),
+        _InfoCard(title: '버닝 월드 사전 안내', meta: '상시 확인'),
+      ],
+    );
+  }
+}
+
+class _NoticeOverviewPanel extends StatelessWidget {
+  const _NoticeOverviewPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: const Column(
+        children: [
+          _NoticeTabBar(),
+          Divider(height: 1, color: AppColors.border),
+          _NoticeListRow(tag: '공지', title: '메이플스토리 신규 공지사항', date: '오늘'),
+          _NoticeListRow(tag: '이벤트', title: '진행 중인 이벤트 안내', date: '오늘'),
+          _NoticeListRow(tag: '캐시샵', title: '캐시샵 판매 안내', date: '어제'),
+        ],
+      ),
+    );
+  }
+}
+
+class _SundayOverviewPanel extends StatelessWidget {
+  const _SundayOverviewPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    const imageRatio = 1587 / 788;
+    final visibleHeight = MediaQuery.sizeOf(context).height - 150;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final widthByHeight = visibleHeight * imageRatio;
+        final imageWidth = constraints.maxWidth < widthByHeight
+            ? constraints.maxWidth
+            : widthByHeight;
+
+        return Align(
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: imageWidth,
+            height: imageWidth / imageRatio,
+            child: Image.asset(
+              'assets/images/sunday_maple.png',
+              fit: BoxFit.contain,
+              alignment: Alignment.topCenter,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _InfoCard extends StatelessWidget {
+  const _InfoCard({
+    required this.title,
+    required this.meta,
+  });
+
+  final String title;
+  final String meta;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: Container(
+              color: const Color(0xFFF0F2F6),
+              alignment: Alignment.center,
+              child: const Text(
+                'EVENT',
+                style: TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  meta,
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NoticeTabBar extends StatelessWidget {
+  const _NoticeTabBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        _NoticeTab(label: '전체', active: true),
+        _NoticeTab(label: '공지', active: false),
+        _NoticeTab(label: '이벤트', active: false),
+        _NoticeTab(label: '캐시샵', active: false),
+      ],
+    );
+  }
+}
+
+class _NoticeTab extends StatelessWidget {
+  const _NoticeTab({
+    required this.label,
+    required this.active,
+  });
+
+  final String label;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 4, 0),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(2, 0, 2, 10),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: active ? AppColors.primary : Colors.transparent,
+              width: 3,
+            ),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? AppColors.primary : AppColors.muted,
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NoticeListRow extends StatelessWidget {
+  const _NoticeListRow({
+    required this.tag,
+    required this.title,
+    required this.date,
+  });
+
+  final String tag;
+  final String title;
+  final String date;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 58,
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              tag,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: AppColors.text,
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          Text(
+            date,
+            style: const TextStyle(color: AppColors.muted, fontSize: 12),
           ),
         ],
       ),

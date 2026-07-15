@@ -21,8 +21,36 @@ class ApiClient {
 
     final decoded = jsonDecode(utf8.decode(response.bodyBytes));
     final characters = _extractCharacterItems(decoded);
+    final summaries = characters.map(NexonCharacterSummary.fromJson).toList();
 
-    return characters.map(NexonCharacterSummary.fromJson).toList();
+    return Future.wait(summaries.map(_loadCharacterBasicIfPossible));
+  }
+
+  Future<NexonCharacterSummary> _loadCharacterBasicIfPossible(
+    NexonCharacterSummary character,
+  ) async {
+    if (character.ocid.isEmpty) {
+      return character;
+    }
+
+    try {
+      final response = await _httpClient.get(
+        Uri.parse('$baseUrl/api/nexon/characters/${character.ocid}/basic'),
+      );
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return character;
+      }
+
+      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+      if (decoded is! Map<String, dynamic>) {
+        return character;
+      }
+
+      return character.merge(NexonCharacterSummary.fromJson(decoded));
+    } catch (_) {
+      return character;
+    }
   }
 
   List<Map<String, dynamic>> _extractCharacterItems(Object? decoded) {
@@ -118,6 +146,22 @@ class NexonCharacterSummary {
           _readInt(json, ['character_level', 'characterLevel', 'level']),
       characterImage:
           _readString(json, ['character_image', 'characterImage', 'image']),
+    );
+  }
+
+  NexonCharacterSummary merge(NexonCharacterSummary other) {
+    return NexonCharacterSummary(
+      ocid: other.ocid.isNotEmpty ? other.ocid : ocid,
+      characterName:
+          other.characterName.isNotEmpty ? other.characterName : characterName,
+      worldName: other.worldName.isNotEmpty ? other.worldName : worldName,
+      characterClass: other.characterClass.isNotEmpty
+          ? other.characterClass
+          : characterClass,
+      characterLevel: other.characterLevel ?? characterLevel,
+      characterImage: other.characterImage.isNotEmpty
+          ? other.characterImage
+          : characterImage,
     );
   }
 
