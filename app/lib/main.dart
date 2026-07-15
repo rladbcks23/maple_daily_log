@@ -65,10 +65,19 @@ class _MapleAppShellState extends State<MapleAppShell> {
   var currentSection = AppSection.character;
   var isLoading = false;
   var isSchedulerLoading = false;
+  var isNoticeLoading = false;
   String? errorMessage;
   String? schedulerErrorMessage;
+  String? noticeErrorMessage;
   NexonCharacterSummary? selectedCharacter;
   SchedulerSnapshot? schedulerSnapshot;
+  List<NoticeItemSummary> noticeItems = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    loadCurrentNotices();
+  }
 
   Future<void> openCharacterPicker() async {
     setState(() {
@@ -151,6 +160,38 @@ class _MapleAppShellState extends State<MapleAppShell> {
     }
   }
 
+  Future<void> loadCurrentNotices() async {
+    setState(() {
+      isNoticeLoading = true;
+      noticeErrorMessage = null;
+    });
+
+    try {
+      final items = await apiClient.fetchCurrentNotices();
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        noticeItems = items;
+      });
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        noticeErrorMessage = error.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          isNoticeLoading = false;
+        });
+      }
+    }
+  }
+
   void selectSection(AppSection section) {
     if (section != AppSection.character && selectedCharacter == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -180,10 +221,13 @@ class _MapleAppShellState extends State<MapleAppShell> {
               currentSection: currentSection,
               selectedCharacter: selectedCharacter,
               schedulerSnapshot: schedulerSnapshot,
+              noticeItems: noticeItems,
               isLoading: isLoading,
               isSchedulerLoading: isSchedulerLoading,
+              isNoticeLoading: isNoticeLoading,
               errorMessage: errorMessage,
               schedulerErrorMessage: schedulerErrorMessage,
+              noticeErrorMessage: noticeErrorMessage,
               onAddCharacter: openCharacterPicker,
             ),
           ),
@@ -475,20 +519,26 @@ class _MainPanel extends StatelessWidget {
     required this.currentSection,
     required this.selectedCharacter,
     required this.schedulerSnapshot,
+    required this.noticeItems,
     required this.isLoading,
     required this.isSchedulerLoading,
+    required this.isNoticeLoading,
     required this.errorMessage,
     required this.schedulerErrorMessage,
+    required this.noticeErrorMessage,
     required this.onAddCharacter,
   });
 
   final AppSection currentSection;
   final NexonCharacterSummary? selectedCharacter;
   final SchedulerSnapshot? schedulerSnapshot;
+  final List<NoticeItemSummary> noticeItems;
   final bool isLoading;
   final bool isSchedulerLoading;
+  final bool isNoticeLoading;
   final String? errorMessage;
   final String? schedulerErrorMessage;
+  final String? noticeErrorMessage;
   final VoidCallback onAddCharacter;
 
   @override
@@ -527,8 +577,11 @@ class _MainPanel extends StatelessWidget {
                       section: currentSection,
                       selectedCharacter: selectedCharacter,
                       schedulerSnapshot: schedulerSnapshot,
+                      noticeItems: noticeItems,
                       schedulerLoading: isSchedulerLoading,
+                      noticeLoading: isNoticeLoading,
                       schedulerErrorMessage: schedulerErrorMessage,
+                      noticeErrorMessage: noticeErrorMessage,
                     ),
             ),
           ],
@@ -629,15 +682,21 @@ class _LockedFeaturePanel extends StatelessWidget {
     required this.section,
     required this.selectedCharacter,
     required this.schedulerSnapshot,
+    required this.noticeItems,
     required this.schedulerLoading,
+    required this.noticeLoading,
     required this.schedulerErrorMessage,
+    required this.noticeErrorMessage,
   });
 
   final AppSection section;
   final NexonCharacterSummary? selectedCharacter;
   final SchedulerSnapshot? schedulerSnapshot;
+  final List<NoticeItemSummary> noticeItems;
   final bool schedulerLoading;
+  final bool noticeLoading;
   final String? schedulerErrorMessage;
+  final String? noticeErrorMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -647,8 +706,20 @@ class _LockedFeaturePanel extends StatelessWidget {
 
     if (section != AppSection.scheduler) {
       return switch (section) {
-        AppSection.events => const _EventOverviewPanel(),
-        AppSection.notices => const _NoticeOverviewPanel(),
+        AppSection.events => _EventOverviewPanel(
+            items: noticeItems
+                .where((item) => item.noticeType == 'event')
+                .toList(),
+            loading: noticeLoading,
+            errorMessage: noticeErrorMessage,
+          ),
+        AppSection.notices => _NoticeOverviewPanel(
+            items: noticeItems
+                .where((item) => item.noticeType != 'event')
+                .toList(),
+            loading: noticeLoading,
+            errorMessage: noticeErrorMessage,
+          ),
         AppSection.sunday => const _SundayOverviewPanel(),
         AppSection.character || AppSection.scheduler => const SizedBox.shrink(),
       };
@@ -822,29 +893,71 @@ class _SchedulerItemRow extends StatelessWidget {
 }
 
 class _EventOverviewPanel extends StatelessWidget {
-  const _EventOverviewPanel();
+  const _EventOverviewPanel({
+    required this.items,
+    required this.loading,
+    required this.errorMessage,
+  });
+
+  final List<NoticeItemSummary> items;
+  final bool loading;
+  final String? errorMessage;
 
   @override
   Widget build(BuildContext context) {
+    if (loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
+    }
+
+    if (errorMessage != null) {
+      return _InlineError(message: errorMessage!);
+    }
+
+    if (items.isEmpty) {
+      return const _EmptyDataPanel(message: '진행중인 이벤트가 없어요.');
+    }
+
     return GridView.count(
       crossAxisCount: MediaQuery.sizeOf(context).width > 1180 ? 3 : 2,
       childAspectRatio: 1.55,
       crossAxisSpacing: 20,
       mainAxisSpacing: 20,
-      children: const [
-        _InfoCard(title: '출석 체크 이벤트', meta: '진행 중인 이벤트'),
-        _InfoCard(title: '몬스터 처치 주간 미션', meta: '주간 이벤트'),
-        _InfoCard(title: '버닝 월드 사전 안내', meta: '상시 확인'),
-      ],
+      children: items
+          .map((item) => _InfoCard(
+                title: item.title,
+                meta:
+                    item.registeredAt.isEmpty ? item.label : item.registeredAt,
+              ))
+          .toList(),
     );
   }
 }
 
 class _NoticeOverviewPanel extends StatelessWidget {
-  const _NoticeOverviewPanel();
+  const _NoticeOverviewPanel({
+    required this.items,
+    required this.loading,
+    required this.errorMessage,
+  });
+
+  final List<NoticeItemSummary> items;
+  final bool loading;
+  final String? errorMessage;
 
   @override
   Widget build(BuildContext context) {
+    if (loading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
+    }
+
+    if (errorMessage != null) {
+      return _InlineError(message: errorMessage!);
+    }
+
     return Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
@@ -852,14 +965,56 @@ class _NoticeOverviewPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.border),
       ),
-      child: const Column(
+      child: Column(
         children: [
-          _NoticeTabBar(),
-          Divider(height: 1, color: AppColors.border),
-          _NoticeListRow(tag: '공지', title: '메이플스토리 신규 공지사항', date: '오늘'),
-          _NoticeListRow(tag: '이벤트', title: '진행 중인 이벤트 안내', date: '오늘'),
-          _NoticeListRow(tag: '캐시샵', title: '캐시샵 판매 안내', date: '어제'),
+          const _NoticeTabBar(),
+          const Divider(height: 1, color: AppColors.border),
+          if (items.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Text(
+                '공지사항이 없어요.',
+                style: TextStyle(
+                  color: AppColors.muted,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            )
+          else
+            ...items.map(
+              (item) => _NoticeListRow(
+                tag: item.label,
+                title: item.title,
+                date: item.registeredAt,
+              ),
+            ),
         ],
+      ),
+    );
+  }
+}
+
+class _EmptyDataPanel extends StatelessWidget {
+  const _EmptyDataPanel({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.softBorder),
+      ),
+      child: Text(
+        message,
+        style: const TextStyle(
+          color: AppColors.muted,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

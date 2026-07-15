@@ -69,6 +69,28 @@ class ApiClient {
     return SchedulerSnapshot.fromJson(decoded);
   }
 
+  Future<List<NoticeItemSummary>> fetchCurrentNotices() async {
+    final response =
+        await _httpClient.get(Uri.parse('$baseUrl/api/notices/current'));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException('공지사항 정보를 불러오지 못했습니다. (${response.statusCode})');
+    }
+
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    final items = decoded is Map<String, dynamic> ? decoded['items'] : decoded;
+    if (items is! List) {
+      return const [];
+    }
+
+    return items
+        .whereType<Map>()
+        .map((item) => NoticeItemSummary.fromJson(
+              Map<String, dynamic>.from(item),
+            ))
+        .toList();
+  }
+
   List<Map<String, dynamic>> _extractCharacterItems(Object? decoded) {
     if (decoded is List) {
       return _flattenCharacterMaps(decoded);
@@ -345,6 +367,49 @@ class SchedulerItemSummary {
       }
     }
     return false;
+  }
+}
+
+class NoticeItemSummary {
+  const NoticeItemSummary({
+    required this.noticeType,
+    required this.title,
+    required this.link,
+    required this.registeredAt,
+  });
+
+  final String noticeType;
+  final String title;
+  final String link;
+  final String registeredAt;
+
+  factory NoticeItemSummary.fromJson(Map<String, dynamic> json) {
+    return NoticeItemSummary(
+      noticeType: _readString(json, ['noticeType', 'notice_type', 'type']),
+      title: _readString(json, ['title', 'notice_title']),
+      link: _readString(json, ['link', 'url']),
+      registeredAt:
+          _readString(json, ['registeredAt', 'registered_at', 'date']),
+    );
+  }
+
+  String get label {
+    return switch (noticeType) {
+      'event' => '이벤트',
+      'cashshop' => '캐시샵',
+      'update' => '업데이트',
+      _ => '공지',
+    };
+  }
+
+  static String _readString(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value != null) {
+        return value.toString();
+      }
+    }
+    return '';
   }
 }
 
