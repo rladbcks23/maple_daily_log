@@ -956,6 +956,8 @@ class _BossDifficultyBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final label = difficulty.toUpperCase();
     final normalized = difficulty.toLowerCase();
+    final isChaos = normalized.contains('chaos');
+    const chaosGold = Color(0xFFD9B75B);
     final background = normalized.contains('hard') ||
             normalized.contains('extreme')
         ? const Color(0xFF965271)
@@ -969,14 +971,20 @@ class _BossDifficultyBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
+        border: isChaos ? Border.all(color: chaosGold, width: 1) : null,
       ),
       alignment: Alignment.center,
       child: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.white,
           fontSize: 10,
           fontWeight: FontWeight.w900,
+          shadows: isChaos
+              ? const [
+                  Shadow(color: chaosGold, offset: Offset(0, 0), blurRadius: 1),
+                ]
+              : null,
         ),
       ),
     );
