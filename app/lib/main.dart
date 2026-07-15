@@ -72,6 +72,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
   String? schedulerErrorMessage;
   String? noticeErrorMessage;
   NexonCharacterSummary? selectedCharacter;
+  List<NexonCharacterSummary> selectedCharacters = const [];
   SchedulerSnapshot? schedulerSnapshot;
   List<NoticeItemSummary> noticeItems = const [];
 
@@ -112,6 +113,16 @@ class _MapleAppShellState extends State<MapleAppShell> {
         }
 
         setState(() {
+          final nextCharacters = [...selectedCharacters];
+          final existingIndex = nextCharacters.indexWhere(
+            (character) => _isSameCharacter(character, detailed),
+          );
+          if (existingIndex == -1) {
+            nextCharacters.add(detailed);
+          } else {
+            nextCharacters[existingIndex] = detailed;
+          }
+          selectedCharacters = nextCharacters;
           selectedCharacter = detailed;
           schedulerSnapshot = null;
           schedulerErrorMessage = null;
@@ -133,6 +144,19 @@ class _MapleAppShellState extends State<MapleAppShell> {
         });
       }
     }
+  }
+
+  Future<void> selectCharacter(NexonCharacterSummary character) async {
+    if (_isSameCharacter(character, selectedCharacter)) {
+      return;
+    }
+
+    setState(() {
+      selectedCharacter = character;
+      schedulerSnapshot = null;
+      schedulerErrorMessage = null;
+    });
+    await loadScheduler(character);
   }
 
   Future<void> loadScheduler(NexonCharacterSummary character) async {
@@ -227,6 +251,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
             child: _MainPanel(
               currentSection: currentSection,
               selectedCharacter: selectedCharacter,
+              selectedCharacters: selectedCharacters,
               schedulerSnapshot: schedulerSnapshot,
               noticeItems: noticeItems,
               isLoading: isLoading,
@@ -236,6 +261,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
               schedulerErrorMessage: schedulerErrorMessage,
               noticeErrorMessage: noticeErrorMessage,
               onAddCharacter: openCharacterPicker,
+              onSelectCharacter: selectCharacter,
             ),
           ),
         ],
@@ -505,6 +531,7 @@ class _MainPanel extends StatelessWidget {
   const _MainPanel({
     required this.currentSection,
     required this.selectedCharacter,
+    required this.selectedCharacters,
     required this.schedulerSnapshot,
     required this.noticeItems,
     required this.isLoading,
@@ -514,10 +541,12 @@ class _MainPanel extends StatelessWidget {
     required this.schedulerErrorMessage,
     required this.noticeErrorMessage,
     required this.onAddCharacter,
+    required this.onSelectCharacter,
   });
 
   final AppSection currentSection;
   final NexonCharacterSummary? selectedCharacter;
+  final List<NexonCharacterSummary> selectedCharacters;
   final SchedulerSnapshot? schedulerSnapshot;
   final List<NoticeItemSummary> noticeItems;
   final bool isLoading;
@@ -527,6 +556,7 @@ class _MainPanel extends StatelessWidget {
   final String? schedulerErrorMessage;
   final String? noticeErrorMessage;
   final VoidCallback onAddCharacter;
+  final ValueChanged<NexonCharacterSummary> onSelectCharacter;
 
   @override
   Widget build(BuildContext context) {
@@ -555,9 +585,11 @@ class _MainPanel extends StatelessWidget {
               child: currentSection == AppSection.character
                   ? _CharacterSelectPanel(
                       selectedCharacter: selectedCharacter,
+                      selectedCharacters: selectedCharacters,
                       isLoading: isLoading,
                       errorMessage: errorMessage,
                       onAddCharacter: onAddCharacter,
+                      onSelectCharacter: onSelectCharacter,
                     )
                   : _LockedFeaturePanel(
                       section: currentSection,
@@ -580,15 +612,19 @@ class _MainPanel extends StatelessWidget {
 class _CharacterSelectPanel extends StatelessWidget {
   const _CharacterSelectPanel({
     required this.selectedCharacter,
+    required this.selectedCharacters,
     required this.isLoading,
     required this.errorMessage,
     required this.onAddCharacter,
+    required this.onSelectCharacter,
   });
 
   final NexonCharacterSummary? selectedCharacter;
+  final List<NexonCharacterSummary> selectedCharacters;
   final bool isLoading;
   final String? errorMessage;
   final VoidCallback onAddCharacter;
+  final ValueChanged<NexonCharacterSummary> onSelectCharacter;
 
   @override
   Widget build(BuildContext context) {
@@ -614,11 +650,14 @@ class _CharacterSelectPanel extends StatelessWidget {
                     crossAxisSpacing: 18,
                     mainAxisSpacing: 18,
                     children: [
-                      if (selectedCharacter != null)
+                      for (final character in selectedCharacters)
                         _CharacterCard(
-                          character: selectedCharacter!,
-                          selected: true,
-                          onTap: onAddCharacter,
+                          character: character,
+                          selected: _isSameCharacter(
+                            character,
+                            selectedCharacter,
+                          ),
+                          onTap: () => onSelectCharacter(character),
                         ),
                       _AddCharacterCard(
                         loading: isLoading,
