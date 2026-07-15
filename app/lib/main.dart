@@ -957,13 +957,26 @@ class _BossDifficultyBadge extends StatelessWidget {
     final label = difficulty.toUpperCase();
     final normalized = difficulty.toLowerCase();
     final isChaos = normalized.contains('chaos');
+    final isExtreme = normalized.contains('extreme');
     const chaosGold = Color(0xFFD9B75B);
-    final background = normalized.contains('hard') ||
-            normalized.contains('extreme')
-        ? const Color(0xFF965271)
-        : normalized.contains('normal')
-            ? const Color(0xFF436F86)
-            : const Color(0xFF3E4147);
+    const extremeRed = Color(0xFFD84E66);
+    final background = isExtreme
+        ? const Color(0xFF2D252B)
+        : normalized.contains('hard')
+            ? const Color(0xFF965271)
+            : normalized.contains('normal')
+                ? const Color(0xFF436F86)
+                : const Color(0xFF3E4147);
+    final borderColor = isExtreme
+        ? extremeRed
+        : isChaos
+            ? chaosGold
+            : null;
+    final textShadowColor = isExtreme
+        ? extremeRed
+        : isChaos
+            ? chaosGold
+            : null;
 
     return Container(
       constraints: const BoxConstraints(minWidth: 58),
@@ -971,21 +984,26 @@ class _BossDifficultyBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(999),
-        border: isChaos ? Border.all(color: chaosGold, width: 1) : null,
+        border: borderColor == null
+            ? null
+            : Border.all(color: borderColor, width: 1),
       ),
       alignment: Alignment.center,
       child: Text(
         label,
         style: TextStyle(
-          color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.w900,
-          shadows: isChaos
-              ? const [
-                  Shadow(color: chaosGold, offset: Offset(0, 0), blurRadius: 1),
-                ]
-              : null,
-        ),
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            shadows: textShadowColor == null
+                ? null
+                : [
+                    Shadow(
+                      color: textShadowColor,
+                      offset: const Offset(0, 0),
+                      blurRadius: 1,
+                    ),
+                  ]),
       ),
     );
   }
