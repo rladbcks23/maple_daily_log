@@ -429,7 +429,16 @@ class NoticeItemSummary {
           _readString(json, ['registeredAt', 'registered_at', 'date']),
       thumbnail: _readString(
         json,
-        ['thumbnail', 'thumbnail_url', 'image', 'image_url', 'banner_image'],
+        [
+          'thumbnail',
+          'thumbnailUrl',
+          'thumbnail_url',
+          'image',
+          'imageUrl',
+          'image_url',
+          'bannerImage',
+          'banner_image',
+        ],
       ),
     );
   }
