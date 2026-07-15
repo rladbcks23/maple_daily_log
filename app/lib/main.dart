@@ -505,7 +505,7 @@ class _CharacterSelectPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth > 1100 ? 4 : 3;
+        final crossAxisCount = constraints.maxWidth > 1100 ? 5 : 4;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -515,23 +515,29 @@ class _CharacterSelectPanel extends StatelessWidget {
               const SizedBox(height: 14),
             ],
             Expanded(
-              child: GridView.count(
-                crossAxisCount: crossAxisCount,
-                childAspectRatio: 0.78,
-                crossAxisSpacing: 18,
-                mainAxisSpacing: 18,
-                children: [
-                  if (selectedCharacter != null)
-                    _CharacterCard(
-                      character: selectedCharacter!,
-                      selected: true,
-                      onTap: onAddCharacter,
-                    ),
-                  _AddCharacterCard(
-                    loading: isLoading,
-                    onTap: isLoading ? null : onAddCharacter,
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 960),
+                  child: GridView.count(
+                    crossAxisCount: crossAxisCount,
+                    childAspectRatio: 0.9,
+                    crossAxisSpacing: 18,
+                    mainAxisSpacing: 18,
+                    children: [
+                      if (selectedCharacter != null)
+                        _CharacterCard(
+                          character: selectedCharacter!,
+                          selected: true,
+                          onTap: onAddCharacter,
+                        ),
+                      _AddCharacterCard(
+                        loading: isLoading,
+                        onTap: isLoading ? null : onAddCharacter,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ],
@@ -1111,8 +1117,8 @@ class _CharacterPickerSheet extends StatelessWidget {
               Flexible(
                 child: GridView.count(
                   crossAxisCount:
-                      MediaQuery.sizeOf(context).width > 900 ? 4 : 3,
-                  childAspectRatio: 0.78,
+                      MediaQuery.sizeOf(context).width > 900 ? 5 : 4,
+                  childAspectRatio: 0.9,
                   crossAxisSpacing: 14,
                   mainAxisSpacing: 14,
                   children: characters.map((character) {
