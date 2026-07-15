@@ -35,6 +35,8 @@ class AppColors {
   static const primary = Color(0xFF5E76B7);
   static const selected = Color(0xFFEAF0FF);
   static const selectedBorder = Color(0xFFB8C8F8);
+  static const navAccent = Color(0xFFE98946);
+  static const navBorder = Color(0xFFF1B98C);
   static const button = Color(0xFF3D4048);
   static const disabled = Color(0xFFB8BEC9);
 }
@@ -461,7 +463,7 @@ class _SidebarNavItem extends StatelessWidget {
     final color = !enabled
         ? AppColors.disabled
         : selected
-            ? AppColors.primary
+            ? Colors.white
             : AppColors.text;
 
     return Padding(
@@ -476,12 +478,12 @@ class _SidebarNavItem extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color:
-                  selected && enabled ? AppColors.selected : Colors.transparent,
+                  selected && enabled ? AppColors.navAccent : AppColors.surface,
               borderRadius: BorderRadius.circular(13),
               border: Border.all(
                 color: selected && enabled
-                    ? AppColors.selectedBorder
-                    : Colors.transparent,
+                    ? AppColors.navAccent
+                    : AppColors.navBorder,
               ),
             ),
             child: Text(
