@@ -1,3 +1,5 @@
+import re
+
 from django.utils import timezone
 
 from .models import NoticeSnapshot, SelectedCharacter
@@ -12,7 +14,11 @@ def first_value(data, keys, default=None):
 
 
 def normalize_notice_items(notice_type, payload):
-    raw_items = first_value(payload, ["notice", "notice_list", "event_notice", "cashshop_notice", "update_notice"], [])
+    raw_items = first_value(
+        payload,
+        ["notice", "notice_list", "event_notice", "cashshop_notice", "update_notice"],
+        [],
+    )
     if isinstance(payload, list):
         raw_items = payload
     if not isinstance(raw_items, list):
@@ -20,11 +26,21 @@ def normalize_notice_items(notice_type, payload):
 
     items = []
     for item in raw_items:
-        notice_id = str(first_value(item, ["notice_id", "event_notice_id", "cashshop_notice_id", "update_notice_id", "id"], ""))
+        notice_id = str(
+            first_value(
+                item,
+                ["notice_id", "event_notice_id", "cashshop_notice_id", "update_notice_id", "id"],
+                "",
+            )
+        )
         title = first_value(item, ["title", "notice_title"], "")
         link = first_value(item, ["url", "link", "notice_url"], "")
         registered_at = first_value(item, ["date", "notice_date", "registered_at"], "")
-        thumbnail = first_value(item, ["thumbnail", "thumbnail_url", "image", "image_url", "banner_image"], "")
+        thumbnail = first_value(
+            item,
+            ["thumbnail", "thumbnail_url", "image", "image_url", "banner_image"],
+            "",
+        )
         if not notice_id and title:
             notice_id = f"{notice_type}:{title}:{registered_at}"
         if notice_id:
@@ -41,11 +57,56 @@ def normalize_notice_items(notice_type, payload):
     return items
 
 
+def first_image_url(payload):
+    if not isinstance(payload, dict):
+        return ""
+
+    direct = first_value(
+        payload,
+        [
+            "thumbnail",
+            "thumbnail_url",
+            "thumbnail_image",
+            "image",
+            "image_url",
+            "banner_image",
+            "event_image",
+            "event_thumbnail",
+        ],
+        "",
+    )
+    if direct:
+        return direct
+
+    body = first_value(payload, ["contents", "content", "body", "notice_contents"], "")
+    if not isinstance(body, str):
+        return ""
+
+    match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', body, re.IGNORECASE)
+    return match.group(1) if match else ""
+
+
+def fill_event_thumbnails(items, client):
+    for item in items:
+        if item.get("noticeType") != "event" or item.get("thumbnail"):
+            continue
+
+        try:
+            detail = client.event_detail(item["noticeId"])
+        except Exception:
+            continue
+
+        item["thumbnail"] = first_image_url(detail)
+
+
 def collect_current_notice_items(client=None):
     client = client or NexonClient()
     items = []
     for notice_type, payload in client.current_notices().items():
-        items.extend(normalize_notice_items(notice_type, payload))
+        normalized = normalize_notice_items(notice_type, payload)
+        if notice_type == "event":
+            fill_event_thumbnails(normalized, client)
+        items.extend(normalized)
     return items
 
 
