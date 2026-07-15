@@ -774,18 +774,28 @@ class _SchedulerOverviewPanel extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compact = constraints.maxWidth < 760;
-        final left = Column(
+        final left = ListView(
           children: [
             _SchedulerCard(title: '일일 콘텐츠', items: data.dailyItems),
             const SizedBox(height: 20),
             _SchedulerCard(title: '주간 콘텐츠', items: data.weeklyItems),
           ],
         );
-        final right = _SchedulerCard(title: '보스 콘텐츠', items: data.bossItems);
+        final right = ListView(
+          children: [
+            _SchedulerCard(title: '보스 콘텐츠', items: data.bossItems),
+          ],
+        );
 
         if (compact) {
           return ListView(
-            children: [left, const SizedBox(height: 20), right],
+            children: [
+              _SchedulerCard(title: '일일 콘텐츠', items: data.dailyItems),
+              const SizedBox(height: 20),
+              _SchedulerCard(title: '주간 콘텐츠', items: data.weeklyItems),
+              const SizedBox(height: 20),
+              _SchedulerCard(title: '보스 콘텐츠', items: data.bossItems),
+            ],
           );
         }
 
