@@ -6,6 +6,26 @@ from .models import NoticeSnapshot, SelectedCharacter
 from .nexon import NexonClient
 
 
+THUMBNAIL_KEYS = [
+    "thumbnail",
+    "thumbnail_url",
+    "thumbnailUrl",
+    "thumbnail_image",
+    "thumbnailImage",
+    "image",
+    "image_url",
+    "imageUrl",
+    "banner_image",
+    "bannerImage",
+    "event_image",
+    "eventImage",
+    "event_thumbnail",
+    "eventThumbnail",
+    "event_thumbnail_url",
+    "eventThumbnailUrl",
+]
+
+
 def first_value(data, keys, default=None):
     for key in keys:
         if isinstance(data, dict) and key in data:
@@ -36,24 +56,26 @@ def normalize_notice_items(notice_type, payload):
         title = first_value(item, ["title", "notice_title"], "")
         link = first_value(item, ["url", "link", "notice_url"], "")
         registered_at = first_value(item, ["date", "notice_date", "registered_at"], "")
-        thumbnail = first_value(
-            item,
-            ["thumbnail", "thumbnail_url", "image", "image_url", "banner_image"],
-            "",
-        )
+        thumbnail = first_value(item, THUMBNAIL_KEYS, "")
+        event_start_at = first_value(item, ["date_event_start", "event_start_at", "eventStartAt"], "")
+        event_end_at = first_value(item, ["date_event_end", "event_end_at", "eventEndAt"], "")
         if not notice_id and title:
             notice_id = f"{notice_type}:{title}:{registered_at}"
         if notice_id:
-            items.append(
-                {
-                    "noticeType": notice_type,
-                    "noticeId": notice_id,
-                    "title": title,
-                    "link": link,
-                    "registeredAt": registered_at,
-                    "thumbnail": thumbnail,
-                }
-            )
+            normalized = {
+                "noticeType": notice_type,
+                "noticeId": notice_id,
+                "title": title,
+                "link": link,
+                "registeredAt": registered_at,
+                "thumbnail": thumbnail,
+                "thumbnailUrl": thumbnail,
+            }
+            if event_start_at:
+                normalized["eventStartAt"] = event_start_at
+            if event_end_at:
+                normalized["eventEndAt"] = event_end_at
+            items.append(normalized)
     return items
 
 
@@ -61,20 +83,7 @@ def first_image_url(payload):
     if not isinstance(payload, dict):
         return ""
 
-    direct = first_value(
-        payload,
-        [
-            "thumbnail",
-            "thumbnail_url",
-            "thumbnail_image",
-            "image",
-            "image_url",
-            "banner_image",
-            "event_image",
-            "event_thumbnail",
-        ],
-        "",
-    )
+    direct = first_value(payload, THUMBNAIL_KEYS, "")
     if direct:
         return direct
 
@@ -96,7 +105,9 @@ def fill_event_thumbnails(items, client):
         except Exception:
             continue
 
-        item["thumbnail"] = first_image_url(detail)
+        thumbnail = first_image_url(detail)
+        item["thumbnail"] = thumbnail
+        item["thumbnailUrl"] = thumbnail
 
 
 def collect_current_notice_items(client=None):
