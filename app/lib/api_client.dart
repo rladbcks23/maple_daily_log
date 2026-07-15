@@ -302,6 +302,7 @@ class SchedulerItemSummary {
       'current_clear_count',
       'current_count',
       'current_score',
+      'now_count',
       'count',
     ]);
     final max = _readInt(json, [
@@ -333,6 +334,7 @@ class SchedulerItemSummary {
     const keys = [
       'is_registered',
       'registered',
+      'registration_flag',
       'is_registered_in_game',
       'is_registered_ingame',
       'is_ingame_registered',
