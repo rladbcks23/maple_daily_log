@@ -20,31 +20,48 @@ class MapleTaskReminderApp extends StatelessWidget {
         scaffoldBackgroundColor: AppColors.background,
         useMaterial3: true,
       ),
-      home: const CharacterHomePage(),
+      home: const MapleAppShell(),
     );
   }
 }
 
 class AppColors {
-  static const background = Color(0xFFF5F6F9);
+  static const background = Color(0xFFF7F8FB);
+  static const sidebar = Color(0xFFFBF8EF);
   static const surface = Color(0xFFFFFFFF);
   static const border = Color(0xFFE6E8EF);
-  static const text = Color(0xFF3D4048);
+  static const text = Color(0xFF343741);
   static const muted = Color(0xFF7B8291);
   static const primary = Color(0xFF5E76B7);
+  static const selected = Color(0xFFEAF0FF);
   static const button = Color(0xFF3D4048);
+  static const disabled = Color(0xFFB8BEC9);
 }
 
-class CharacterHomePage extends StatefulWidget {
-  const CharacterHomePage({super.key});
+enum AppSection {
+  character('캐릭터 선택', Icons.person_add_alt_1_rounded),
+  scheduler('스케쥴러', Icons.event_note_rounded),
+  events('진행중인 이벤트', Icons.celebration_rounded),
+  notices('공지사항', Icons.campaign_rounded),
+  sunday('이번주 썬데이', Icons.wb_sunny_rounded);
+
+  const AppSection(this.label, this.icon);
+
+  final String label;
+  final IconData icon;
+}
+
+class MapleAppShell extends StatefulWidget {
+  const MapleAppShell({super.key});
 
   @override
-  State<CharacterHomePage> createState() => _CharacterHomePageState();
+  State<MapleAppShell> createState() => _MapleAppShellState();
 }
 
-class _CharacterHomePageState extends State<CharacterHomePage> {
+class _MapleAppShellState extends State<MapleAppShell> {
   final ApiClient apiClient = ApiClient();
 
+  var currentSection = AppSection.character;
   var isLoading = false;
   String? errorMessage;
   NexonCharacterSummary? selectedCharacter;
@@ -95,24 +112,290 @@ class _CharacterHomePageState extends State<CharacterHomePage> {
     }
   }
 
+  void selectSection(AppSection section) {
+    if (section != AppSection.character && selectedCharacter == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('캐릭터를 먼저 선택해주세요.')),
+      );
+      return;
+    }
+
+    setState(() {
+      currentSection = section;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SizedBox(
-            width: 460,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const _AppBrand(),
-                const SizedBox(height: 28),
-                _CharacterSetupCard(
-                  isLoading: isLoading,
-                  errorMessage: errorMessage,
-                  selectedCharacter: selectedCharacter,
-                  onAddCharacter: openCharacterPicker,
+      body: Row(
+        children: [
+          _AppSidebar(
+            currentSection: currentSection,
+            selectedCharacter: selectedCharacter,
+            onAddCharacter: () => selectSection(AppSection.character),
+            onSelectSection: selectSection,
+          ),
+          Expanded(
+            child: _MainPanel(
+              currentSection: currentSection,
+              selectedCharacter: selectedCharacter,
+              isLoading: isLoading,
+              errorMessage: errorMessage,
+              onAddCharacter: openCharacterPicker,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AppSidebar extends StatelessWidget {
+  const _AppSidebar({
+    required this.currentSection,
+    required this.selectedCharacter,
+    required this.onAddCharacter,
+    required this.onSelectSection,
+  });
+
+  final AppSection currentSection;
+  final NexonCharacterSummary? selectedCharacter;
+  final VoidCallback onAddCharacter;
+  final ValueChanged<AppSection> onSelectSection;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasCharacter = selectedCharacter != null;
+
+    return Container(
+      width: 264,
+      decoration: const BoxDecoration(
+        color: AppColors.sidebar,
+        border: Border(right: BorderSide(color: Color(0xFFE3DED1))),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _SidebarBrand(),
+              const SizedBox(height: 24),
+              _SidebarCharacterButton(
+                selectedCharacter: selectedCharacter,
+                onPressed: onAddCharacter,
+              ),
+              const SizedBox(height: 14),
+              const Divider(color: Color(0xFFE3DED1)),
+              const SizedBox(height: 8),
+              for (final section in AppSection.values)
+                if (section != AppSection.character)
+                  _SidebarNavItem(
+                    section: section,
+                    selected: currentSection == section,
+                    enabled: hasCharacter,
+                    onPressed: () => onSelectSection(section),
+                  ),
+              const Spacer(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarBrand extends StatelessWidget {
+  const _SidebarBrand();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Text(
+            'M',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '메이플 숙제알리미',
+                style: TextStyle(
+                  color: AppColors.text,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
                 ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                '놓친 숙제, 이제 안 놓치게',
+                style: TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SidebarCharacterButton extends StatelessWidget {
+  const _SidebarCharacterButton({
+    required this.selectedCharacter,
+    required this.onPressed,
+  });
+
+  final NexonCharacterSummary? selectedCharacter;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final character = selectedCharacter;
+
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAF0FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  character == null
+                      ? Icons.person_add_alt_1_rounded
+                      : Icons.check_rounded,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      character == null
+                          ? '캐릭터 추가'
+                          : _displayCharacterName(character),
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      character == null
+                          ? '먼저 알림 대상을 선택'
+                          : _characterDescription(character),
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.muted,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarNavItem extends StatelessWidget {
+  const _SidebarNavItem({
+    required this.section,
+    required this.selected,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  final AppSection section;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = !enabled
+        ? AppColors.disabled
+        : selected
+            ? AppColors.primary
+            : AppColors.text;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Material(
+        color: selected && enabled ? AppColors.selected : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Icon(section.icon, size: 18, color: color),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    section.label,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                if (!enabled)
+                  const Icon(
+                    Icons.lock_rounded,
+                    size: 15,
+                    color: AppColors.disabled,
+                  ),
               ],
             ),
           ),
@@ -122,136 +405,259 @@ class _CharacterHomePageState extends State<CharacterHomePage> {
   }
 }
 
-class _AppBrand extends StatelessWidget {
-  const _AppBrand();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 56,
-          height: 56,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Text(
-            'M',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        const Text(
-          '메이플 숙제알리미',
-          style: TextStyle(
-            color: AppColors.text,
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          '놓친 숙제, 이제 안 놓치게',
-          style: TextStyle(
-            color: AppColors.muted,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _CharacterSetupCard extends StatelessWidget {
-  const _CharacterSetupCard({
+class _MainPanel extends StatelessWidget {
+  const _MainPanel({
+    required this.currentSection,
+    required this.selectedCharacter,
     required this.isLoading,
     required this.errorMessage,
-    required this.selectedCharacter,
     required this.onAddCharacter,
   });
 
+  final AppSection currentSection;
+  final NexonCharacterSummary? selectedCharacter;
   final bool isLoading;
   final String? errorMessage;
-  final NexonCharacterSummary? selectedCharacter;
   final VoidCallback onAddCharacter;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            selectedCharacter == null
-                ? '알림을 받을 캐릭터를 먼저 추가해주세요.'
-                : '현재 알림 대상 캐릭터',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.muted,
-              fontSize: 13,
-              height: 1.5,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          if (selectedCharacter != null) ...[
-            const SizedBox(height: 14),
-            _SelectedCharacterCard(character: selectedCharacter!),
-          ],
-          const SizedBox(height: 14),
-          FilledButton(
-            onPressed: isLoading ? null : onAddCharacter,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.button,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-            child: isLoading
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.4,
-                      color: Colors.white,
-                    ),
-                  )
-                : Text(
-                    selectedCharacter == null ? '캐릭터 추가' : '캐릭터 변경',
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(32, 26, 32, 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    currentSection.label,
                     style: const TextStyle(
-                      fontSize: 14.5,
+                      color: AppColors.text,
+                      fontSize: 25,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-          ),
-          if (errorMessage != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              errorMessage!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFFB85F47),
-                fontSize: 12,
-                height: 1.35,
-              ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: onAddCharacter,
+                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+                  label: Text(selectedCharacter == null ? '캐릭터 추가' : '캐릭터 변경'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.text,
+                    side: const BorderSide(color: AppColors.border),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Expanded(
+              child: currentSection == AppSection.character
+                  ? _CharacterSelectPanel(
+                      selectedCharacter: selectedCharacter,
+                      isLoading: isLoading,
+                      errorMessage: errorMessage,
+                      onAddCharacter: onAddCharacter,
+                    )
+                  : _LockedFeaturePanel(
+                      section: currentSection,
+                      selectedCharacter: selectedCharacter,
+                    ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CharacterSelectPanel extends StatelessWidget {
+  const _CharacterSelectPanel({
+    required this.selectedCharacter,
+    required this.isLoading,
+    required this.errorMessage,
+    required this.onAddCharacter,
+  });
+
+  final NexonCharacterSummary? selectedCharacter;
+  final bool isLoading;
+  final String? errorMessage;
+  final VoidCallback onAddCharacter;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topLeft,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                selectedCharacter == null
+                    ? '알림을 받을 캐릭터를 선택해주세요.'
+                    : '현재 알림 대상 캐릭터',
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                selectedCharacter == null
+                    ? '캐릭터를 선택하면 스케쥴러, 이벤트, 공지사항 화면을 사용할 수 있어요.'
+                    : '이 캐릭터 기준으로 숙제 알림과 콘텐츠 조회를 진행합니다.',
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  height: 1.5,
+                ),
+              ),
+              if (selectedCharacter != null) ...[
+                const SizedBox(height: 18),
+                _SelectedCharacterCard(character: selectedCharacter!),
+              ],
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                onPressed: isLoading ? null : onAddCharacter,
+                icon: isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.person_search_rounded, size: 18),
+                label: Text(selectedCharacter == null ? '캐릭터 추가' : '캐릭터 변경'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.button,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              if (errorMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  errorMessage!,
+                  style: const TextStyle(
+                    color: Color(0xFFB85F47),
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LockedFeaturePanel extends StatelessWidget {
+  const _LockedFeaturePanel({
+    required this.section,
+    required this.selectedCharacter,
+  });
+
+  final AppSection section;
+  final NexonCharacterSummary? selectedCharacter;
+
+  @override
+  Widget build(BuildContext context) {
+    if (selectedCharacter == null) {
+      return const _BlockedPanel();
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            section.label,
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${_displayCharacterName(selectedCharacter!)} 기준 데이터 연결을 준비 중입니다.',
+            style: const TextStyle(
+              color: AppColors.muted,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BlockedPanel extends StatelessWidget {
+  const _BlockedPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: const Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.lock_rounded, color: AppColors.disabled, size: 28),
+          SizedBox(height: 12),
+          Text(
+            '캐릭터 선택이 필요해요.',
+            style: TextStyle(
+              color: AppColors.text,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            '왼쪽의 캐릭터 추가를 눌러 알림 대상 캐릭터를 먼저 선택해주세요.',
+            style: TextStyle(
+              color: AppColors.muted,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 1.5,
+            ),
+          ),
         ],
       ),
     );
@@ -277,15 +683,15 @@ class _SelectedCharacterCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 42,
+            height: 42,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: AppColors.primary,
               borderRadius: BorderRadius.circular(12),
             ),
             child:
-                const Icon(Icons.check_rounded, color: Colors.white, size: 20),
+                const Icon(Icons.check_rounded, color: Colors.white, size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -293,9 +699,7 @@ class _SelectedCharacterCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  character.characterName.isEmpty
-                      ? '이름 없음'
-                      : character.characterName,
+                  _displayCharacterName(character),
                   style: const TextStyle(
                     color: AppColors.text,
                     fontSize: 14,
@@ -422,7 +826,7 @@ class _CharacterPickerTile extends StatelessWidget {
     final description = _characterDescription(character);
 
     return Material(
-      color: selected ? const Color(0xFFEAF0FF) : AppColors.surface,
+      color: selected ? AppColors.selected : AppColors.surface,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,
@@ -461,9 +865,7 @@ class _CharacterPickerTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      character.characterName.isEmpty
-                          ? '이름 없음'
-                          : character.characterName,
+                      _displayCharacterName(character),
                       style: const TextStyle(
                         color: AppColors.text,
                         fontSize: 14,
@@ -496,6 +898,10 @@ class _CharacterPickerTile extends StatelessWidget {
       ),
     );
   }
+}
+
+String _displayCharacterName(NexonCharacterSummary character) {
+  return character.characterName.isEmpty ? '이름 없음' : character.characterName;
 }
 
 String _characterDescription(NexonCharacterSummary character) {
