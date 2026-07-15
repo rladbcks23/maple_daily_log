@@ -104,12 +104,17 @@ class _MapleAppShellState extends State<MapleAppShell> {
       );
 
       if (selected != null && mounted) {
+        final detailed = await apiClient.fetchCharacterBasic(selected);
+        if (!mounted) {
+          return;
+        }
+
         setState(() {
-          selectedCharacter = selected;
+          selectedCharacter = detailed;
           schedulerSnapshot = null;
           schedulerErrorMessage = null;
         });
-        await loadScheduler(selected);
+        await loadScheduler(detailed);
       }
     } catch (error) {
       if (!mounted) {
@@ -1467,8 +1472,8 @@ class _CharacterPickerSheet extends StatelessWidget {
               Flexible(
                 child: GridView.count(
                   crossAxisCount:
-                      MediaQuery.sizeOf(context).width > 900 ? 5 : 4,
-                  childAspectRatio: 0.9,
+                      MediaQuery.sizeOf(context).width > 900 ? 4 : 3,
+                  childAspectRatio: 1.05,
                   crossAxisSpacing: 14,
                   mainAxisSpacing: 14,
                   children: characters.map((character) {

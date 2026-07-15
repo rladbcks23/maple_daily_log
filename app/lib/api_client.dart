@@ -21,12 +21,11 @@ class ApiClient {
 
     final decoded = jsonDecode(utf8.decode(response.bodyBytes));
     final characters = _extractCharacterItems(decoded);
-    final summaries = characters.map(NexonCharacterSummary.fromJson).toList();
 
-    return Future.wait(summaries.map(_loadCharacterBasicIfPossible));
+    return characters.map(NexonCharacterSummary.fromJson).toList();
   }
 
-  Future<NexonCharacterSummary> _loadCharacterBasicIfPossible(
+  Future<NexonCharacterSummary> fetchCharacterBasic(
     NexonCharacterSummary character,
   ) async {
     if (character.ocid.isEmpty) {
