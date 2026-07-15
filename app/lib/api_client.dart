@@ -84,7 +84,7 @@ class ApiClient {
       }
     }
 
-    return [];
+    return characters;
   }
 }
 
