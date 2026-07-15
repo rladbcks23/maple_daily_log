@@ -1566,13 +1566,12 @@ class _CharacterPickerSheet extends StatelessWidget {
               )
             else
               Flexible(
-                child: GridView.count(
-                  crossAxisCount:
-                      MediaQuery.sizeOf(context).width > 900 ? 4 : 3,
-                  childAspectRatio: 1.05,
-                  crossAxisSpacing: 14,
-                  mainAxisSpacing: 14,
-                  children: characters.map((character) {
+                child: ListView.separated(
+                  itemCount: characters.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final character = characters[index];
                     final selected =
                         _isSameCharacter(character, selectedCharacter);
 
@@ -1581,7 +1580,7 @@ class _CharacterPickerSheet extends StatelessWidget {
                       selected: selected,
                       onTap: () => Navigator.of(context).pop(character),
                     );
-                  }).toList(),
+                  },
                 ),
               ),
           ],
@@ -1604,10 +1603,69 @@ class _CharacterPickerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _CharacterCard(
-      character: character,
-      selected: selected,
-      onTap: onTap,
+    return Material(
+      color: selected ? AppColors.selected : AppColors.surface,
+      borderRadius: BorderRadius.circular(13),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(13),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(13),
+            border: Border.all(
+              color: selected ? AppColors.selectedBorder : AppColors.softBorder,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected ? AppColors.primary : const Color(0xFFEAF0FF),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(
+                  selected ? Icons.check_rounded : Icons.person_outline_rounded,
+                  color: selected ? Colors.white : AppColors.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _displayCharacterName(character),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _characterDescription(character),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
