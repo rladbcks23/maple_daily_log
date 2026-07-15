@@ -318,7 +318,16 @@ class SchedulerItemSummary {
       'status',
     ]);
     final hasExplicitDone =
-        _readBool(json, ['done', 'is_done', 'clear', 'completed']);
+        _readBool(json, [
+      'done',
+      'is_done',
+      'clear',
+      'completed',
+      'complete_flag',
+      'is_completed',
+      'is_clear',
+      'clear_status',
+    ]);
     final normalizedTitle = title.isEmpty ? '이름 없음' : title;
     final meta = _schedulerItemMeta(
       title: normalizedTitle,
