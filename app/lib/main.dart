@@ -1,4 +1,3 @@
-import 'package:characters/characters.dart';
 import 'package:flutter/material.dart';
 
 import 'api_client.dart';
@@ -26,14 +25,16 @@ class MapleTaskReminderApp extends StatelessWidget {
 }
 
 class AppColors {
-  static const background = Color(0xFFF7F8FB);
-  static const sidebar = Color(0xFFFBF8EF);
+  static const background = Color(0xFFFFFFFF);
+  static const sidebar = Color(0xFFFEFBF2);
   static const surface = Color(0xFFFFFFFF);
-  static const border = Color(0xFFE6E8EF);
-  static const text = Color(0xFF343741);
+  static const border = Color(0xFFE8E2D4);
+  static const softBorder = Color(0xFFE8EAF0);
+  static const text = Color(0xFF3D4048);
   static const muted = Color(0xFF7B8291);
   static const primary = Color(0xFF5E76B7);
   static const selected = Color(0xFFEAF0FF);
+  static const selectedBorder = Color(0xFFB8C8F8);
   static const button = Color(0xFF3D4048);
   static const disabled = Color(0xFFB8BEC9);
 }
@@ -172,23 +173,24 @@ class _AppSidebar extends StatelessWidget {
       width: 264,
       decoration: const BoxDecoration(
         color: AppColors.sidebar,
-        border: Border(right: BorderSide(color: Color(0xFFE3DED1))),
+        border: Border(right: BorderSide(color: AppColors.border)),
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 24, 16, 18),
+          padding: const EdgeInsets.fromLTRB(16, 22, 16, 18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const _SidebarBrand(),
-              const SizedBox(height: 24),
+              const SizedBox(height: 18),
               _SidebarCharacterButton(
                 selectedCharacter: selectedCharacter,
                 onPressed: onAddCharacter,
               ),
-              const SizedBox(height: 14),
-              const Divider(color: Color(0xFFE3DED1)),
-              const SizedBox(height: 8),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+                child: Divider(height: 1, color: AppColors.border),
+              ),
               for (final section in AppSection.values)
                 if (section != AppSection.character)
                   _SidebarNavItem(
@@ -370,37 +372,58 @@ class _SidebarNavItem extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Material(
-        color: selected && enabled ? AppColors.selected : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(13),
         child: InkWell(
           onTap: onPressed,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
+          borderRadius: BorderRadius.circular(13),
+          child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Icon(section.icon, size: 18, color: color),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    section.label,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                if (!enabled)
-                  const Icon(
-                    Icons.lock_rounded,
-                    size: 15,
-                    color: AppColors.disabled,
-                  ),
-              ],
+            decoration: BoxDecoration(
+              color:
+                  selected && enabled ? AppColors.selected : Colors.transparent,
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(
+                color: selected && enabled
+                    ? AppColors.selectedBorder
+                    : Colors.transparent,
+              ),
+            ),
+            child: Text(
+              section.label,
+              style: TextStyle(
+                color: color,
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _TopPreviewButton extends StatelessWidget {
+  const _TopPreviewButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton(
+      onPressed: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('놓친 알림 미리보기는 알림 기능 연결 후 사용할 수 있어요.')),
+        );
+      },
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.text,
+        side: const BorderSide(color: AppColors.softBorder),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+      child: const Text(
+        '놓친 알림 미리보기',
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
       ),
     );
   }
@@ -441,18 +464,7 @@ class _MainPanel extends StatelessWidget {
                     ),
                   ),
                 ),
-                OutlinedButton.icon(
-                  onPressed: onAddCharacter,
-                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-                  label: Text(selectedCharacter == null ? '캐릭터 추가' : '캐릭터 변경'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.text,
-                    side: const BorderSide(color: AppColors.border),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
+                const _TopPreviewButton(),
               ],
             ),
             const SizedBox(height: 24),
@@ -585,7 +597,7 @@ class _LockedFeaturePanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.softBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -905,68 +917,6 @@ class _BlockedPanel extends StatelessWidget {
   }
 }
 
-class _SelectedCharacterCard extends StatelessWidget {
-  const _SelectedCharacterCard({required this.character});
-
-  final NexonCharacterSummary character;
-
-  @override
-  Widget build(BuildContext context) {
-    final description = _characterDescription(character);
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6F8FF),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFD8E0FF)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child:
-                const Icon(Icons.check_rounded, color: Colors.white, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _displayCharacterName(character),
-                  style: const TextStyle(
-                    color: AppColors.text,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                if (description.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    description,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _CharacterCard extends StatelessWidget {
   const _CharacterCard({
     required this.character,
@@ -990,7 +940,7 @@ class _CharacterCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             width: 2,
-            color: selected ? AppColors.primary : AppColors.border,
+            color: selected ? AppColors.selectedBorder : AppColors.softBorder,
           ),
         ),
         child: Column(
@@ -1067,7 +1017,7 @@ class _AddCharacterCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.border, width: 2),
+          border: Border.all(color: AppColors.softBorder, width: 2),
         ),
         child: Center(
           child: loading
