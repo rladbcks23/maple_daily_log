@@ -1160,7 +1160,7 @@ class _EventOverviewPanel extends StatelessWidget {
 
     return GridView.count(
       crossAxisCount: MediaQuery.sizeOf(context).width > 1180 ? 3 : 2,
-      childAspectRatio: 1.38,
+      childAspectRatio: 1.18,
       crossAxisSpacing: 20,
       mainAxisSpacing: 20,
       children: items
@@ -1352,31 +1352,35 @@ class _InfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
+          AspectRatio(
+            aspectRatio: 16 / 7,
             child: _EventThumbnail(thumbnail: thumbnail),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.text,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w900,
-                    height: 1.35,
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      height: 1.35,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  meta,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
-                ),
-              ],
+                  const SizedBox(height: 10),
+                  Text(
+                    meta,
+                    style:
+                        const TextStyle(color: AppColors.muted, fontSize: 12),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
