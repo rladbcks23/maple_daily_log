@@ -26,14 +26,60 @@ class ApiClient {
 
   List<Map<String, dynamic>> _extractCharacterItems(Object? decoded) {
     if (decoded is List) {
-      return decoded.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
+      return _flattenCharacterMaps(decoded);
     }
 
     if (decoded is Map) {
-      for (final key in ['characters', 'character_list', 'account_list', 'items', 'data']) {
+      for (final key in ['characters', 'character_list', 'items', 'data']) {
         final value = decoded[key];
         if (value is List) {
-          return value.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
+          return _flattenCharacterMaps(value);
+        }
+      }
+
+      final accountList = decoded['account_list'];
+      if (accountList is List) {
+        return _flattenAccountCharacters(accountList);
+      }
+    }
+
+    return [];
+  }
+
+  List<Map<String, dynamic>> _flattenCharacterMaps(List<dynamic> items) {
+    final characters = <Map<String, dynamic>>[];
+
+    for (final item in items) {
+      if (item is! Map) {
+        continue;
+      }
+
+      final map = Map<String, dynamic>.from(item);
+      final nestedCharacters = map['character_list'];
+      if (nestedCharacters is List) {
+        characters.addAll(_flattenCharacterMaps(nestedCharacters));
+      } else {
+        characters.add(map);
+      }
+    }
+
+    return characters;
+  }
+
+  List<Map<String, dynamic>> _flattenAccountCharacters(List<dynamic> accounts) {
+    final characters = <Map<String, dynamic>>[];
+
+    for (final account in accounts) {
+      if (account is! Map) {
+        continue;
+      }
+
+      final characterList = account['character_list'];
+      if (characterList is List) {
+        for (final character in characterList) {
+          if (character is Map) {
+            characters.add(Map<String, dynamic>.from(character));
+          }
         }
       }
     }
