@@ -290,17 +290,18 @@ class _SidebarCharacterButton extends StatelessWidget {
               Container(
                 width: 40,
                 height: 40,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEAF0FF),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  character == null
-                      ? Icons.person_add_alt_1_rounded
-                      : Icons.check_rounded,
-                  color: AppColors.primary,
-                ),
+                clipBehavior: Clip.antiAlias,
+                decoration:
+                    BoxDecoration(borderRadius: BorderRadius.circular(12)),
+                child: character == null
+                    ? const ColoredBox(
+                        color: Color(0xFFEAF0FF),
+                        child: Icon(
+                          Icons.person_add_alt_1_rounded,
+                          color: AppColors.primary,
+                        ),
+                      )
+                    : _CharacterImage(character: character, radius: 12),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -490,84 +491,65 @@ class _CharacterSelectPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.topLeft,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                selectedCharacter == null
-                    ? '알림을 받을 캐릭터를 선택해주세요.'
-                    : '현재 알림 대상 캐릭터',
-                style: const TextStyle(
-                  color: AppColors.text,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                selectedCharacter == null
-                    ? '캐릭터를 선택하면 스케쥴러, 이벤트, 공지사항 화면을 사용할 수 있어요.'
-                    : '이 캐릭터 기준으로 숙제 알림과 콘텐츠 조회를 진행합니다.',
-                style: const TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  height: 1.5,
-                ),
-              ),
-              if (selectedCharacter != null) ...[
-                const SizedBox(height: 18),
-                _SelectedCharacterCard(character: selectedCharacter!),
-              ],
-              const SizedBox(height: 18),
-              FilledButton.icon(
-                onPressed: isLoading ? null : onAddCharacter,
-                icon: isLoading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.4,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.person_search_rounded, size: 18),
-                label: Text(selectedCharacter == null ? '캐릭터 추가' : '캐릭터 변경'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.button,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              if (errorMessage != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  errorMessage!,
-                  style: const TextStyle(
-                    color: Color(0xFFB85F47),
-                    fontSize: 12,
-                    height: 1.35,
-                  ),
-                ),
-              ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = constraints.maxWidth > 1100 ? 4 : 3;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (errorMessage != null) ...[
+              _InlineError(message: errorMessage!),
+              const SizedBox(height: 14),
             ],
-          ),
+            Expanded(
+              child: GridView.count(
+                crossAxisCount: crossAxisCount,
+                childAspectRatio: 0.78,
+                crossAxisSpacing: 18,
+                mainAxisSpacing: 18,
+                children: [
+                  if (selectedCharacter != null)
+                    _CharacterCard(
+                      character: selectedCharacter!,
+                      selected: true,
+                      onTap: onAddCharacter,
+                    ),
+                  _AddCharacterCard(
+                    loading: isLoading,
+                    onTap: isLoading ? null : onAddCharacter,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _InlineError extends StatelessWidget {
+  const _InlineError({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF5F0),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFF1D6CC)),
+      ),
+      child: Text(
+        message,
+        style: const TextStyle(
+          color: Color(0xFFB85F47),
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          height: 1.35,
         ),
       ),
     );
@@ -726,6 +708,139 @@ class _SelectedCharacterCard extends StatelessWidget {
   }
 }
 
+class _CharacterCard extends StatelessWidget {
+  const _CharacterCard({
+    required this.character,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final NexonCharacterSummary character;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.selected : AppColors.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            width: 2,
+            color: selected ? AppColors.primary : AppColors.border,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: _CharacterImage(character: character, radius: 12),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _displayCharacterName(character),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                if (selected)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Text(
+                      '선택됨',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 5),
+            Text(
+              _characterDescription(character),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AddCharacterCard extends StatelessWidget {
+  const _AddCharacterCard({
+    required this.loading,
+    required this.onTap,
+  });
+
+  final bool loading;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.border, width: 2),
+        ),
+        child: Center(
+          child: loading
+              ? const CircularProgressIndicator(color: AppColors.primary)
+              : const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '+',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      '캐릭터 추가',
+                      style: TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CharacterPickerSheet extends StatelessWidget {
   const _CharacterPickerSheet({
     required this.characters,
@@ -785,13 +900,13 @@ class _CharacterPickerSheet extends StatelessWidget {
               )
             else
               Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: characters.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final character = characters[index];
+                child: GridView.count(
+                  crossAxisCount:
+                      MediaQuery.sizeOf(context).width > 900 ? 4 : 3,
+                  childAspectRatio: 0.78,
+                  crossAxisSpacing: 14,
+                  mainAxisSpacing: 14,
+                  children: characters.map((character) {
                     final selected =
                         _isSameCharacter(character, selectedCharacter);
 
@@ -800,7 +915,7 @@ class _CharacterPickerSheet extends StatelessWidget {
                       selected: selected,
                       onTap: () => Navigator.of(context).pop(character),
                     );
-                  },
+                  }).toList(),
                 ),
               ),
           ],
@@ -823,77 +938,60 @@ class _CharacterPickerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final description = _characterDescription(character);
+    return _CharacterCard(
+      character: character,
+      selected: selected,
+      onTap: onTap,
+    );
+  }
+}
 
-    return Material(
-      color: selected ? AppColors.selected : AppColors.surface,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: selected ? AppColors.primary : AppColors.border,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: selected ? AppColors.primary : const Color(0xFFF0F2F7),
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Text(
-                  character.characterName.isEmpty
-                      ? '?'
-                      : character.characterName.characters.first,
-                  style: TextStyle(
-                    color: selected ? Colors.white : AppColors.text,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _displayCharacterName(character),
-                      style: const TextStyle(
-                        color: AppColors.text,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    if (description.isNotEmpty) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        description,
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Icon(
-                selected
-                    ? Icons.check_circle_rounded
-                    : Icons.chevron_right_rounded,
-                color: selected ? AppColors.primary : AppColors.muted,
-              ),
-            ],
-          ),
+class _CharacterImage extends StatelessWidget {
+  const _CharacterImage({
+    required this.character,
+    required this.radius,
+  });
+
+  final NexonCharacterSummary character;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = character.characterImage;
+    final image = imageUrl.isEmpty
+        ? _CharacterImageFallback(character: character)
+        : Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) =>
+                _CharacterImageFallback(character: character),
+          );
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: SizedBox.expand(child: image),
+    );
+  }
+}
+
+class _CharacterImageFallback extends StatelessWidget {
+  const _CharacterImageFallback({required this.character});
+
+  final NexonCharacterSummary character;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFF0F2F6),
+      alignment: Alignment.center,
+      child: Text(
+        character.characterName.isEmpty
+            ? '?'
+            : character.characterName.characters.first,
+        style: const TextStyle(
+          color: AppColors.primary,
+          fontSize: 24,
+          fontWeight: FontWeight.w900,
         ),
       ),
     );

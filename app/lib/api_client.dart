@@ -96,6 +96,7 @@ class NexonCharacterSummary {
     required this.worldName,
     required this.characterClass,
     required this.characterLevel,
+    required this.characterImage,
   });
 
   final String ocid;
@@ -103,6 +104,7 @@ class NexonCharacterSummary {
   final String worldName;
   final String characterClass;
   final int? characterLevel;
+  final String characterImage;
 
   factory NexonCharacterSummary.fromJson(Map<String, dynamic> json) {
     return NexonCharacterSummary(
@@ -114,6 +116,8 @@ class NexonCharacterSummary {
           _readString(json, ['character_class', 'characterClass', 'class']),
       characterLevel:
           _readInt(json, ['character_level', 'characterLevel', 'level']),
+      characterImage:
+          _readString(json, ['character_image', 'characterImage', 'image']),
     );
   }
 
