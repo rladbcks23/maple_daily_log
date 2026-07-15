@@ -499,31 +499,6 @@ class _SidebarNavItem extends StatelessWidget {
   }
 }
 
-class _TopPreviewButton extends StatelessWidget {
-  const _TopPreviewButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton(
-      onPressed: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('놓친 알림 미리보기는 알림 기능 연결 후 사용할 수 있어요.')),
-        );
-      },
-      style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.text,
-        side: const BorderSide(color: AppColors.softBorder),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
-      child: const Text(
-        '놓친 알림 미리보기',
-        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
-      ),
-    );
-  }
-}
-
 class _MainPanel extends StatelessWidget {
   const _MainPanel({
     required this.currentSection,
@@ -571,7 +546,6 @@ class _MainPanel extends StatelessWidget {
                     ),
                   ),
                 ),
-                const _TopPreviewButton(),
               ],
             ),
             const SizedBox(height: 24),
