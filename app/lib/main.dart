@@ -1373,7 +1373,7 @@ class _InfoCard extends StatelessWidget {
                       height: 1.35,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const Spacer(),
                   Text(
                     meta,
                     style:
