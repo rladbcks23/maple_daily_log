@@ -333,7 +333,7 @@ class SchedulerItemSummary {
 
     return SchedulerItemSummary(
       title: normalizedTitle,
-      meta: done && meta.isEmpty ? '완료' : meta,
+      meta: meta,
       done: done,
     );
   }
@@ -350,7 +350,10 @@ class SchedulerItemSummary {
       return '';
     }
     if (state == '2' && count == 0) {
-      return '완료';
+      return '';
+    }
+    if (_isEpicDungeon(title)) {
+      return '$count / 5';
     }
     if (_usesCountRatio(title) && current != null && max != null) {
       return '$current / $max';
@@ -368,10 +371,14 @@ class SchedulerItemSummary {
   }
 
   static bool _isEpicDungeonDone(String title, int? current, int? max) {
-    if (!title.contains('에픽 던전')) {
+    if (!_isEpicDungeon(title)) {
       return false;
     }
-    return (max ?? current ?? 0) >= 5 || (current ?? 0) >= 5;
+    return (current ?? 0) >= 5;
+  }
+
+  static bool _isEpicDungeon(String title) {
+    return title.contains('에픽 던전');
   }
 
   static bool _isCountDone(String title, int? current, int? max) {
