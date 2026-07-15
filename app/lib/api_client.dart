@@ -317,17 +317,82 @@ class SchedulerItemSummary {
       'state',
       'status',
     ]);
-    final done = _readBool(json, ['done', 'is_done', 'clear', 'completed']) ||
+    final hasExplicitDone =
+        _readBool(json, ['done', 'is_done', 'clear', 'completed']);
+    final normalizedTitle = title.isEmpty ? '이름 없음' : title;
+    final meta = _schedulerItemMeta(
+      title: normalizedTitle,
+      state: state,
+      current: current,
+      max: max,
+    );
+    final done = hasExplicitDone ||
         state == '2' ||
-        (current != null && max != null && max > 0 && current >= max);
+        _isEpicDungeonDone(normalizedTitle, current, max) ||
+        _isCountDone(normalizedTitle, current, max);
 
     return SchedulerItemSummary(
-      title: title.isEmpty ? '이름 없음' : title,
-      meta: current != null && max != null
-          ? '$current / $max'
-          : (done ? '완료' : '미완료'),
+      title: normalizedTitle,
+      meta: done && meta.isEmpty ? '완료' : meta,
       done: done,
     );
+  }
+
+  static String _schedulerItemMeta({
+    required String title,
+    required String state,
+    required int? current,
+    required int? max,
+  }) {
+    final count = current ?? 0;
+
+    if (state == '0' && count == 0) {
+      return '';
+    }
+    if (state == '2' && count == 0) {
+      return '완료';
+    }
+    if (_usesCountRatio(title) && current != null && max != null) {
+      return '$current / $max';
+    }
+    if (state.isEmpty && count == 0 && max != null) {
+      return '$max';
+    }
+    if (current != null && max != null && max > 0) {
+      return '$current / $max';
+    }
+    if (current != null && max != null && max == 0) {
+      return current > 0 ? '$current' : '';
+    }
+    return '';
+  }
+
+  static bool _isEpicDungeonDone(String title, int? current, int? max) {
+    if (!title.contains('에픽 던전')) {
+      return false;
+    }
+    return (max ?? current ?? 0) >= 5 || (current ?? 0) >= 5;
+  }
+
+  static bool _isCountDone(String title, int? current, int? max) {
+    return _usesCountRatio(title) &&
+        current != null &&
+        max != null &&
+        max > 0 &&
+        current >= max;
+  }
+
+  static bool _usesCountRatio(String title) {
+    const names = [
+      '에르다 스펙트럼',
+      '배고픈 무토',
+      '미드나잇 체이서',
+      '스피릿 세이비어',
+      '엔하임 디펜스',
+      '프로텍트 에스페라인',
+    ];
+
+    return names.any(title.contains);
   }
 
   static bool isRegistered(Map<String, dynamic> json) {

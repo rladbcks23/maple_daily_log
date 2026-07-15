@@ -928,14 +928,15 @@ class _SchedulerItemRow extends StatelessWidget {
               ),
             ),
           ),
-          Text(
-            item.meta,
-            style: TextStyle(
-              color: color,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
+          if (item.meta.isNotEmpty)
+            Text(
+              item.meta,
+              style: TextStyle(
+                color: color,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
         ],
       ),
     );
