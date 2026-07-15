@@ -283,11 +283,13 @@ class SchedulerItemSummary {
   const SchedulerItemSummary({
     required this.title,
     required this.meta,
+    required this.difficulty,
     required this.done,
   });
 
   final String title;
   final String meta;
+  final String difficulty;
   final bool done;
 
   factory SchedulerItemSummary.fromJson(Map<String, dynamic> json) {
@@ -317,6 +319,11 @@ class SchedulerItemSummary {
       'state',
       'status',
     ]);
+    final difficulty = _readString(json, [
+      'difficulty',
+      'boss_difficulty',
+      'difficulty_name',
+    ]);
     final hasExplicitDone =
         _readBool(json, [
       'done',
@@ -343,6 +350,7 @@ class SchedulerItemSummary {
     return SchedulerItemSummary(
       title: normalizedTitle,
       meta: meta,
+      difficulty: difficulty,
       done: done,
     );
   }

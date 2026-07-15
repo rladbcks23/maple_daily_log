@@ -918,6 +918,10 @@ class _SchedulerItemRow extends StatelessWidget {
       ),
       child: Row(
         children: [
+          if (item.difficulty.isNotEmpty) ...[
+            _BossDifficultyBadge(difficulty: item.difficulty),
+            const SizedBox(width: 10),
+          ],
           Expanded(
             child: Text(
               item.title,
@@ -938,6 +942,42 @@ class _SchedulerItemRow extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _BossDifficultyBadge extends StatelessWidget {
+  const _BossDifficultyBadge({required this.difficulty});
+
+  final String difficulty;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = difficulty.toUpperCase();
+    final normalized = difficulty.toLowerCase();
+    final background = normalized.contains('hard') ||
+            normalized.contains('extreme')
+        ? const Color(0xFF965271)
+        : normalized.contains('normal')
+            ? const Color(0xFF436F86)
+            : const Color(0xFF3E4147);
+
+    return Container(
+      constraints: const BoxConstraints(minWidth: 58),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }
