@@ -513,6 +513,8 @@ class NoticeItemSummary {
     required this.link,
     required this.registeredAt,
     required this.thumbnail,
+    required this.eventStartAt,
+    required this.eventEndAt,
   });
 
   final String noticeType;
@@ -520,6 +522,8 @@ class NoticeItemSummary {
   final String link;
   final String registeredAt;
   final String thumbnail;
+  final String eventStartAt;
+  final String eventEndAt;
 
   factory NoticeItemSummary.fromJson(Map<String, dynamic> json) {
     return NoticeItemSummary(
@@ -541,6 +545,10 @@ class NoticeItemSummary {
           'banner_image',
         ],
       ),
+      eventStartAt: _readString(
+          json, ['eventStartAt', 'event_start_at', 'date_event_start']),
+      eventEndAt:
+          _readString(json, ['eventEndAt', 'event_end_at', 'date_event_end']),
     );
   }
 
@@ -556,6 +564,20 @@ class NoticeItemSummary {
   String get dateText {
     final match = RegExp(r'\d{4}-\d{2}-\d{2}').firstMatch(registeredAt);
     return match?.group(0) ?? registeredAt;
+  }
+
+  String get eventPeriodText {
+    final start = _dateOnly(eventStartAt);
+    final end = _dateOnly(eventEndAt);
+    if (start.isEmpty || end.isEmpty) {
+      return dateText;
+    }
+    return '$start ~ $end';
+  }
+
+  static String _dateOnly(String value) {
+    final match = RegExp(r'\d{4}-\d{2}-\d{2}').firstMatch(value);
+    return match?.group(0) ?? '';
   }
 
   static String _readString(Map<String, dynamic> json, List<String> keys) {

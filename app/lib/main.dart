@@ -1166,7 +1166,9 @@ class _EventOverviewPanel extends StatelessWidget {
       children: items
           .map((item) => _InfoCard(
                 title: item.title,
-                meta: item.dateText.isEmpty ? item.label : item.dateText,
+                meta: item.eventPeriodText.isEmpty
+                    ? item.label
+                    : item.eventPeriodText,
                 thumbnail: item.thumbnail,
               ))
           .toList(),
