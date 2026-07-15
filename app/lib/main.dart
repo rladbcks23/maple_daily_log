@@ -270,6 +270,7 @@ class _AppSidebar extends StatelessWidget {
               const SizedBox(height: 18),
               _SidebarCharacterButton(
                 selectedCharacter: selectedCharacter,
+                selected: currentSection == AppSection.character,
                 onPressed: onAddCharacter,
               ),
               const Padding(
@@ -350,10 +351,12 @@ class _SidebarBrand extends StatelessWidget {
 class _SidebarCharacterButton extends StatelessWidget {
   const _SidebarCharacterButton({
     required this.selectedCharacter,
+    required this.selected,
     required this.onPressed,
   });
 
   final NexonCharacterSummary? selectedCharacter;
+  final bool selected;
   final VoidCallback onPressed;
 
   @override
@@ -361,7 +364,7 @@ class _SidebarCharacterButton extends StatelessWidget {
     final character = selectedCharacter;
 
     return Material(
-      color: AppColors.surface,
+      color: selected ? AppColors.selected : AppColors.surface,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onPressed,
@@ -370,7 +373,9 @@ class _SidebarCharacterButton extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(
+              color: selected ? AppColors.selectedBorder : AppColors.border,
+            ),
           ),
           child: Row(
             children: [
