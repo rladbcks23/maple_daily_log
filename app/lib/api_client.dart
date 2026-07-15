@@ -333,11 +333,14 @@ class SchedulerItemSummary {
     const keys = [
       'is_registered',
       'registered',
+      'is_registered_in_game',
+      'is_registered_ingame',
       'is_ingame_registered',
       'is_in_game_registered',
       'ingame_registered',
       'in_game_registered',
-      'is_available',
+      'in_game_register',
+      'ingame_register',
     ];
 
     for (final key in keys) {
@@ -362,7 +365,7 @@ class SchedulerItemSummary {
       }
     }
 
-    return true;
+    return false;
   }
 
   static String _readString(Map<String, dynamic> json, List<String> keys) {
