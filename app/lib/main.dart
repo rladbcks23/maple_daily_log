@@ -1256,17 +1256,120 @@ class _NoticeOverviewPanelState extends State<_NoticeOverviewPanel> {
                       ),
                     ),
                   )
-                : ListView(
-                    children: filteredItems
-                        .map(
-                          (item) => _NoticeListRow(
-                            tag: item.label,
-                            title: item.title,
-                            date: item.dateText,
-                          ),
-                        )
-                        .toList(),
+                : selectedCategory == NoticeCategory.cashshop
+                    ? _CashshopCardGrid(items: filteredItems)
+                    : ListView(
+                        children: filteredItems
+                            .map(
+                              (item) => _NoticeListRow(
+                                tag: item.label,
+                                title: item.title,
+                                date: item.dateText,
+                              ),
+                            )
+                            .toList(),
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CashshopCardGrid extends StatelessWidget {
+  const _CashshopCardGrid({required this.items});
+
+  final List<NoticeItemSummary> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = constraints.maxWidth > 900 ? 2 : 1;
+
+        return GridView.count(
+          padding: const EdgeInsets.all(22),
+          crossAxisCount: crossAxisCount,
+          childAspectRatio: 1.55,
+          crossAxisSpacing: 24,
+          mainAxisSpacing: 26,
+          children: items
+              .map(
+                (item) => _CashshopCard(
+                  title: item.title,
+                  meta: item.cashshopPeriodText,
+                  thumbnail: item.thumbnail,
+                ),
+              )
+              .toList(),
+        );
+      },
+    );
+  }
+}
+
+class _CashshopCard extends StatelessWidget {
+  const _CashshopCard({
+    required this.title,
+    required this.meta,
+    required this.thumbnail,
+  });
+
+  final String title;
+  final String meta;
+  final String thumbnail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+            child: AspectRatio(
+              aspectRatio: 10 / 3,
+              child: _EventThumbnail(thumbnail: thumbnail),
+            ),
+          ),
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: Text(
+                  title,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    height: 1.45,
                   ),
+                ),
+              ),
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.border),
+          SizedBox(
+            height: 44,
+            child: Center(
+              child: Text(
+                meta,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ),
         ],
       ),

@@ -23,6 +23,10 @@ THUMBNAIL_KEYS = [
     "eventThumbnail",
     "event_thumbnail_url",
     "eventThumbnailUrl",
+    "cashshop_thumbnail",
+    "cashshopThumbnail",
+    "cashshop_thumbnail_url",
+    "cashshopThumbnailUrl",
 ]
 
 
@@ -59,6 +63,13 @@ def normalize_notice_items(notice_type, payload):
         thumbnail = first_value(item, THUMBNAIL_KEYS, "")
         event_start_at = first_value(item, ["date_event_start", "event_start_at", "eventStartAt"], "")
         event_end_at = first_value(item, ["date_event_end", "event_end_at", "eventEndAt"], "")
+        sale_start_at = first_value(item, ["date_sale_start", "sale_start_at", "saleStartAt"], "")
+        sale_end_at = first_value(item, ["date_sale_end", "sale_end_at", "saleEndAt"], "")
+        sale_ongoing = first_value(
+            item,
+            ["ongoing_flag", "ongoingFlag", "is_ongoing", "isOngoing", "always_sale", "alwaysSale"],
+            "",
+        )
         if not notice_id and title:
             notice_id = f"{notice_type}:{title}:{registered_at}"
         if notice_id:
@@ -75,6 +86,12 @@ def normalize_notice_items(notice_type, payload):
                 normalized["eventStartAt"] = event_start_at
             if event_end_at:
                 normalized["eventEndAt"] = event_end_at
+            if sale_start_at:
+                normalized["saleStartAt"] = sale_start_at
+            if sale_end_at:
+                normalized["saleEndAt"] = sale_end_at
+            if sale_ongoing != "":
+                normalized["saleOngoing"] = sale_ongoing
             items.append(normalized)
     return items
 

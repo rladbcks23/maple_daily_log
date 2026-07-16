@@ -515,6 +515,9 @@ class NoticeItemSummary {
     required this.thumbnail,
     required this.eventStartAt,
     required this.eventEndAt,
+    required this.saleStartAt,
+    required this.saleEndAt,
+    required this.saleOngoing,
   });
 
   final String noticeType;
@@ -524,6 +527,9 @@ class NoticeItemSummary {
   final String thumbnail;
   final String eventStartAt;
   final String eventEndAt;
+  final String saleStartAt;
+  final String saleEndAt;
+  final bool saleOngoing;
 
   factory NoticeItemSummary.fromJson(Map<String, dynamic> json) {
     return NoticeItemSummary(
@@ -549,6 +555,18 @@ class NoticeItemSummary {
           json, ['eventStartAt', 'event_start_at', 'date_event_start']),
       eventEndAt:
           _readString(json, ['eventEndAt', 'event_end_at', 'date_event_end']),
+      saleStartAt: _readString(
+          json, ['saleStartAt', 'sale_start_at', 'date_sale_start']),
+      saleEndAt:
+          _readString(json, ['saleEndAt', 'sale_end_at', 'date_sale_end']),
+      saleOngoing: _readBool(json, [
+        'saleOngoing',
+        'sale_ongoing',
+        'ongoing_flag',
+        'ongoingFlag',
+        'always_sale',
+        'alwaysSale',
+      ]),
     );
   }
 
@@ -583,6 +601,18 @@ class NoticeItemSummary {
     return '$start ~ $end';
   }
 
+  String get cashshopPeriodText {
+    if (saleOngoing) {
+      return '상시판매';
+    }
+    final start = _dateOnly(saleStartAt);
+    final end = _dateOnly(saleEndAt);
+    if (start.isEmpty || end.isEmpty) {
+      return eventPeriodText;
+    }
+    return '$start ~ $end';
+  }
+
   static String _dateOnly(String value) {
     final match = RegExp(r'\d{4}-\d{2}-\d{2}').firstMatch(value);
     return match?.group(0) ?? '';
@@ -596,6 +626,22 @@ class NoticeItemSummary {
       }
     }
     return '';
+  }
+
+  static bool _readBool(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is bool) {
+        return value;
+      }
+      if (value is num) {
+        return value != 0;
+      }
+      if (value is String) {
+        return value.toLowerCase() == 'true' || value == '1';
+      }
+    }
+    return false;
   }
 }
 
