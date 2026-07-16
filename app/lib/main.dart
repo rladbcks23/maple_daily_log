@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import 'api_client.dart';
@@ -1231,6 +1233,7 @@ class _EventOverviewPanel extends StatelessWidget {
                     ? item.label
                     : item.eventPeriodText,
                 thumbnail: item.thumbnail,
+                link: item.link,
               ))
           .toList(),
     );
@@ -1324,6 +1327,7 @@ class _NoticeOverviewPanelState extends State<_NoticeOverviewPanel> {
                                 tag: item.label,
                                 title: item.title,
                                 date: item.dateText,
+                                link: item.link,
                               ),
                             )
                             .toList(),
@@ -1358,6 +1362,7 @@ class _CashshopCardGrid extends StatelessWidget {
                   title: item.title,
                   meta: item.cashshopPeriodText,
                   thumbnail: item.thumbnail,
+                  link: item.link,
                 ),
               )
               .toList(),
@@ -1372,11 +1377,13 @@ class _CashshopCard extends StatelessWidget {
     required this.title,
     required this.meta,
     required this.thumbnail,
+    required this.link,
   });
 
   final String title;
   final String meta;
   final String thumbnail;
+  final String link;
 
   @override
   Widget build(BuildContext context) {
@@ -1393,23 +1400,29 @@ class _CashshopCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
             child: AspectRatio(
               aspectRatio: 10 / 3,
-              child: _EventThumbnail(thumbnail: thumbnail),
+              child: _LinkTapArea(
+                link: link,
+                child: _EventThumbnail(thumbnail: thumbnail),
+              ),
             ),
           ),
           Expanded(
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 22),
-                child: Text(
-                  title,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.text,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    height: 1.45,
+                child: _LinkTapArea(
+                  link: link,
+                  child: Text(
+                    title,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      height: 1.45,
+                    ),
                   ),
                 ),
               ),
@@ -1480,6 +1493,7 @@ class _SundayOverviewPanel extends StatelessWidget {
             title: sundayEvent.title,
             meta: sundayEvent.eventPeriodText,
             thumbnail: sundayEvent.thumbnail,
+            link: sundayEvent.link,
           ),
         ),
       );
@@ -1526,11 +1540,13 @@ class _InfoCard extends StatelessWidget {
     required this.title,
     required this.meta,
     required this.thumbnail,
+    required this.link,
   });
 
   final String title;
   final String meta;
   final String thumbnail;
+  final String link;
 
   @override
   Widget build(BuildContext context) {
@@ -1546,23 +1562,29 @@ class _InfoCard extends StatelessWidget {
         children: [
           SizedBox(
             height: 124,
-            child: _EventThumbnail(thumbnail: thumbnail),
+            child: _LinkTapArea(
+              link: link,
+              child: _EventThumbnail(thumbnail: thumbnail),
+            ),
           ),
           SizedBox(
             height: 96,
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.text,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    height: 1.45,
+                child: _LinkTapArea(
+                  link: link,
+                  child: Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      height: 1.45,
+                    ),
                   ),
                 ),
               ),
@@ -1629,6 +1651,44 @@ class _EventThumbnail extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LinkTapArea extends StatelessWidget {
+  const _LinkTapArea({
+    required this.link,
+    required this.child,
+  });
+
+  final String link;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (link.trim().isEmpty) {
+      return child;
+    }
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _openExternalUrl(link),
+        child: child,
+      ),
+    );
+  }
+}
+
+Future<void> _openExternalUrl(String link) async {
+  final url = link.trim();
+  if (url.isEmpty) {
+    return;
+  }
+
+  await Process.start(
+    'rundll32.exe',
+    ['url.dll,FileProtocolHandler', url],
+  );
 }
 
 class _NoticeTabBar extends StatelessWidget {
@@ -1703,11 +1763,13 @@ class _NoticeListRow extends StatelessWidget {
     required this.tag,
     required this.title,
     required this.date,
+    required this.link,
   });
 
   final String tag;
   final String title;
   final String date;
+  final String link;
 
   @override
   Widget build(BuildContext context) {
@@ -1752,12 +1814,15 @@ class _NoticeListRow extends StatelessWidget {
           ),
           const SizedBox(width: 14),
           Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: AppColors.text,
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
+            child: _LinkTapArea(
+              link: link,
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ),
