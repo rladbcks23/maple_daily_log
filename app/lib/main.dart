@@ -466,10 +466,10 @@ class _SidebarCharacterButton extends StatelessWidget {
                     BoxDecoration(borderRadius: BorderRadius.circular(12)),
                 child: character == null
                     ? const ColoredBox(
-                        color: Color(0xFFEAF0FF),
+                        color: Color(0xFFFFF4EC),
                         child: Icon(
                           Icons.person_add_alt_1_rounded,
-                          color: AppColors.primary,
+                          color: AppColors.navAccent,
                         ),
                       )
                     : _WorldImage(character: character, radius: 12),
