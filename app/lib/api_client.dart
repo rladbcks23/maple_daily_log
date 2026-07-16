@@ -553,12 +553,20 @@ class NoticeItemSummary {
   }
 
   String get label {
-    return switch (noticeType) {
+    return switch (displayType) {
+      'maintenance' => '점검',
       'event' => '이벤트',
       'cashshop' => '캐시샵',
       'update' => '업데이트',
       _ => '공지',
     };
+  }
+
+  String get displayType {
+    if (title.contains('[패치완료]') || title.contains('[점검완료]')) {
+      return 'maintenance';
+    }
+    return noticeType;
   }
 
   String get dateText {

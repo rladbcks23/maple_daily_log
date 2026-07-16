@@ -1187,6 +1187,7 @@ class _NoticeOverviewPanel extends StatefulWidget {
 enum NoticeCategory {
   all('전체', null),
   notice('공지', 'notice'),
+  maintenance('점검', 'maintenance'),
   update('업데이트', 'update'),
   cashshop('캐시샵', 'cashshop');
 
@@ -1214,7 +1215,7 @@ class _NoticeOverviewPanelState extends State<_NoticeOverviewPanel> {
     final filteredItems = selectedCategory.type == null
         ? widget.items
         : widget.items
-            .where((item) => item.noticeType == selectedCategory.type)
+            .where((item) => item.displayType == selectedCategory.type)
             .toList();
 
     return Container(
