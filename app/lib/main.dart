@@ -301,6 +301,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
               schedulerErrorMessage: schedulerErrorMessage,
               noticeErrorMessage: noticeErrorMessage,
               onAddCharacter: openCharacterPicker,
+              onSelectSection: selectSection,
               onSelectCharacter: selectCharacter,
               onDeleteCharacter: deleteCharacter,
               onMoveCharacter: moveCharacter,
@@ -576,6 +577,7 @@ class _MainPanel extends StatelessWidget {
     required this.schedulerErrorMessage,
     required this.noticeErrorMessage,
     required this.onAddCharacter,
+    required this.onSelectSection,
     required this.onSelectCharacter,
     required this.onDeleteCharacter,
     required this.onMoveCharacter,
@@ -593,6 +595,7 @@ class _MainPanel extends StatelessWidget {
   final String? schedulerErrorMessage;
   final String? noticeErrorMessage;
   final VoidCallback onAddCharacter;
+  final ValueChanged<AppSection> onSelectSection;
   final ValueChanged<NexonCharacterSummary> onSelectCharacter;
   final ValueChanged<NexonCharacterSummary> onDeleteCharacter;
   final void Function(NexonCharacterSummary character, int offset)
@@ -642,6 +645,7 @@ class _MainPanel extends StatelessWidget {
                       noticeLoading: isNoticeLoading,
                       schedulerErrorMessage: schedulerErrorMessage,
                       noticeErrorMessage: noticeErrorMessage,
+                      onSelectSection: onSelectSection,
                     ),
             ),
           ],
@@ -766,6 +770,7 @@ class _LockedFeaturePanel extends StatelessWidget {
     required this.noticeLoading,
     required this.schedulerErrorMessage,
     required this.noticeErrorMessage,
+    required this.onSelectSection,
   });
 
   final AppSection section;
@@ -776,6 +781,7 @@ class _LockedFeaturePanel extends StatelessWidget {
   final bool noticeLoading;
   final String? schedulerErrorMessage;
   final String? noticeErrorMessage;
+  final ValueChanged<AppSection> onSelectSection;
 
   @override
   Widget build(BuildContext context) {
@@ -791,6 +797,7 @@ class _LockedFeaturePanel extends StatelessWidget {
                 .toList(),
             loading: noticeLoading,
             errorMessage: noticeErrorMessage,
+            onOpenSunday: () => onSelectSection(AppSection.sunday),
           ),
         AppSection.notices => _NoticeOverviewPanel(
             items: noticeItems
@@ -1199,11 +1206,13 @@ class _EventOverviewPanel extends StatelessWidget {
     required this.items,
     required this.loading,
     required this.errorMessage,
+    required this.onOpenSunday,
   });
 
   final List<NoticeItemSummary> items;
   final bool loading;
   final String? errorMessage;
+  final VoidCallback onOpenSunday;
 
   @override
   Widget build(BuildContext context) {
@@ -1234,6 +1243,7 @@ class _EventOverviewPanel extends StatelessWidget {
                     : item.eventPeriodText,
                 thumbnail: item.thumbnail,
                 link: item.link,
+                onTap: _isSpecialSundayEvent(item) ? onOpenSunday : null,
               ))
           .toList(),
     );
@@ -1574,11 +1584,15 @@ class _SundayContentPanel extends StatelessWidget {
 
 NoticeItemSummary? _findSpecialSundayEvent(List<NoticeItemSummary> items) {
   for (final item in items) {
-    if (item.noticeType == 'event' && item.title == '스페셜 썬데이 메이플') {
+    if (_isSpecialSundayEvent(item)) {
       return item;
     }
   }
   return null;
+}
+
+bool _isSpecialSundayEvent(NoticeItemSummary item) {
+  return item.noticeType == 'event' && item.title == '스페셜 썬데이 메이플';
 }
 
 class _InfoCard extends StatelessWidget {
@@ -1587,12 +1601,14 @@ class _InfoCard extends StatelessWidget {
     required this.meta,
     required this.thumbnail,
     required this.link,
+    this.onTap,
   });
 
   final String title;
   final String meta;
   final String thumbnail;
   final String link;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1610,6 +1626,7 @@ class _InfoCard extends StatelessWidget {
             height: 124,
             child: _LinkTapArea(
               link: link,
+              onTap: onTap,
               child: _EventThumbnail(thumbnail: thumbnail),
             ),
           ),
@@ -1620,6 +1637,7 @@ class _InfoCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: _LinkTapArea(
                   link: link,
+                  onTap: onTap,
                   child: Text(
                     title,
                     maxLines: 2,
@@ -1703,14 +1721,18 @@ class _LinkTapArea extends StatelessWidget {
   const _LinkTapArea({
     required this.link,
     required this.child,
+    this.onTap,
   });
 
   final String link;
   final Widget child;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    if (link.trim().isEmpty) {
+    final handler =
+        onTap ?? (link.trim().isEmpty ? null : () => _openExternalUrl(link));
+    if (handler == null) {
       return child;
     }
 
@@ -1718,7 +1740,7 @@ class _LinkTapArea extends StatelessWidget {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => _openExternalUrl(link),
+        onTap: handler,
         child: child,
       ),
     );
