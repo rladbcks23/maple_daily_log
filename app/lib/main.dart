@@ -787,7 +787,7 @@ class _SchedulerOverviewPanel extends StatelessWidget {
             _SchedulerCard(
               title: '일일 콘텐츠',
               items: data.dailyItems,
-              emptyMessage: '오늘 접속 기록이 없어요.\n접속하고 일일 퀘스트를 완료해 주세요.',
+              emptyMessage: '오늘 접속 기록이 아직 없어요.\n게임 접속 후 잠시 뒤 다시 확인해주세요.',
             ),
             const SizedBox(height: 20),
             _SchedulerCard(title: '주간 콘텐츠', items: data.weeklyItems),
@@ -806,7 +806,7 @@ class _SchedulerOverviewPanel extends StatelessWidget {
                 _SchedulerCard(
                   title: '일일 콘텐츠',
                   items: data.dailyItems,
-                  emptyMessage: '오늘 접속 기록이 없어요.\n접속하고 일일 퀘스트를 완료해 주세요.',
+                  emptyMessage: '오늘 접속 기록이 아직 없어요.\n게임 접속 후 잠시 뒤 다시 확인해주세요.',
                 ),
                 const SizedBox(height: 20),
                 _SchedulerCard(title: '주간 콘텐츠', items: data.weeklyItems),
@@ -836,7 +836,7 @@ class _SchedulerCard extends StatelessWidget {
   const _SchedulerCard({
     required this.title,
     required this.items,
-    this.emptyMessage = '조회된 항목이 없어요.',
+    this.emptyMessage = '아직 조회된 숙제 정보가 없어요.\n게임 접속 후 잠시 뒤 다시 확인해주세요.',
   });
 
   final String title;
@@ -934,7 +934,7 @@ class _BossSchedulerCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
             child: items.isEmpty
                 ? const Text(
-                    '조회된 항목이 없어요.',
+                    '아직 조회된 보스 정보가 없어요.\n게임 접속 후 잠시 뒤 다시 확인해주세요.',
                     style: TextStyle(
                       color: AppColors.muted,
                       fontSize: 13,
