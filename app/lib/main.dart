@@ -397,7 +397,7 @@ class _SidebarCharacterButton extends StatelessWidget {
     final character = selectedCharacter;
 
     return Material(
-      color: selected ? AppColors.selected : AppColors.surface,
+      color: AppColors.surface,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onPressed,
@@ -407,7 +407,7 @@ class _SidebarCharacterButton extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: selected ? AppColors.selectedBorder : AppColors.border,
+              color: selected ? AppColors.navBorder : AppColors.border,
             ),
           ),
           child: Row(
@@ -1648,11 +1648,11 @@ class _CharacterCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: selected ? AppColors.selected : AppColors.surface,
+          color: selected ? const Color(0xFFFFF4EC) : AppColors.surface,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             width: 2,
-            color: selected ? AppColors.selectedBorder : AppColors.softBorder,
+            color: selected ? AppColors.navBorder : AppColors.softBorder,
           ),
         ),
         child: Column(
@@ -1684,7 +1684,7 @@ class _CharacterCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      color: AppColors.navAccent,
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: const Text(
