@@ -1160,9 +1160,9 @@ class _EventOverviewPanel extends StatelessWidget {
 
     return GridView.count(
       crossAxisCount: MediaQuery.sizeOf(context).width > 1180 ? 3 : 2,
-      childAspectRatio: 1.18,
+      childAspectRatio: 0.95,
       crossAxisSpacing: 20,
-      mainAxisSpacing: 20,
+      mainAxisSpacing: 24,
       children: items
           .map((item) => _InfoCard(
                 title: item.title,
@@ -1352,17 +1352,17 @@ class _InfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AspectRatio(
-            aspectRatio: 16 / 7,
+          SizedBox(
+            height: 136,
             child: _EventThumbnail(thumbnail: thumbnail),
           ),
           Expanded(
             child: Center(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18),
+                padding: const EdgeInsets.symmetric(horizontal: 22),
                 child: Text(
                   title,
-                  maxLines: 2,
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
