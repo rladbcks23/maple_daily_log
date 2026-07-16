@@ -518,6 +518,8 @@ class NoticeItemSummary {
     required this.saleStartAt,
     required this.saleEndAt,
     required this.saleOngoing,
+    required this.content,
+    required this.contentImageUrls,
   });
 
   final String noticeType;
@@ -530,6 +532,8 @@ class NoticeItemSummary {
   final String saleStartAt;
   final String saleEndAt;
   final bool saleOngoing;
+  final String content;
+  final List<String> contentImageUrls;
 
   factory NoticeItemSummary.fromJson(Map<String, dynamic> json) {
     return NoticeItemSummary(
@@ -567,6 +571,9 @@ class NoticeItemSummary {
         'always_sale',
         'alwaysSale',
       ]),
+      content: _readString(json, ['content', 'contents', 'body']),
+      contentImageUrls: _readStringList(
+          json, ['contentImageUrls', 'content_image_urls', 'contentImages']),
     );
   }
 
@@ -626,6 +633,23 @@ class NoticeItemSummary {
       }
     }
     return '';
+  }
+
+  static List<String> _readStringList(
+      Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is List) {
+        return value
+            .map((item) => item.toString())
+            .where((item) => item.isNotEmpty)
+            .toList();
+      }
+      if (value is String && value.isNotEmpty) {
+        return [value];
+      }
+    }
+    return const [];
   }
 
   static bool _readBool(Map<String, dynamic> json, List<String> keys) {

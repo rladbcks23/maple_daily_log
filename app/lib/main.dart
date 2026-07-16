@@ -1485,6 +1485,10 @@ class _SundayOverviewPanel extends StatelessWidget {
     final sundayEvent = _findSpecialSundayEvent(items);
 
     if (sundayEvent != null) {
+      if (sundayEvent.contentImageUrls.isNotEmpty) {
+        return _SundayContentPanel(event: sundayEvent);
+      }
+
       return Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
@@ -1522,6 +1526,48 @@ class _SundayOverviewPanel extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _SundayContentPanel extends StatelessWidget {
+  const _SundayContentPanel({required this.event});
+
+  final NoticeItemSummary event;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: ListView.separated(
+          padding: const EdgeInsets.only(bottom: 32),
+          itemCount: event.contentImageUrls.length,
+          separatorBuilder: (context, index) => const SizedBox(height: 14),
+          itemBuilder: (context, index) {
+            final imageUrl = event.contentImageUrls[index];
+            return _LinkTapArea(
+              link: event.link,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return _InfoCard(
+                      title: event.title,
+                      meta: event.eventPeriodText,
+                      thumbnail: event.thumbnail,
+                      link: event.link,
+                    );
+                  },
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }
