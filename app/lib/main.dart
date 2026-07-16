@@ -1548,6 +1548,20 @@ class _NoticeListRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tagColor = switch (tag) {
+      '점검' => const Color(0xFF55B3BF),
+      '업데이트' => const Color(0xFFFFEEFF),
+      _ => AppColors.primary,
+    };
+    final tagBorderColor = switch (tag) {
+      '업데이트' => const Color(0xFFFF9EF4),
+      _ => tagColor,
+    };
+    final tagTextColor = switch (tag) {
+      '업데이트' => const Color(0xFFE24AD7),
+      _ => Colors.white,
+    };
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: const BoxDecoration(
@@ -1560,13 +1574,14 @@ class _NoticeListRow extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 6),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.primary,
+              color: tagColor,
               borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: tagBorderColor),
             ),
             child: Text(
               tag,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: tagTextColor,
                 fontSize: 11,
                 fontWeight: FontWeight.w900,
               ),
