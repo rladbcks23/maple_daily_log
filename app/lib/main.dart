@@ -1153,7 +1153,7 @@ class _EventOverviewPanel extends StatelessWidget {
 
     return GridView.count(
       crossAxisCount: MediaQuery.sizeOf(context).width > 1180 ? 3 : 2,
-      childAspectRatio: 0.95,
+      childAspectRatio: 0.86,
       crossAxisSpacing: 20,
       mainAxisSpacing: 24,
       children: items
@@ -1374,7 +1374,7 @@ class _InfoCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            height: 136,
+            height: 168,
             child: _EventThumbnail(thumbnail: thumbnail),
           ),
           Expanded(
@@ -1435,23 +1435,26 @@ class _EventThumbnail extends StatelessWidget {
       );
     }
 
-    return Image.network(
-      thumbnail,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) {
-        return Container(
-          color: const Color(0xFFF0F2F6),
-          alignment: Alignment.center,
-          child: const Text(
-            'EVENT',
-            style: TextStyle(
-              color: AppColors.muted,
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
+    return ColoredBox(
+      color: AppColors.surface,
+      child: Image.network(
+        thumbnail,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: const Color(0xFFF0F2F6),
+            alignment: Alignment.center,
+            child: const Text(
+              'EVENT',
+              style: TextStyle(
+                color: AppColors.muted,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
