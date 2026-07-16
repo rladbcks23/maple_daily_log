@@ -53,7 +53,7 @@ class NexonClient:
     def event_detail(self, event_notice_id):
         return self.request(
             "/maplestory/v1/notice-event/detail",
-            {"event_notice_id": event_notice_id},
+            {"notice_id": event_notice_id},
         )
 
     def cashshop_list(self):
