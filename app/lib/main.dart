@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -163,18 +164,27 @@ class _MapleAppShellState extends State<MapleAppShell> {
 
   void deleteCharacter(NexonCharacterSummary character) {
     final deletesSelected = _isSameCharacter(character, selectedCharacter);
+    NexonCharacterSummary? nextSelectedCharacter;
 
     setState(() {
       selectedCharacters = selectedCharacters
           .where((selected) => !_isSameCharacter(selected, character))
           .toList();
       if (deletesSelected) {
-        selectedCharacter = null;
+        nextSelectedCharacter =
+            selectedCharacters.isEmpty ? null : selectedCharacters.first;
+        selectedCharacter = nextSelectedCharacter;
         schedulerSnapshot = null;
         schedulerErrorMessage = null;
-        currentSection = AppSection.character;
+        if (nextSelectedCharacter == null) {
+          currentSection = AppSection.character;
+        }
       }
     });
+
+    if (nextSelectedCharacter != null) {
+      unawaited(loadScheduler(nextSelectedCharacter!));
+    }
   }
 
   void moveCharacter(NexonCharacterSummary character, int offset) {
