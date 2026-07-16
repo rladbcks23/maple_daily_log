@@ -112,9 +112,21 @@ def first_image_url(payload):
     return match.group(1) if match else ""
 
 
-def fill_event_thumbnails(items, client):
+def image_urls_from_content(content):
+    if not isinstance(content, str):
+        return []
+
+    return re.findall(r'<img[^>]+src=["\']([^"\']+)["\']', content, re.IGNORECASE)
+
+
+def fill_event_details(items, client):
     for item in items:
-        if item.get("noticeType") != "event" or item.get("thumbnail"):
+        if item.get("noticeType") != "event":
+            continue
+
+        needs_thumbnail = not item.get("thumbnail")
+        needs_sunday_content = item.get("title") == "스페셜 썬데이 메이플"
+        if not needs_thumbnail and not needs_sunday_content:
             continue
 
         try:
@@ -122,9 +134,15 @@ def fill_event_thumbnails(items, client):
         except Exception:
             continue
 
-        thumbnail = first_image_url(detail)
-        item["thumbnail"] = thumbnail
-        item["thumbnailUrl"] = thumbnail
+        if needs_thumbnail:
+            thumbnail = first_image_url(detail)
+            item["thumbnail"] = thumbnail
+            item["thumbnailUrl"] = thumbnail
+
+        if needs_sunday_content:
+            content = first_value(detail, ["contents", "content", "body", "notice_contents"], "")
+            item["content"] = content
+            item["contentImageUrls"] = image_urls_from_content(content)
 
 
 def collect_current_notice_items(client=None):
@@ -133,7 +151,7 @@ def collect_current_notice_items(client=None):
     for notice_type, payload in client.current_notices().items():
         normalized = normalize_notice_items(notice_type, payload)
         if notice_type == "event":
-            fill_event_thumbnails(normalized, client)
+            fill_event_details(normalized, client)
         items.extend(normalized)
     return items
 
