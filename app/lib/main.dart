@@ -462,7 +462,7 @@ class _SidebarCharacterButton extends StatelessWidget {
                           color: AppColors.primary,
                         ),
                       )
-                    : _CharacterImage(character: character, radius: 12),
+                    : _WorldImage(character: character, radius: 12),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -2399,6 +2399,67 @@ class _CharacterImageFallback extends StatelessWidget {
       ),
     );
   }
+}
+
+class _WorldImage extends StatelessWidget {
+  const _WorldImage({
+    required this.character,
+    required this.radius,
+  });
+
+  final NexonCharacterSummary character;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    final assetPath = _worldImageAsset(character.worldName);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: ColoredBox(
+        color: const Color(0xFFFFFBF2),
+        child: assetPath.isEmpty
+            ? _CharacterImageFallback(character: character)
+            : Padding(
+                padding: const EdgeInsets.all(4),
+                child: Image.asset(
+                  assetPath,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) =>
+                      _CharacterImageFallback(character: character),
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+String _worldImageAsset(String worldName) {
+  final normalized = worldName.replaceAll(' ', '');
+  const worlds = [
+    '스카니아',
+    '베라',
+    '루나',
+    '제니스',
+    '크로아',
+    '유니온',
+    '엘리시움',
+    '이노시스',
+    '레드',
+    '오로라',
+    '아케인',
+    '노바',
+    '챌린저스',
+    '에오스',
+    '헬리오스',
+  ];
+
+  for (final world in worlds) {
+    if (normalized.contains(world)) {
+      return 'assets/images/worlds/$world.png';
+    }
+  }
+  return '';
 }
 
 String _displayCharacterName(NexonCharacterSummary character) {
