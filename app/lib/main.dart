@@ -745,7 +745,7 @@ class _LockedFeaturePanel extends StatelessWidget {
             loading: noticeLoading,
             errorMessage: noticeErrorMessage,
           ),
-        AppSection.sunday => const _SundayOverviewPanel(),
+        AppSection.sunday => _SundayOverviewPanel(items: noticeItems),
         AppSection.character || AppSection.scheduler => const SizedBox.shrink(),
       };
     }
@@ -1298,10 +1298,28 @@ class _EmptyDataPanel extends StatelessWidget {
 }
 
 class _SundayOverviewPanel extends StatelessWidget {
-  const _SundayOverviewPanel();
+  const _SundayOverviewPanel({required this.items});
+
+  final List<NoticeItemSummary> items;
 
   @override
   Widget build(BuildContext context) {
+    final sundayEvent = _findSpecialSundayEvent(items);
+
+    if (sundayEvent != null) {
+      return Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: _InfoCard(
+            title: sundayEvent.title,
+            meta: sundayEvent.eventPeriodText,
+            thumbnail: sundayEvent.thumbnail,
+          ),
+        ),
+      );
+    }
+
     const imageRatio = 1587 / 788;
     final visibleHeight = MediaQuery.sizeOf(context).height - 150;
 
@@ -1327,6 +1345,15 @@ class _SundayOverviewPanel extends StatelessWidget {
       },
     );
   }
+}
+
+NoticeItemSummary? _findSpecialSundayEvent(List<NoticeItemSummary> items) {
+  for (final item in items) {
+    if (item.noticeType == 'event' && item.title == '스페셜 썬데이 메이플') {
+      return item;
+    }
+  }
+  return null;
 }
 
 class _InfoCard extends StatelessWidget {
