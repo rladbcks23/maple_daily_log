@@ -2294,18 +2294,35 @@ class _CharacterPickerTile extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Container(
+              SizedBox(
                 width: 38,
                 height: 38,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: selected ? AppColors.primary : const Color(0xFFEAF0FF),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Icon(
-                  selected ? Icons.check_rounded : Icons.person_outline_rounded,
-                  color: selected ? Colors.white : AppColors.primary,
-                  size: 20,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned.fill(
+                      child: _WorldImage(character: character, radius: 11),
+                    ),
+                    if (selected)
+                      Positioned(
+                        right: -2,
+                        bottom: -2,
+                        child: Container(
+                          width: 16,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: AppColors.navAccent,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.surface),
+                          ),
+                          child: const Icon(
+                            Icons.check_rounded,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
               const SizedBox(width: 10),
