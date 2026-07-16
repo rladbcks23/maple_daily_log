@@ -149,6 +149,9 @@ class _MapleAppShellState extends State<MapleAppShell> {
   Future<void> selectCharacter(NexonCharacterSummary character) async {
     if (_isSameCharacter(character, selectedCharacter)) {
       setState(() {
+        selectedCharacters = selectedCharacters
+            .where((selected) => !_isSameCharacter(selected, character))
+            .toList();
         selectedCharacter = null;
         schedulerSnapshot = null;
         schedulerErrorMessage = null;
