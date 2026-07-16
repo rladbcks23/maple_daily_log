@@ -1547,17 +1547,16 @@ class _SundayContentPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 760),
-        child: ListView.separated(
-          padding: const EdgeInsets.only(bottom: 32),
-          itemCount: event.contentImageUrls.length,
-          separatorBuilder: (context, index) => const SizedBox(height: 14),
-          itemBuilder: (context, index) {
-            final imageUrl = event.contentImageUrls[index];
-            return _LinkTapArea(
+    return ListView.separated(
+      padding: const EdgeInsets.only(bottom: 32),
+      itemCount: event.contentImageUrls.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 14),
+      itemBuilder: (context, index) {
+        final imageUrl = event.contentImageUrls[index];
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: _LinkTapArea(
               link: event.link,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
@@ -1574,10 +1573,10 @@ class _SundayContentPanel extends StatelessWidget {
                   },
                 ),
               ),
-            );
-          },
-        ),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
