@@ -114,6 +114,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
           return _CharacterPickerSheet(
             characters: sortedCharacters,
             selectedCharacter: selectedCharacter,
+            selectedCharacters: selectedCharacters,
           );
         },
       );
@@ -2195,10 +2196,12 @@ class _CharacterPickerSheet extends StatelessWidget {
   const _CharacterPickerSheet({
     required this.characters,
     required this.selectedCharacter,
+    required this.selectedCharacters,
   });
 
   final List<NexonCharacterSummary> characters;
   final NexonCharacterSummary? selectedCharacter;
+  final List<NexonCharacterSummary> selectedCharacters;
 
   @override
   Widget build(BuildContext context) {
@@ -2258,10 +2261,15 @@ class _CharacterPickerSheet extends StatelessWidget {
                     final character = characters[index];
                     final selected =
                         _isSameCharacter(character, selectedCharacter);
+                    final added = selectedCharacters.any(
+                      (selectedCharacter) =>
+                          _isSameCharacter(character, selectedCharacter),
+                    );
 
                     return _CharacterPickerTile(
                       character: character,
                       selected: selected,
+                      added: added,
                       onTap: () => Navigator.of(context).pop(character),
                     );
                   },
@@ -2278,11 +2286,13 @@ class _CharacterPickerTile extends StatelessWidget {
   const _CharacterPickerTile({
     required this.character,
     required this.selected,
+    required this.added,
     required this.onTap,
   });
 
   final NexonCharacterSummary character;
   final bool selected;
+  final bool added;
   final VoidCallback onTap;
 
   @override
@@ -2312,7 +2322,7 @@ class _CharacterPickerTile extends StatelessWidget {
                     Positioned.fill(
                       child: _WorldImage(character: character, radius: 11),
                     ),
-                    if (selected)
+                    if (added)
                       Positioned(
                         right: -2,
                         bottom: -2,
@@ -2363,6 +2373,28 @@ class _CharacterPickerTile extends StatelessWidget {
                   ],
                 ),
               ),
+              if (added) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.navAccent
+                        : const Color(0xFFFFF4EC),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: AppColors.navBorder),
+                  ),
+                  child: Text(
+                    selected ? '선택중' : '추가됨',
+                    style: TextStyle(
+                      color: selected ? Colors.white : AppColors.navAccent,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
