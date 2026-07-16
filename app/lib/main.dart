@@ -1162,7 +1162,7 @@ class _EventOverviewPanel extends StatelessWidget {
 
     return GridView.count(
       crossAxisCount: MediaQuery.sizeOf(context).width > 1180 ? 3 : 2,
-      childAspectRatio: 1.14,
+      childAspectRatio: 1.06,
       crossAxisSpacing: 24,
       mainAxisSpacing: 30,
       children: items
