@@ -337,18 +337,11 @@ class _SidebarBrand extends StatelessWidget {
         Container(
           width: 36,
           height: 36,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: AppColors.primary,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Text(
-            'M',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-            ),
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12)),
+          child: Image.asset(
+            'assets/images/app_logo.png',
+            fit: BoxFit.cover,
           ),
         ),
         const SizedBox(width: 10),
