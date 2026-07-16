@@ -97,13 +97,22 @@ class _MapleAppShellState extends State<MapleAppShell> {
         return;
       }
 
+      final sortedCharacters = [...characters]..sort((a, b) {
+          final levelComparison =
+              (b.characterLevel ?? -1).compareTo(a.characterLevel ?? -1);
+          if (levelComparison != 0) {
+            return levelComparison;
+          }
+          return a.characterName.compareTo(b.characterName);
+        });
+
       final selected = await showModalBottomSheet<NexonCharacterSummary>(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (context) {
           return _CharacterPickerSheet(
-            characters: characters,
+            characters: sortedCharacters,
             selectedCharacter: selectedCharacter,
           );
         },
