@@ -159,6 +159,44 @@ class _MapleAppShellState extends State<MapleAppShell> {
     await loadScheduler(character);
   }
 
+  void deleteCharacter(NexonCharacterSummary character) {
+    final deletesSelected = _isSameCharacter(character, selectedCharacter);
+
+    setState(() {
+      selectedCharacters = selectedCharacters
+          .where((selected) => !_isSameCharacter(selected, character))
+          .toList();
+      if (deletesSelected) {
+        selectedCharacter = null;
+        schedulerSnapshot = null;
+        schedulerErrorMessage = null;
+        currentSection = AppSection.character;
+      }
+    });
+  }
+
+  void moveCharacter(NexonCharacterSummary character, int offset) {
+    final currentIndex = selectedCharacters.indexWhere(
+      (selected) => _isSameCharacter(selected, character),
+    );
+    if (currentIndex < 0) {
+      return;
+    }
+
+    final targetIndex = currentIndex + offset;
+    if (targetIndex < 0 || targetIndex >= selectedCharacters.length) {
+      return;
+    }
+
+    final nextCharacters = [...selectedCharacters];
+    final movedCharacter = nextCharacters.removeAt(currentIndex);
+    nextCharacters.insert(targetIndex, movedCharacter);
+
+    setState(() {
+      selectedCharacters = nextCharacters;
+    });
+  }
+
   Future<void> loadScheduler(NexonCharacterSummary character) async {
     setState(() {
       isSchedulerLoading = true;
@@ -262,6 +300,8 @@ class _MapleAppShellState extends State<MapleAppShell> {
               noticeErrorMessage: noticeErrorMessage,
               onAddCharacter: openCharacterPicker,
               onSelectCharacter: selectCharacter,
+              onDeleteCharacter: deleteCharacter,
+              onMoveCharacter: moveCharacter,
             ),
           ),
         ],
@@ -535,6 +575,8 @@ class _MainPanel extends StatelessWidget {
     required this.noticeErrorMessage,
     required this.onAddCharacter,
     required this.onSelectCharacter,
+    required this.onDeleteCharacter,
+    required this.onMoveCharacter,
   });
 
   final AppSection currentSection;
@@ -550,6 +592,9 @@ class _MainPanel extends StatelessWidget {
   final String? noticeErrorMessage;
   final VoidCallback onAddCharacter;
   final ValueChanged<NexonCharacterSummary> onSelectCharacter;
+  final ValueChanged<NexonCharacterSummary> onDeleteCharacter;
+  final void Function(NexonCharacterSummary character, int offset)
+      onMoveCharacter;
 
   @override
   Widget build(BuildContext context) {
@@ -583,6 +628,8 @@ class _MainPanel extends StatelessWidget {
                       errorMessage: errorMessage,
                       onAddCharacter: onAddCharacter,
                       onSelectCharacter: onSelectCharacter,
+                      onDeleteCharacter: onDeleteCharacter,
+                      onMoveCharacter: onMoveCharacter,
                     )
                   : _LockedFeaturePanel(
                       section: currentSection,
@@ -610,6 +657,8 @@ class _CharacterSelectPanel extends StatelessWidget {
     required this.errorMessage,
     required this.onAddCharacter,
     required this.onSelectCharacter,
+    required this.onDeleteCharacter,
+    required this.onMoveCharacter,
   });
 
   final NexonCharacterSummary? selectedCharacter;
@@ -618,6 +667,9 @@ class _CharacterSelectPanel extends StatelessWidget {
   final String? errorMessage;
   final VoidCallback onAddCharacter;
   final ValueChanged<NexonCharacterSummary> onSelectCharacter;
+  final ValueChanged<NexonCharacterSummary> onDeleteCharacter;
+  final void Function(NexonCharacterSummary character, int offset)
+      onMoveCharacter;
 
   @override
   Widget build(BuildContext context) {
@@ -650,7 +702,14 @@ class _CharacterSelectPanel extends StatelessWidget {
                             character,
                             selectedCharacter,
                           ),
+                          canMoveBefore:
+                              selectedCharacters.indexOf(character) > 0,
+                          canMoveAfter: selectedCharacters.indexOf(character) <
+                              selectedCharacters.length - 1,
                           onTap: () => onSelectCharacter(character),
+                          onDelete: () => onDeleteCharacter(character),
+                          onMoveBefore: () => onMoveCharacter(character, -1),
+                          onMoveAfter: () => onMoveCharacter(character, 1),
                         ),
                       _AddCharacterCard(
                         loading: isLoading,
@@ -1758,12 +1817,22 @@ class _CharacterCard extends StatelessWidget {
   const _CharacterCard({
     required this.character,
     required this.selected,
+    required this.canMoveBefore,
+    required this.canMoveAfter,
     required this.onTap,
+    required this.onDelete,
+    required this.onMoveBefore,
+    required this.onMoveAfter,
   });
 
   final NexonCharacterSummary character;
   final bool selected;
+  final bool canMoveBefore;
+  final bool canMoveAfter;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
+  final VoidCallback onMoveBefore;
+  final VoidCallback onMoveAfter;
 
   @override
   Widget build(BuildContext context) {
@@ -1784,9 +1853,26 @@ class _CharacterCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: _CharacterImage(character: character, radius: 12),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: _CharacterImage(character: character, radius: 12),
+                    ),
+                  ),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: _CharacterCardMenu(
+                      canMoveBefore: canMoveBefore,
+                      canMoveAfter: canMoveAfter,
+                      onDelete: onDelete,
+                      onMoveBefore: onMoveBefore,
+                      onMoveAfter: onMoveAfter,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 10),
@@ -1831,6 +1917,73 @@ class _CharacterCard extends StatelessWidget {
               style: const TextStyle(color: AppColors.muted, fontSize: 12),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CharacterCardMenu extends StatelessWidget {
+  const _CharacterCardMenu({
+    required this.canMoveBefore,
+    required this.canMoveAfter,
+    required this.onDelete,
+    required this.onMoveBefore,
+    required this.onMoveAfter,
+  });
+
+  final bool canMoveBefore;
+  final bool canMoveAfter;
+  final VoidCallback onDelete;
+  final VoidCallback onMoveBefore;
+  final VoidCallback onMoveAfter;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      tooltip: '캐릭터 관리',
+      color: AppColors.surface,
+      elevation: 8,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onSelected: (value) {
+        if (value == 'moveBefore') {
+          onMoveBefore();
+        } else if (value == 'moveAfter') {
+          onMoveAfter();
+        } else if (value == 'delete') {
+          onDelete();
+        }
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: 'moveBefore',
+          enabled: canMoveBefore,
+          child: const Text('앞으로 이동'),
+        ),
+        PopupMenuItem(
+          value: 'moveAfter',
+          enabled: canMoveAfter,
+          child: const Text('뒤로 이동'),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
+          value: 'delete',
+          child: Text('삭제'),
+        ),
+      ],
+      child: Container(
+        width: 30,
+        height: 30,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xEBFFFFFF),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Icon(
+          Icons.more_horiz_rounded,
+          color: AppColors.text,
+          size: 18,
         ),
       ),
     );
