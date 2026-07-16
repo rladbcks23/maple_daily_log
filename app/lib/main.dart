@@ -2149,18 +2149,18 @@ class _AddCharacterCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.softBorder, width: 2),
+          border: Border.all(color: AppColors.navBorder, width: 2),
         ),
         child: Center(
           child: loading
-              ? const CircularProgressIndicator(color: AppColors.primary)
+              ? const CircularProgressIndicator(color: AppColors.navAccent)
               : const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       '+',
                       style: TextStyle(
-                        color: AppColors.primary,
+                        color: AppColors.navAccent,
                         fontSize: 32,
                         fontWeight: FontWeight.w900,
                       ),
@@ -2169,7 +2169,7 @@ class _AddCharacterCard extends StatelessWidget {
                     Text(
                       '캐릭터 추가',
                       style: TextStyle(
-                        color: AppColors.muted,
+                        color: AppColors.text,
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
                       ),
