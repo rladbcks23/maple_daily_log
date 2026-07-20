@@ -49,6 +49,10 @@ _CLOSED_EVENT_THUMBNAIL_PATTERN = re.compile(
     re.IGNORECASE,
 )
 _CLOSED_EVENT_DATE_PATTERN = re.compile(r"\d{4}\.\d{2}\.\d{2}")
+_CLOSED_EVENT_CONTENT_PATTERN = re.compile(
+    r'<div class="qs_text">\s*<div class="new_board_con">(?P<content>.*?)</div>\s*</div>',
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 def first_value(data, keys, default=None):
@@ -144,6 +148,17 @@ def _html_text(value):
     return re.sub(r"<[^>]+>", "", unescape(value or "")).strip()
 
 
+def _closed_event_content(link, timeout):
+    try:
+        response = requests.get(link, timeout=timeout)
+        response.raise_for_status()
+    except requests.RequestException:
+        return ""
+
+    match = _CLOSED_EVENT_CONTENT_PATTERN.search(response.text)
+    return match.group("content") if match is not None else ""
+
+
 def collect_latest_closed_sunday_event(client=None):
     client = client or NexonClient()
     try:
@@ -167,19 +182,19 @@ def collect_latest_closed_sunday_event(client=None):
         dates = _CLOSED_EVENT_DATE_PATTERN.findall(item_html)
         event_start_at = dates[0].replace(".", "-") if dates else ""
         event_end_at = dates[1].replace(".", "-") if len(dates) > 1 else event_start_at
-        detail = client.event_detail(link_match.group("notice_id"))
-        content = first_value(detail, ["contents", "content", "body", "notice_contents"], "")
+        link = f"https://maplestory.nexon.com{link_match.group('link')}"
+        content = _closed_event_content(link, client.timeout)
         thumbnail = (
             thumbnail_match.group("thumbnail")
             if thumbnail_match is not None
-            else first_image_url(detail)
+            else ""
         )
 
         return {
             "noticeType": "event",
             "noticeId": link_match.group("notice_id"),
             "title": title,
-            "link": f"https://maplestory.nexon.com{link_match.group('link')}",
+            "link": link,
             "registeredAt": event_start_at,
             "thumbnail": thumbnail,
             "thumbnailUrl": thumbnail,
