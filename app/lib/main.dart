@@ -1316,7 +1316,7 @@ class _EventOverviewPanel extends StatelessWidget {
                     : item.eventPeriodText,
                 thumbnail: item.thumbnail,
                 link: item.link,
-                onTap: _isSpecialSundayEvent(item) ? onOpenSunday : null,
+                onTap: _isSundayMapleEvent(item) ? onOpenSunday : null,
               ))
           .toList(),
     );
@@ -1593,7 +1593,7 @@ class _SundayOverviewPanel extends StatelessWidget {
     }
 
     return const _EmptyDataPanel(
-      message: '아직 저장된 이번주 썬데이 정보가 없어요.\n스페셜 썬데이 메이플 이벤트가 등록되면 자동으로 업데이트됩니다.',
+      message: '아직 저장된 이번주 썬데이 정보가 없어요.\n썬데이 메이플 이벤트가 등록되면 자동으로 업데이트됩니다.',
     );
   }
 }
@@ -1641,15 +1641,16 @@ class _SundayContentPanel extends StatelessWidget {
 
 NoticeItemSummary? _findSpecialSundayEvent(List<NoticeItemSummary> items) {
   for (final item in items) {
-    if (_isSpecialSundayEvent(item)) {
+    if (_isSundayMapleEvent(item)) {
       return item;
     }
   }
   return null;
 }
 
-bool _isSpecialSundayEvent(NoticeItemSummary item) {
-  return item.noticeType == 'event' && item.title == '스페셜 썬데이 메이플';
+bool _isSundayMapleEvent(NoticeItemSummary item) {
+  return item.noticeType == 'event' &&
+      (item.title == '스페셜 썬데이 메이플' || item.title == '썬데이 메이플');
 }
 
 class _InfoCard extends StatelessWidget {

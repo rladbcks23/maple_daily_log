@@ -148,6 +148,10 @@ def _html_text(value):
     return re.sub(r"<[^>]+>", "", unescape(value or "")).strip()
 
 
+def is_sunday_maple_title(title):
+    return title in {"스페셜 썬데이 메이플", "썬데이 메이플"}
+
+
 def _closed_event_content(link, timeout):
     try:
         response = requests.get(link, timeout=timeout)
@@ -175,7 +179,7 @@ def collect_latest_closed_sunday_event(client=None):
             continue
 
         title = _html_text(title_match.group("title"))
-        if title != "스페셜 썬데이 메이플":
+        if not is_sunday_maple_title(title):
             continue
 
         thumbnail_match = _CLOSED_EVENT_THUMBNAIL_PATTERN.search(item_html)
@@ -213,7 +217,7 @@ def fill_event_details(items, client):
             continue
 
         needs_thumbnail = not item.get("thumbnail")
-        needs_sunday_content = item.get("title") == "스페셜 썬데이 메이플"
+        needs_sunday_content = is_sunday_maple_title(item.get("title"))
         if not needs_thumbnail and not needs_sunday_content:
             continue
 
