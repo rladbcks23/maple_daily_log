@@ -74,7 +74,9 @@ class _MapleAppShellState extends State<MapleAppShell> {
   var currentSection = AppSection.character;
   var isLoading = false;
   var isSchedulerLoading = false;
+  var isSchedulerRefreshing = false;
   var isNoticeLoading = false;
+  var isNoticeRefreshing = false;
   String? errorMessage;
   String? schedulerErrorMessage;
   String? noticeErrorMessage;
@@ -234,9 +236,16 @@ class _MapleAppShellState extends State<MapleAppShell> {
     });
   }
 
-  Future<void> loadScheduler(NexonCharacterSummary character) async {
+  Future<void> loadScheduler(
+    NexonCharacterSummary character, {
+    bool refresh = false,
+  }) async {
     setState(() {
-      isSchedulerLoading = true;
+      if (refresh) {
+        isSchedulerRefreshing = true;
+      } else {
+        isSchedulerLoading = true;
+      }
       schedulerErrorMessage = null;
     });
 
@@ -277,15 +286,23 @@ class _MapleAppShellState extends State<MapleAppShell> {
     } finally {
       if (mounted) {
         setState(() {
-          isSchedulerLoading = false;
+          if (refresh) {
+            isSchedulerRefreshing = false;
+          } else {
+            isSchedulerLoading = false;
+          }
         });
       }
     }
   }
 
-  Future<void> loadCurrentNotices() async {
+  Future<void> loadCurrentNotices({bool refresh = false}) async {
     setState(() {
-      isNoticeLoading = true;
+      if (refresh) {
+        isNoticeRefreshing = true;
+      } else {
+        isNoticeLoading = true;
+      }
       noticeErrorMessage = null;
     });
 
@@ -324,7 +341,11 @@ class _MapleAppShellState extends State<MapleAppShell> {
     } finally {
       if (mounted) {
         setState(() {
-          isNoticeLoading = false;
+          if (refresh) {
+            isNoticeRefreshing = false;
+          } else {
+            isNoticeLoading = false;
+          }
         });
       }
     }
@@ -334,7 +355,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
     if (currentSection == AppSection.scheduler) {
       final character = selectedCharacter;
       if (character != null) {
-        await loadScheduler(character);
+        await loadScheduler(character, refresh: true);
       }
       return;
     }
@@ -342,7 +363,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
     if (currentSection == AppSection.events ||
         currentSection == AppSection.notices ||
         currentSection == AppSection.sunday) {
-      await loadCurrentNotices();
+      await loadCurrentNotices(refresh: true);
     }
   }
 
@@ -380,7 +401,9 @@ class _MapleAppShellState extends State<MapleAppShell> {
               sundayEvent: sundayEvent,
               isLoading: isLoading,
               isSchedulerLoading: isSchedulerLoading,
+              isSchedulerRefreshing: isSchedulerRefreshing,
               isNoticeLoading: isNoticeLoading,
+              isNoticeRefreshing: isNoticeRefreshing,
               errorMessage: errorMessage,
               schedulerErrorMessage: schedulerErrorMessage,
               noticeErrorMessage: noticeErrorMessage,
@@ -658,7 +681,9 @@ class _MainPanel extends StatelessWidget {
     required this.sundayEvent,
     required this.isLoading,
     required this.isSchedulerLoading,
+    required this.isSchedulerRefreshing,
     required this.isNoticeLoading,
+    required this.isNoticeRefreshing,
     required this.errorMessage,
     required this.schedulerErrorMessage,
     required this.noticeErrorMessage,
@@ -678,7 +703,9 @@ class _MainPanel extends StatelessWidget {
   final NoticeItemSummary? sundayEvent;
   final bool isLoading;
   final bool isSchedulerLoading;
+  final bool isSchedulerRefreshing;
   final bool isNoticeLoading;
+  final bool isNoticeRefreshing;
   final String? errorMessage;
   final String? schedulerErrorMessage;
   final String? noticeErrorMessage;
@@ -712,15 +739,14 @@ class _MainPanel extends StatelessWidget {
                   const SizedBox(width: 5),
                   Tooltip(
                     message: '강제 새로고침',
-                    child: IconButton(
-                      onPressed: isSchedulerLoading || isNoticeLoading
-                          ? null
-                          : () => onRefresh(),
-                      icon: const Icon(Icons.refresh_rounded),
-                      color: AppColors.navAccent,
-                      disabledColor: AppColors.disabled,
-                      iconSize: 22,
-                      visualDensity: VisualDensity.compact,
+                    child: _RefreshButton(
+                      refreshing: currentSection == AppSection.scheduler
+                          ? isSchedulerRefreshing
+                          : isNoticeRefreshing,
+                      enabled: !(currentSection == AppSection.scheduler
+                          ? isSchedulerLoading || isSchedulerRefreshing
+                          : isNoticeLoading || isNoticeRefreshing),
+                      onPressed: () => onRefresh(),
                     ),
                   ),
                 ],
@@ -755,6 +781,39 @@ class _MainPanel extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _RefreshButton extends StatelessWidget {
+  const _RefreshButton({
+    required this.refreshing,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  final bool refreshing;
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: enabled ? onPressed : null,
+      icon: refreshing
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.2,
+                color: AppColors.navAccent,
+              ),
+            )
+          : const Icon(Icons.refresh_rounded),
+      color: AppColors.navAccent,
+      disabledColor: AppColors.disabled,
+      iconSize: 22,
+      visualDensity: VisualDensity.compact,
     );
   }
 }
