@@ -330,6 +330,22 @@ class _MapleAppShellState extends State<MapleAppShell> {
     }
   }
 
+  Future<void> refreshCurrentSection() async {
+    if (currentSection == AppSection.scheduler) {
+      final character = selectedCharacter;
+      if (character != null) {
+        await loadScheduler(character);
+      }
+      return;
+    }
+
+    if (currentSection == AppSection.events ||
+        currentSection == AppSection.notices ||
+        currentSection == AppSection.sunday) {
+      await loadCurrentNotices();
+    }
+  }
+
   void selectSection(AppSection section) {
     if (section != AppSection.character && selectedCharacter == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -369,6 +385,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
               schedulerErrorMessage: schedulerErrorMessage,
               noticeErrorMessage: noticeErrorMessage,
               onAddCharacter: openCharacterPicker,
+              onRefresh: refreshCurrentSection,
               onSelectSection: selectSection,
               onSelectCharacter: selectCharacter,
               onDeleteCharacter: deleteCharacter,
@@ -646,6 +663,7 @@ class _MainPanel extends StatelessWidget {
     required this.schedulerErrorMessage,
     required this.noticeErrorMessage,
     required this.onAddCharacter,
+    required this.onRefresh,
     required this.onSelectSection,
     required this.onSelectCharacter,
     required this.onDeleteCharacter,
@@ -665,6 +683,7 @@ class _MainPanel extends StatelessWidget {
   final String? schedulerErrorMessage;
   final String? noticeErrorMessage;
   final VoidCallback onAddCharacter;
+  final Future<void> Function() onRefresh;
   final ValueChanged<AppSection> onSelectSection;
   final ValueChanged<NexonCharacterSummary> onSelectCharacter;
   final ValueChanged<NexonCharacterSummary> onDeleteCharacter;
@@ -681,16 +700,30 @@ class _MainPanel extends StatelessWidget {
           children: [
             Row(
               children: [
-                Expanded(
-                  child: Text(
-                    currentSection.label,
-                    style: const TextStyle(
-                      color: AppColors.text,
-                      fontSize: 25,
-                      fontWeight: FontWeight.w900,
-                    ),
+                Text(
+                  currentSection.label,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 25,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
+                if (currentSection != AppSection.character) ...[
+                  const SizedBox(width: 5),
+                  Tooltip(
+                    message: '강제 새로고침',
+                    child: IconButton(
+                      onPressed: isSchedulerLoading || isNoticeLoading
+                          ? null
+                          : () => onRefresh(),
+                      icon: const Icon(Icons.refresh_rounded),
+                      color: AppColors.navAccent,
+                      disabledColor: AppColors.disabled,
+                      iconSize: 22,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 24),
