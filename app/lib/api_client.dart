@@ -607,6 +607,23 @@ class NoticeItemSummary {
   final String content;
   final List<String> contentImageUrls;
 
+  Map<String, dynamic> toCacheJson() {
+    return {
+      'noticeType': noticeType,
+      'title': title,
+      'link': link,
+      'registeredAt': registeredAt,
+      'thumbnail': thumbnail,
+      'eventStartAt': eventStartAt,
+      'eventEndAt': eventEndAt,
+      'saleStartAt': saleStartAt,
+      'saleEndAt': saleEndAt,
+      'saleOngoing': saleOngoing,
+      'content': content,
+      'contentImageUrls': contentImageUrls,
+    };
+  }
+
   factory NoticeItemSummary.fromJson(Map<String, dynamic> json) {
     return NoticeItemSummary(
       noticeType: _readString(json, ['noticeType', 'notice_type', 'type']),

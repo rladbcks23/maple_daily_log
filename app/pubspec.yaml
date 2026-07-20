@@ -21,7 +21,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/app_logo.png
-    - assets/images/sunday_maple.png
     - assets/images/character_adele.png
     - assets/images/character_lara.png
     - assets/images/worlds/

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'api_client.dart';
 import 'scheduler_cache.dart';
+import 'sunday_event_cache.dart';
 
 void main() {
   runApp(const MapleTaskReminderApp());
@@ -68,6 +69,7 @@ class MapleAppShell extends StatefulWidget {
 class _MapleAppShellState extends State<MapleAppShell> {
   final ApiClient apiClient = ApiClient();
   final SchedulerCache schedulerCache = SchedulerCache();
+  final SundayEventCache sundayEventCache = SundayEventCache();
 
   var currentSection = AppSection.character;
   var isLoading = false;
@@ -80,11 +82,22 @@ class _MapleAppShellState extends State<MapleAppShell> {
   List<NexonCharacterSummary> selectedCharacters = const [];
   SchedulerSnapshot? schedulerSnapshot;
   List<NoticeItemSummary> noticeItems = const [];
+  NoticeItemSummary? sundayEvent;
 
   @override
   void initState() {
     super.initState();
-    loadCurrentNotices();
+    unawaited(loadInitialNoticeData());
+  }
+
+  Future<void> loadInitialNoticeData() async {
+    final cachedSundayEvent = await sundayEventCache.load();
+    if (mounted && cachedSundayEvent != null) {
+      setState(() {
+        sundayEvent = cachedSundayEvent;
+      });
+    }
+    await loadCurrentNotices();
   }
 
   Future<void> openCharacterPicker() async {
@@ -278,12 +291,19 @@ class _MapleAppShellState extends State<MapleAppShell> {
 
     try {
       final items = await apiClient.fetchCurrentNotices();
+      final currentSundayEvent = _findSpecialSundayEvent(items);
+      if (currentSundayEvent != null) {
+        await sundayEventCache.save(currentSundayEvent);
+      }
       if (!mounted) {
         return;
       }
 
       setState(() {
         noticeItems = items;
+        if (currentSundayEvent != null) {
+          sundayEvent = currentSundayEvent;
+        }
       });
     } catch (error) {
       if (!mounted) {
@@ -333,6 +353,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
               selectedCharacters: selectedCharacters,
               schedulerSnapshot: schedulerSnapshot,
               noticeItems: noticeItems,
+              sundayEvent: sundayEvent,
               isLoading: isLoading,
               isSchedulerLoading: isSchedulerLoading,
               isNoticeLoading: isNoticeLoading,
@@ -609,6 +630,7 @@ class _MainPanel extends StatelessWidget {
     required this.selectedCharacters,
     required this.schedulerSnapshot,
     required this.noticeItems,
+    required this.sundayEvent,
     required this.isLoading,
     required this.isSchedulerLoading,
     required this.isNoticeLoading,
@@ -627,6 +649,7 @@ class _MainPanel extends StatelessWidget {
   final List<NexonCharacterSummary> selectedCharacters;
   final SchedulerSnapshot? schedulerSnapshot;
   final List<NoticeItemSummary> noticeItems;
+  final NoticeItemSummary? sundayEvent;
   final bool isLoading;
   final bool isSchedulerLoading;
   final bool isNoticeLoading;
@@ -680,6 +703,7 @@ class _MainPanel extends StatelessWidget {
                       selectedCharacter: selectedCharacter,
                       schedulerSnapshot: schedulerSnapshot,
                       noticeItems: noticeItems,
+                      sundayEvent: sundayEvent,
                       schedulerLoading: isSchedulerLoading,
                       noticeLoading: isNoticeLoading,
                       schedulerErrorMessage: schedulerErrorMessage,
@@ -805,6 +829,7 @@ class _LockedFeaturePanel extends StatelessWidget {
     required this.selectedCharacter,
     required this.schedulerSnapshot,
     required this.noticeItems,
+    required this.sundayEvent,
     required this.schedulerLoading,
     required this.noticeLoading,
     required this.schedulerErrorMessage,
@@ -816,6 +841,7 @@ class _LockedFeaturePanel extends StatelessWidget {
   final NexonCharacterSummary? selectedCharacter;
   final SchedulerSnapshot? schedulerSnapshot;
   final List<NoticeItemSummary> noticeItems;
+  final NoticeItemSummary? sundayEvent;
   final bool schedulerLoading;
   final bool noticeLoading;
   final String? schedulerErrorMessage;
@@ -845,7 +871,7 @@ class _LockedFeaturePanel extends StatelessWidget {
             loading: noticeLoading,
             errorMessage: noticeErrorMessage,
           ),
-        AppSection.sunday => _SundayOverviewPanel(items: noticeItems),
+        AppSection.sunday => _SundayOverviewPanel(event: sundayEvent),
         AppSection.character || AppSection.scheduler => const SizedBox.shrink(),
       };
     }
@@ -1525,13 +1551,13 @@ class _EmptyDataPanel extends StatelessWidget {
 }
 
 class _SundayOverviewPanel extends StatelessWidget {
-  const _SundayOverviewPanel({required this.items});
+  const _SundayOverviewPanel({required this.event});
 
-  final List<NoticeItemSummary> items;
+  final NoticeItemSummary? event;
 
   @override
   Widget build(BuildContext context) {
-    final sundayEvent = _findSpecialSundayEvent(items);
+    final sundayEvent = event;
 
     if (sundayEvent != null) {
       if (sundayEvent.contentImageUrls.isNotEmpty) {
@@ -1552,29 +1578,8 @@ class _SundayOverviewPanel extends StatelessWidget {
       );
     }
 
-    const imageRatio = 1587 / 788;
-    final visibleHeight = MediaQuery.sizeOf(context).height - 150;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final widthByHeight = visibleHeight * imageRatio;
-        final imageWidth = constraints.maxWidth < widthByHeight
-            ? constraints.maxWidth
-            : widthByHeight;
-
-        return Align(
-          alignment: Alignment.topCenter,
-          child: SizedBox(
-            width: imageWidth,
-            height: imageWidth / imageRatio,
-            child: Image.asset(
-              'assets/images/sunday_maple.png',
-              fit: BoxFit.contain,
-              alignment: Alignment.topCenter,
-            ),
-          ),
-        );
-      },
+    return const _EmptyDataPanel(
+      message: '아직 저장된 이번주 썬데이 정보가 없어요.\n스페셜 썬데이 메이플 이벤트가 등록되면 자동으로 업데이트됩니다.',
     );
   }
 }
