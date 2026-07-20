@@ -11,6 +11,7 @@ from .serializers import NoticeSnapshotSerializer, SelectedCharacterSerializer
 from .services import (
     check_new_notices,
     collect_current_notice_items,
+    collect_latest_closed_sunday_event,
     run_reminder_check,
     update_character_from_basic,
 )
@@ -108,6 +109,18 @@ class CurrentNoticesView(APIView):
             return Response({"items": collect_current_notice_items()})
         except NexonApiError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+
+class LatestSundayEventView(APIView):
+    def get(self, request):
+        try:
+            event = collect_latest_closed_sunday_event()
+        except NexonApiError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        if event is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(event)
 
 
 class CheckNewNoticesView(APIView):

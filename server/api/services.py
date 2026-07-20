@@ -1,5 +1,7 @@
 import re
+from html import unescape
 
+import requests
 from django.utils import timezone
 
 from .models import NoticeSnapshot, SelectedCharacter
@@ -28,6 +30,25 @@ THUMBNAIL_KEYS = [
     "cashshop_thumbnail_url",
     "cashshopThumbnailUrl",
 ]
+
+CLOSED_EVENT_LIST_URL = "https://maplestory.nexon.com/News/Event/Closed"
+_CLOSED_EVENT_ITEM_PATTERN = re.compile(
+    r'<li>\s*<div class="event_list_wrap">(?P<item>.*?)</div>\s*</li>',
+    re.IGNORECASE | re.DOTALL,
+)
+_CLOSED_EVENT_LINK_PATTERN = re.compile(
+    r'href="(?P<link>/News/Event/Closed/(?P<notice_id>\d+))"',
+    re.IGNORECASE,
+)
+_CLOSED_EVENT_TITLE_PATTERN = re.compile(
+    r'class="event_listMt"[^>]*>(?P<title>.*?)</em>',
+    re.IGNORECASE | re.DOTALL,
+)
+_CLOSED_EVENT_THUMBNAIL_PATTERN = re.compile(
+    r'<img\s+src="(?P<thumbnail>[^"]+)"',
+    re.IGNORECASE,
+)
+_CLOSED_EVENT_DATE_PATTERN = re.compile(r"\d{4}\.\d{2}\.\d{2}")
 
 
 def first_value(data, keys, default=None):
@@ -117,6 +138,58 @@ def image_urls_from_content(content):
         return []
 
     return re.findall(r'<img[^>]+src=["\']([^"\']+)["\']', content, re.IGNORECASE)
+
+
+def _html_text(value):
+    return re.sub(r"<[^>]+>", "", unescape(value or "")).strip()
+
+
+def collect_latest_closed_sunday_event(client=None):
+    client = client or NexonClient()
+    try:
+        response = requests.get(CLOSED_EVENT_LIST_URL, timeout=client.timeout)
+        response.raise_for_status()
+    except requests.RequestException:
+        return None
+
+    for match in _CLOSED_EVENT_ITEM_PATTERN.finditer(response.text):
+        item_html = match.group("item")
+        link_match = _CLOSED_EVENT_LINK_PATTERN.search(item_html)
+        title_match = _CLOSED_EVENT_TITLE_PATTERN.search(item_html)
+        if link_match is None or title_match is None:
+            continue
+
+        title = _html_text(title_match.group("title"))
+        if title != "스페셜 썬데이 메이플":
+            continue
+
+        thumbnail_match = _CLOSED_EVENT_THUMBNAIL_PATTERN.search(item_html)
+        dates = _CLOSED_EVENT_DATE_PATTERN.findall(item_html)
+        event_start_at = dates[0].replace(".", "-") if dates else ""
+        event_end_at = dates[1].replace(".", "-") if len(dates) > 1 else event_start_at
+        detail = client.event_detail(link_match.group("notice_id"))
+        content = first_value(detail, ["contents", "content", "body", "notice_contents"], "")
+        thumbnail = (
+            thumbnail_match.group("thumbnail")
+            if thumbnail_match is not None
+            else first_image_url(detail)
+        )
+
+        return {
+            "noticeType": "event",
+            "noticeId": link_match.group("notice_id"),
+            "title": title,
+            "link": f"https://maplestory.nexon.com{link_match.group('link')}",
+            "registeredAt": event_start_at,
+            "thumbnail": thumbnail,
+            "thumbnailUrl": thumbnail,
+            "eventStartAt": event_start_at,
+            "eventEndAt": event_end_at,
+            "content": content,
+            "contentImageUrls": image_urls_from_content(content),
+        }
+
+    return None
 
 
 def fill_event_details(items, client):

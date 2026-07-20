@@ -90,6 +90,24 @@ class ApiClient {
         .toList();
   }
 
+  Future<NoticeItemSummary?> fetchLatestSundayEvent() async {
+    final response =
+        await _httpClient.get(Uri.parse('$baseUrl/api/notices/latest-sunday'));
+
+    if (response.statusCode == 404) {
+      return null;
+    }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException('최근 썬데이 메이플 정보를 불러오지 못했습니다. (${response.statusCode})');
+    }
+
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (decoded is! Map) {
+      return null;
+    }
+    return NoticeItemSummary.fromJson(Map<String, dynamic>.from(decoded));
+  }
+
   List<Map<String, dynamic>> _extractCharacterItems(Object? decoded) {
     if (decoded is List) {
       return _flattenCharacterMaps(decoded);

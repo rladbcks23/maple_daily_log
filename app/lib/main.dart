@@ -292,8 +292,16 @@ class _MapleAppShellState extends State<MapleAppShell> {
     try {
       final items = await apiClient.fetchCurrentNotices();
       final currentSundayEvent = _findSpecialSundayEvent(items);
-      if (currentSundayEvent != null) {
-        await sundayEventCache.save(currentSundayEvent);
+      NoticeItemSummary? nextSundayEvent = currentSundayEvent;
+      if (nextSundayEvent == null) {
+        try {
+          nextSundayEvent = await apiClient.fetchLatestSundayEvent();
+        } on ApiException {
+          nextSundayEvent = null;
+        }
+      }
+      if (nextSundayEvent != null) {
+        await sundayEventCache.save(nextSundayEvent);
       }
       if (!mounted) {
         return;
@@ -301,8 +309,8 @@ class _MapleAppShellState extends State<MapleAppShell> {
 
       setState(() {
         noticeItems = items;
-        if (currentSundayEvent != null) {
-          sundayEvent = currentSundayEvent;
+        if (nextSundayEvent != null) {
+          sundayEvent = nextSundayEvent;
         }
       });
     } catch (error) {
