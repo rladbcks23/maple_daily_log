@@ -1564,6 +1564,12 @@ class _SundayOverviewPanel extends StatelessWidget {
         return _SundayContentPanel(event: sundayEvent);
       }
 
+      if (sundayEvent.thumbnail.isEmpty) {
+        return const _EmptyDataPanel(
+          message: '이번주 썬데이 메이플 공지가 아직 없습니다',
+        );
+      }
+
       return Align(
         alignment: Alignment.topCenter,
         child: ConstrainedBox(
