@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'api_client.dart';
+import 'scheduler_cache.dart';
 
 void main() {
   runApp(const MapleTaskReminderApp());
@@ -66,6 +67,7 @@ class MapleAppShell extends StatefulWidget {
 
 class _MapleAppShellState extends State<MapleAppShell> {
   final ApiClient apiClient = ApiClient();
+  final SchedulerCache schedulerCache = SchedulerCache();
 
   var currentSection = AppSection.character;
   var isLoading = false;
@@ -227,12 +229,29 @@ class _MapleAppShellState extends State<MapleAppShell> {
 
     try {
       final snapshot = await apiClient.fetchScheduler(character.ocid);
+      final cachedSnapshot = await schedulerCache.load(character.ocid);
+      final displayedSnapshot = cachedSnapshot == null
+          ? snapshot
+          : snapshot.withCachedEmptySections(cachedSnapshot);
+
+      if (snapshot.hasDailyItems || snapshot.hasWeeklyItems) {
+        final snapshotToCache = SchedulerSnapshot(
+          dailyItems: snapshot.hasDailyItems
+              ? snapshot.dailyItems
+              : cachedSnapshot?.dailyItems ?? const [],
+          weeklyItems: snapshot.hasWeeklyItems
+              ? snapshot.weeklyItems
+              : cachedSnapshot?.weeklyItems ?? const [],
+          bossItems: const [],
+        );
+        await schedulerCache.save(character.ocid, snapshotToCache);
+      }
       if (!mounted) {
         return;
       }
 
       setState(() {
-        schedulerSnapshot = snapshot;
+        schedulerSnapshot = displayedSnapshot;
       });
     } catch (error) {
       if (!mounted) {

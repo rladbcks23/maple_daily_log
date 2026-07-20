@@ -237,6 +237,49 @@ class SchedulerSnapshot {
   final List<SchedulerItemSummary> weeklyItems;
   final List<SchedulerItemSummary> bossItems;
 
+  bool get hasDailyItems => dailyItems.isNotEmpty;
+  bool get hasWeeklyItems => weeklyItems.isNotEmpty;
+
+  SchedulerSnapshot withCachedEmptySections(SchedulerSnapshot cached) {
+    return SchedulerSnapshot(
+      dailyItems: dailyItems.isEmpty
+          ? cached.dailyItems.map((item) => item.asUnfinished()).toList()
+          : dailyItems,
+      weeklyItems: weeklyItems.isEmpty
+          ? cached.weeklyItems.map((item) => item.asUnfinished()).toList()
+          : weeklyItems,
+      bossItems: bossItems,
+    );
+  }
+
+  Map<String, dynamic> toCacheJson() {
+    return {
+      'dailyItems': dailyItems.map((item) => item.toCacheJson()).toList(),
+      'weeklyItems': weeklyItems.map((item) => item.toCacheJson()).toList(),
+    };
+  }
+
+  factory SchedulerSnapshot.fromCacheJson(Map<String, dynamic> json) {
+    List<SchedulerItemSummary> readItems(String key) {
+      final value = json[key];
+      if (value is! List) {
+        return const [];
+      }
+      return value
+          .whereType<Map>()
+          .map((item) => SchedulerItemSummary.fromCacheJson(
+                Map<String, dynamic>.from(item),
+              ))
+          .toList();
+    }
+
+    return SchedulerSnapshot(
+      dailyItems: readItems('dailyItems'),
+      weeklyItems: readItems('weeklyItems'),
+      bossItems: const [],
+    );
+  }
+
   factory SchedulerSnapshot.fromJson(Map<String, dynamic> json) {
     return SchedulerSnapshot(
       dailyItems: _readItems(json, [
@@ -293,6 +336,35 @@ class SchedulerItemSummary {
   final String difficulty;
   final String cycle;
   final bool done;
+
+  SchedulerItemSummary asUnfinished() {
+    return SchedulerItemSummary(
+      title: title,
+      meta: meta,
+      difficulty: difficulty,
+      cycle: cycle,
+      done: false,
+    );
+  }
+
+  Map<String, dynamic> toCacheJson() {
+    return {
+      'title': title,
+      'meta': meta,
+      'difficulty': difficulty,
+      'cycle': cycle,
+    };
+  }
+
+  factory SchedulerItemSummary.fromCacheJson(Map<String, dynamic> json) {
+    return SchedulerItemSummary(
+      title: json['title'] as String? ?? '이름 없음',
+      meta: json['meta'] as String? ?? '',
+      difficulty: json['difficulty'] as String? ?? '',
+      cycle: json['cycle'] as String? ?? '',
+      done: false,
+    );
+  }
 
   factory SchedulerItemSummary.fromJson(Map<String, dynamic> json) {
     final title = _readString(json, [
