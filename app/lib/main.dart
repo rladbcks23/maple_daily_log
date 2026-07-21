@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'api_client.dart';
 import 'character_cache.dart';
+import 'local_notification_service.dart';
 import 'scheduler_cache.dart';
 import 'sunday_event_cache.dart';
 
@@ -411,6 +412,25 @@ class _MapleAppShellState extends State<MapleAppShell> {
     }
   }
 
+  Future<void> showTestNotification() async {
+    try {
+      await LocalNotificationService.instance.showTestNotification();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Windows 알림을 보냈습니다.')),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('알림을 보내지 못했습니다: $error')),
+      );
+    }
+  }
+
   void selectSection(AppSection section) {
     if (section != AppSection.character && selectedCharacter == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -453,6 +473,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
               noticeErrorMessage: noticeErrorMessage,
               onAddCharacter: openCharacterPicker,
               onRefresh: refreshCurrentSection,
+              onTestNotification: showTestNotification,
               onSelectSection: selectSection,
               onSelectCharacter: selectCharacter,
               onDeleteCharacter: deleteCharacter,
@@ -733,6 +754,7 @@ class _MainPanel extends StatelessWidget {
     required this.noticeErrorMessage,
     required this.onAddCharacter,
     required this.onRefresh,
+    required this.onTestNotification,
     required this.onSelectSection,
     required this.onSelectCharacter,
     required this.onDeleteCharacter,
@@ -755,6 +777,7 @@ class _MainPanel extends StatelessWidget {
   final String? noticeErrorMessage;
   final VoidCallback onAddCharacter;
   final Future<void> Function() onRefresh;
+  final Future<void> Function() onTestNotification;
   final ValueChanged<AppSection> onSelectSection;
   final ValueChanged<NexonCharacterSummary> onSelectCharacter;
   final ValueChanged<NexonCharacterSummary> onDeleteCharacter;
@@ -794,6 +817,24 @@ class _MainPanel extends StatelessWidget {
                     ),
                   ),
                 ],
+                const Spacer(),
+                OutlinedButton.icon(
+                  onPressed: () => onTestNotification(),
+                  icon: const Icon(Icons.notifications_outlined, size: 18),
+                  label: const Text('알림 테스트'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.text,
+                    side: const BorderSide(color: AppColors.border),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 13,
+                      vertical: 10,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 24),
