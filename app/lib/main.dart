@@ -268,18 +268,26 @@ class _MapleAppShellState extends State<MapleAppShell> {
     NexonCharacterSummary character, {
     bool refresh = false,
   }) async {
+    final cachedSnapshot = await schedulerCache.load(character.ocid);
+    if (!mounted || !_isSameCharacter(character, selectedCharacter)) {
+      return;
+    }
+
+    final hasCachedSnapshot = cachedSnapshot != null;
     setState(() {
-      if (refresh) {
+      if (refresh || hasCachedSnapshot) {
         isSchedulerRefreshing = true;
       } else {
         isSchedulerLoading = true;
       }
       schedulerErrorMessage = null;
+      if (hasCachedSnapshot) {
+        schedulerSnapshot = cachedSnapshot;
+      }
     });
 
     try {
       final snapshot = await apiClient.fetchScheduler(character.ocid);
-      final cachedSnapshot = await schedulerCache.load(character.ocid);
       final displayedSnapshot = cachedSnapshot == null
           ? snapshot
           : snapshot.withCachedEmptySections(cachedSnapshot);
@@ -302,7 +310,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
         );
         await schedulerCache.save(character.ocid, snapshotToCache);
       }
-      if (!mounted) {
+      if (!mounted || !_isSameCharacter(character, selectedCharacter)) {
         return;
       }
 
@@ -310,17 +318,19 @@ class _MapleAppShellState extends State<MapleAppShell> {
         schedulerSnapshot = displayedSnapshot;
       });
     } catch (error) {
-      if (!mounted) {
+      if (!mounted || !_isSameCharacter(character, selectedCharacter)) {
         return;
       }
 
-      setState(() {
-        schedulerErrorMessage = error.toString();
-      });
-    } finally {
-      if (mounted) {
+      if (!hasCachedSnapshot) {
         setState(() {
-          if (refresh) {
+          schedulerErrorMessage = error.toString();
+        });
+      }
+    } finally {
+      if (mounted && _isSameCharacter(character, selectedCharacter)) {
+        setState(() {
+          if (refresh || hasCachedSnapshot) {
             isSchedulerRefreshing = false;
           } else {
             isSchedulerLoading = false;
