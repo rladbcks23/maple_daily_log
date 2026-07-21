@@ -96,6 +96,10 @@ class _MapleAppShellState extends State<MapleAppShell> {
   @override
   void initState() {
     super.initState();
+    LocalNotificationService.instance.setOnNotificationTap(
+      handleNotificationTap,
+    );
+    unawaited(initializeNotifications());
     unawaited(loadCachedCharacters());
     unawaited(loadInitialNoticeData());
     notificationTimer = Timer.periodic(
@@ -103,6 +107,13 @@ class _MapleAppShellState extends State<MapleAppShell> {
       (_) => unawaited(checkScheduledNotifications()),
     );
     unawaited(checkScheduledNotifications());
+  }
+
+  Future<void> initializeNotifications() async {
+    final payload = await LocalNotificationService.instance.initialize();
+    if (payload != null) {
+      handleNotificationTap(payload);
+    }
   }
 
   @override
@@ -447,6 +458,18 @@ class _MapleAppShellState extends State<MapleAppShell> {
     }
   }
 
+  void handleNotificationTap(String? payload) {
+    if (!mounted || payload != 'section:scheduler') {
+      return;
+    }
+
+    setState(() {
+      currentSection = selectedCharacter == null
+          ? AppSection.character
+          : AppSection.scheduler;
+    });
+  }
+
   Future<void> checkScheduledNotifications() async {
     if (isCheckingScheduledNotifications || selectedCharacters.isEmpty) {
       return;
@@ -495,6 +518,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
       id: 1001,
       title: '오늘 접속 기록이 없어요',
       body: '${_characterNames(missingCharacters)} 접속 후 일일 숙제를 확인해주세요.',
+      payload: 'section:scheduler',
     );
     await notificationHistory.markSent(ruleKey);
   }
@@ -534,6 +558,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
       id: 1002,
       title: '이번 주 숙제가 남아 있어요',
       body: '${_characterNames(incompleteCharacters)} 목요일 전에 주간 콘텐츠를 확인해주세요.',
+      payload: 'section:scheduler',
     );
     await notificationHistory.markSent(ruleKey);
   }
