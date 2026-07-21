@@ -268,6 +268,7 @@ class SchedulerSnapshot {
 
   bool get hasDailyItems => dailyItems.isNotEmpty;
   bool get hasWeeklyItems => weeklyItems.isNotEmpty;
+  bool get hasBossItems => bossItems.isNotEmpty;
 
   SchedulerSnapshot withCachedEmptySections(SchedulerSnapshot cached) {
     return SchedulerSnapshot(
@@ -277,14 +278,49 @@ class SchedulerSnapshot {
       weeklyItems: weeklyItems.isEmpty
           ? cached.weeklyItems.map((item) => item.asUnfinished()).toList()
           : weeklyItems,
-      bossItems: bossItems,
+      bossItems: _mergeMissingBossCycles(cached),
     );
+  }
+
+  List<SchedulerItemSummary> _mergeMissingBossCycles(
+    SchedulerSnapshot cached,
+  ) {
+    final mergedItems = [...bossItems];
+    for (final cycle in const ['daily', 'weekly', 'monthly']) {
+      final hasCurrentCycle = mergedItems.any(
+        (item) => _matchesBossCycle(item, cycle),
+      );
+      if (!hasCurrentCycle) {
+        mergedItems.addAll(
+          cached.bossItems
+              .where((item) => _matchesBossCycle(item, cycle))
+              .map((item) => item.asUnfinished()),
+        );
+      }
+    }
+    return mergedItems;
+  }
+
+  static bool _matchesBossCycle(SchedulerItemSummary item, String cycle) {
+    final normalized = item.cycle.trim().toLowerCase();
+    return switch (cycle) {
+      'daily' => normalized == 'daily' ||
+          normalized == 'day' ||
+          normalized == '일간' ||
+          normalized == '일일',
+      'weekly' =>
+        normalized == 'weekly' || normalized == 'week' || normalized == '주간',
+      'monthly' =>
+        normalized == 'monthly' || normalized == 'month' || normalized == '월간',
+      _ => false,
+    };
   }
 
   Map<String, dynamic> toCacheJson() {
     return {
       'dailyItems': dailyItems.map((item) => item.toCacheJson()).toList(),
       'weeklyItems': weeklyItems.map((item) => item.toCacheJson()).toList(),
+      'bossItems': bossItems.map((item) => item.toCacheJson()).toList(),
     };
   }
 
@@ -305,7 +341,7 @@ class SchedulerSnapshot {
     return SchedulerSnapshot(
       dailyItems: readItems('dailyItems'),
       weeklyItems: readItems('weeklyItems'),
-      bossItems: const [],
+      bossItems: readItems('bossItems'),
     );
   }
 
