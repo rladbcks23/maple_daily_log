@@ -52,9 +52,14 @@ class ApiClient {
     }
   }
 
-  Future<SchedulerSnapshot> fetchScheduler(String ocid) async {
-    final response =
-        await _httpClient.get(Uri.parse('$baseUrl/api/nexon/scheduler/$ocid'));
+  Future<SchedulerSnapshot> fetchScheduler(
+    String ocid, {
+    bool forceRefresh = false,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/nexon/scheduler/$ocid').replace(
+      queryParameters: forceRefresh ? const {'refresh': '1'} : null,
+    );
+    final response = await _httpClient.get(uri);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException('스케쥴러 정보를 불러오지 못했습니다. (${response.statusCode})');
@@ -68,9 +73,13 @@ class ApiClient {
     return SchedulerSnapshot.fromJson(decoded);
   }
 
-  Future<List<NoticeItemSummary>> fetchCurrentNotices() async {
-    final response =
-        await _httpClient.get(Uri.parse('$baseUrl/api/notices/current'));
+  Future<List<NoticeItemSummary>> fetchCurrentNotices({
+    bool forceRefresh = false,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/notices/current').replace(
+      queryParameters: forceRefresh ? const {'refresh': '1'} : null,
+    );
+    final response = await _httpClient.get(uri);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException('공지사항 정보를 불러오지 못했습니다. (${response.statusCode})');
@@ -90,9 +99,13 @@ class ApiClient {
         .toList();
   }
 
-  Future<NoticeItemSummary?> fetchLatestSundayEvent() async {
-    final response =
-        await _httpClient.get(Uri.parse('$baseUrl/api/notices/latest-sunday'));
+  Future<NoticeItemSummary?> fetchLatestSundayEvent({
+    bool forceRefresh = false,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/notices/latest-sunday').replace(
+      queryParameters: forceRefresh ? const {'refresh': '1'} : null,
+    );
+    final response = await _httpClient.get(uri);
 
     if (response.statusCode == 404) {
       return null;

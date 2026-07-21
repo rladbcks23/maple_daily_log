@@ -315,7 +315,10 @@ class _MapleAppShellState extends State<MapleAppShell> {
     });
 
     try {
-      final snapshot = await apiClient.fetchScheduler(character.ocid);
+      final snapshot = await apiClient.fetchScheduler(
+        character.ocid,
+        forceRefresh: refresh,
+      );
       final displayedSnapshot = cachedSnapshot == null
           ? snapshot
           : snapshot.withCachedEmptySections(cachedSnapshot);
@@ -379,12 +382,16 @@ class _MapleAppShellState extends State<MapleAppShell> {
     });
 
     try {
-      final items = await apiClient.fetchCurrentNotices();
+      final items = await apiClient.fetchCurrentNotices(
+        forceRefresh: refresh,
+      );
       final currentSundayEvent = _findSpecialSundayEvent(items);
       NoticeItemSummary? nextSundayEvent = currentSundayEvent;
       if (nextSundayEvent == null) {
         try {
-          nextSundayEvent = await apiClient.fetchLatestSundayEvent();
+          nextSundayEvent = await apiClient.fetchLatestSundayEvent(
+            forceRefresh: refresh,
+          );
         } on ApiException {
           nextSundayEvent = null;
         }
