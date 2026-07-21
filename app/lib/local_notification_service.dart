@@ -47,7 +47,7 @@ class LocalNotificationService {
       id: 1,
       title: '메이플 숙제알리미',
       body: '알림이 정상적으로 작동합니다.',
-      payload: 'section:scheduler',
+      payload: 'section:character',
     );
   }
 

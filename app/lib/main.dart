@@ -459,15 +459,22 @@ class _MapleAppShellState extends State<MapleAppShell> {
   }
 
   void handleNotificationTap(String? payload) {
-    if (!mounted || payload != 'section:scheduler') {
+    if (!mounted) {
       return;
     }
 
-    setState(() {
-      currentSection = selectedCharacter == null
-          ? AppSection.character
-          : AppSection.scheduler;
-    });
+    switch (payload) {
+      case 'section:character':
+        setState(() {
+          currentSection = AppSection.character;
+        });
+      case 'section:scheduler':
+        setState(() {
+          currentSection = selectedCharacter == null
+              ? AppSection.character
+              : AppSection.scheduler;
+        });
+    }
   }
 
   Future<void> checkScheduledNotifications() async {
