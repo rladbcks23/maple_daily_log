@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.db import transaction
 from django.http import JsonResponse
 from rest_framework import status, viewsets
@@ -15,6 +16,23 @@ from .services import (
     run_reminder_check,
     update_character_from_basic,
 )
+
+
+SCHEDULER_CACHE_SECONDS = 30
+CHARACTER_LIST_CACHE_SECONDS = 600
+CURRENT_NOTICES_CACHE_SECONDS = 300
+LATEST_SUNDAY_CACHE_SECONDS = 21600
+
+
+def cached_response(cache_key, timeout, force_refresh, fetch):
+    if not force_refresh:
+        cached_value = cache.get(cache_key)
+        if cached_value is not None:
+            return cached_value
+
+    value = fetch()
+    cache.set(cache_key, value, timeout=timeout)
+    return value
 
 
 def health(request):
@@ -71,7 +89,13 @@ class NoticeSnapshotViewSet(viewsets.ReadOnlyModelViewSet):
 class NexonCharactersView(APIView):
     def get(self, request):
         try:
-            return Response(NexonClient().character_list())
+            payload = cached_response(
+                "nexon:character-list",
+                CHARACTER_LIST_CACHE_SECONDS,
+                request.query_params.get("refresh") == "1",
+                lambda: NexonClient().character_list(),
+            )
+            return Response(payload)
         except NexonApiError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
 
@@ -98,7 +122,15 @@ class NexonBasicView(APIView):
 class NexonSchedulerView(APIView):
     def get(self, request, ocid):
         try:
-            return Response(NexonClient().scheduler(ocid, date=request.query_params.get("date")))
+            date = request.query_params.get("date")
+            cache_key = f"nexon:scheduler:{ocid}:{date or 'today'}"
+            payload = cached_response(
+                cache_key,
+                SCHEDULER_CACHE_SECONDS,
+                request.query_params.get("refresh") == "1",
+                lambda: NexonClient().scheduler(ocid, date=date),
+            )
+            return Response(payload)
         except NexonApiError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
 
@@ -106,7 +138,13 @@ class NexonSchedulerView(APIView):
 class CurrentNoticesView(APIView):
     def get(self, request):
         try:
-            return Response({"items": collect_current_notice_items()})
+            items = cached_response(
+                "nexon:current-notices",
+                CURRENT_NOTICES_CACHE_SECONDS,
+                request.query_params.get("refresh") == "1",
+                collect_current_notice_items,
+            )
+            return Response({"items": items})
         except NexonApiError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
 
@@ -114,7 +152,12 @@ class CurrentNoticesView(APIView):
 class LatestSundayEventView(APIView):
     def get(self, request):
         try:
-            event = collect_latest_closed_sunday_event()
+            event = cached_response(
+                "nexon:latest-sunday-event",
+                LATEST_SUNDAY_CACHE_SECONDS,
+                request.query_params.get("refresh") == "1",
+                collect_latest_closed_sunday_event,
+            )
         except NexonApiError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
 
