@@ -273,7 +273,9 @@ class SchedulerSnapshot {
   SchedulerSnapshot withCachedEmptySections(SchedulerSnapshot cached) {
     return SchedulerSnapshot(
       dailyItems: dailyItems.isEmpty
-          ? cached.dailyItems.map((item) => item.asUnfinished()).toList()
+          ? cached.dailyItems
+              .map((item) => item.asUnfinished(resetProgress: true))
+              .toList()
           : dailyItems,
       weeklyItems: weeklyItems.isEmpty
           ? cached.weeklyItems.map((item) => item.asUnfinished()).toList()
@@ -292,9 +294,11 @@ class SchedulerSnapshot {
       );
       if (!hasCurrentCycle) {
         mergedItems.addAll(
-          cached.bossItems
-              .where((item) => _matchesBossCycle(item, cycle))
-              .map((item) => item.asUnfinished()),
+          cached.bossItems.where((item) => _matchesBossCycle(item, cycle)).map(
+                (item) => item.asUnfinished(
+                  resetProgress: cycle == 'daily',
+                ),
+              ),
         );
       }
     }
@@ -402,14 +406,18 @@ class SchedulerItemSummary {
   final String cycle;
   final bool done;
 
-  SchedulerItemSummary asUnfinished() {
+  SchedulerItemSummary asUnfinished({bool resetProgress = false}) {
     return SchedulerItemSummary(
       title: title,
-      meta: meta,
+      meta: resetProgress ? _resetCurrentProgress(meta) : meta,
       difficulty: difficulty,
       cycle: cycle,
       done: false,
     );
+  }
+
+  static String _resetCurrentProgress(String value) {
+    return value.replaceFirst(RegExp(r'^\s*\d+\s*/'), '0 /');
   }
 
   Map<String, dynamic> toCacheJson() {
