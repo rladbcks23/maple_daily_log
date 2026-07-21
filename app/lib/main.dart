@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'api_client.dart';
+import 'character_cache.dart';
 import 'scheduler_cache.dart';
 import 'sunday_event_cache.dart';
 
@@ -68,6 +69,7 @@ class MapleAppShell extends StatefulWidget {
 
 class _MapleAppShellState extends State<MapleAppShell> {
   final ApiClient apiClient = ApiClient();
+  final CharacterCache characterCache = CharacterCache();
   final SchedulerCache schedulerCache = SchedulerCache();
   final SundayEventCache sundayEventCache = SundayEventCache();
 
@@ -89,7 +91,29 @@ class _MapleAppShellState extends State<MapleAppShell> {
   @override
   void initState() {
     super.initState();
+    unawaited(loadCachedCharacters());
     unawaited(loadInitialNoticeData());
+  }
+
+  Future<void> loadCachedCharacters() async {
+    final cachedData = await characterCache.load();
+    if (!mounted || cachedData == null || cachedData.characters.isEmpty) {
+      return;
+    }
+
+    final selected = cachedData.characters.firstWhere(
+      (character) => character.ocid == cachedData.selectedOcid,
+      orElse: () => cachedData.characters.first,
+    );
+    setState(() {
+      selectedCharacters = cachedData.characters;
+      selectedCharacter = selected;
+    });
+    unawaited(loadScheduler(selected));
+  }
+
+  void persistCharacters() {
+    unawaited(characterCache.save(selectedCharacters, selectedCharacter));
   }
 
   Future<void> loadInitialNoticeData() async {
@@ -157,6 +181,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
           schedulerSnapshot = null;
           schedulerErrorMessage = null;
         });
+        persistCharacters();
         await loadScheduler(detailed);
       }
     } catch (error) {
@@ -186,6 +211,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
       schedulerSnapshot = null;
       schedulerErrorMessage = null;
     });
+    persistCharacters();
     await loadScheduler(character);
   }
 
@@ -208,6 +234,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
         }
       }
     });
+    persistCharacters();
 
     if (nextSelectedCharacter != null) {
       unawaited(loadScheduler(nextSelectedCharacter!));
@@ -234,6 +261,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
     setState(() {
       selectedCharacters = nextCharacters;
     });
+    persistCharacters();
   }
 
   Future<void> loadScheduler(

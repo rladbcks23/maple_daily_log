@@ -220,6 +220,17 @@ class NexonCharacterSummary {
     );
   }
 
+  Map<String, dynamic> toCacheJson() {
+    return {
+      'ocid': ocid,
+      'characterName': characterName,
+      'worldName': worldName,
+      'characterClass': characterClass,
+      'characterLevel': characterLevel,
+      'characterImage': characterImage,
+    };
+  }
+
   static String _readString(Map<String, dynamic> json, List<String> keys) {
     for (final key in keys) {
       final value = json[key];
