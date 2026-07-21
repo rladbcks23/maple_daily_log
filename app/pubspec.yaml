@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
   flutter_local_notifications: ^19.5.0
   http: ^1.2.2
+  tray_manager: ^0.5.3
+  window_manager: ^0.5.2
 
 dev_dependencies:
   flutter_test:
@@ -22,6 +24,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/app_logo.png
+    - assets/images/app_icon.ico
     - assets/images/character_adele.png
     - assets/images/character_lara.png
     - assets/images/worlds/

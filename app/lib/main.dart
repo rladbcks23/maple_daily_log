@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:tray_manager/tray_manager.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'api_client.dart';
 import 'character_cache.dart';
@@ -10,7 +12,9 @@ import 'notification_history.dart';
 import 'scheduler_cache.dart';
 import 'sunday_event_cache.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
   runApp(const MapleTaskReminderApp());
 }
 
@@ -69,7 +73,8 @@ class MapleAppShell extends StatefulWidget {
   State<MapleAppShell> createState() => _MapleAppShellState();
 }
 
-class _MapleAppShellState extends State<MapleAppShell> {
+class _MapleAppShellState extends State<MapleAppShell>
+    with WindowListener, TrayListener {
   final ApiClient apiClient = ApiClient();
   final CharacterCache characterCache = CharacterCache();
   final SchedulerCache schedulerCache = SchedulerCache();
@@ -99,6 +104,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
     LocalNotificationService.instance.setOnNotificationTap(
       handleNotificationTap,
     );
+    unawaited(initializeDesktopControls());
     unawaited(initializeNotifications());
     unawaited(loadCachedCharacters());
     unawaited(loadInitialNoticeData());
@@ -116,10 +122,70 @@ class _MapleAppShellState extends State<MapleAppShell> {
     }
   }
 
+  Future<void> initializeDesktopControls() async {
+    windowManager.addListener(this);
+    trayManager.addListener(this);
+    await windowManager.setPreventClose(true);
+    await trayManager.setIcon('assets/images/app_icon.ico');
+    await trayManager.setToolTip('메이플 숙제알리미');
+    await trayManager.setContextMenu(
+      Menu(
+        items: [
+          MenuItem(key: 'show_window', label: '열기'),
+          MenuItem.separator(),
+          MenuItem(key: 'exit_app', label: '종료'),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     notificationTimer?.cancel();
+    windowManager.removeListener(this);
+    trayManager.removeListener(this);
     super.dispose();
+  }
+
+  @override
+  void onWindowClose() {
+    unawaited(hideWindowToTray());
+  }
+
+  @override
+  void onTrayIconMouseDown() {
+    unawaited(showWindowFromTray());
+  }
+
+  @override
+  void onTrayIconRightMouseDown() {
+    unawaited(trayManager.popUpContextMenu());
+  }
+
+  @override
+  void onTrayMenuItemClick(MenuItem menuItem) {
+    switch (menuItem.key) {
+      case 'show_window':
+        unawaited(showWindowFromTray());
+      case 'exit_app':
+        unawaited(exitApplication());
+    }
+  }
+
+  Future<void> hideWindowToTray() async {
+    await windowManager.setSkipTaskbar(true);
+    await windowManager.hide();
+  }
+
+  Future<void> showWindowFromTray() async {
+    await windowManager.setSkipTaskbar(false);
+    await windowManager.show();
+    await windowManager.focus();
+  }
+
+  Future<void> exitApplication() async {
+    await trayManager.destroy();
+    await windowManager.destroy();
   }
 
   Future<void> loadCachedCharacters() async {
