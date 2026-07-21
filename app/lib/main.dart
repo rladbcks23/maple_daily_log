@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'api_client.dart';
 import 'character_cache.dart';
 import 'local_notification_service.dart';
+import 'notification_history.dart';
 import 'scheduler_cache.dart';
 import 'sunday_event_cache.dart';
 
@@ -73,7 +74,10 @@ class _MapleAppShellState extends State<MapleAppShell> {
   final CharacterCache characterCache = CharacterCache();
   final SchedulerCache schedulerCache = SchedulerCache();
   final SundayEventCache sundayEventCache = SundayEventCache();
+  final NotificationHistory notificationHistory = NotificationHistory();
 
+  Timer? notificationTimer;
+  var isCheckingScheduledNotifications = false;
   var currentSection = AppSection.character;
   var isLoading = false;
   var isSchedulerLoading = false;
@@ -94,6 +98,17 @@ class _MapleAppShellState extends State<MapleAppShell> {
     super.initState();
     unawaited(loadCachedCharacters());
     unawaited(loadInitialNoticeData());
+    notificationTimer = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) => unawaited(checkScheduledNotifications()),
+    );
+    unawaited(checkScheduledNotifications());
+  }
+
+  @override
+  void dispose() {
+    notificationTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> loadCachedCharacters() async {
@@ -111,6 +126,7 @@ class _MapleAppShellState extends State<MapleAppShell> {
       selectedCharacter = selected;
     });
     unawaited(loadScheduler(selected));
+    unawaited(checkScheduledNotifications());
   }
 
   void persistCharacters() {
@@ -429,6 +445,115 @@ class _MapleAppShellState extends State<MapleAppShell> {
         SnackBar(content: Text('알림을 보내지 못했습니다: $error')),
       );
     }
+  }
+
+  Future<void> checkScheduledNotifications() async {
+    if (isCheckingScheduledNotifications || selectedCharacters.isEmpty) {
+      return;
+    }
+
+    final now = DateTime.now();
+    if (now.hour != 21) {
+      return;
+    }
+
+    isCheckingScheduledNotifications = true;
+    try {
+      await _checkDailyLoginNotification(now);
+      if (now.weekday == DateTime.tuesday ||
+          now.weekday == DateTime.wednesday) {
+        await _checkWeeklyReminderNotification(now);
+      }
+    } finally {
+      isCheckingScheduledNotifications = false;
+    }
+  }
+
+  Future<void> _checkDailyLoginNotification(DateTime now) async {
+    final ruleKey = 'daily-login-${_dateKey(now)}';
+    if (await notificationHistory.hasSent(ruleKey)) {
+      return;
+    }
+
+    final missingCharacters = <NexonCharacterSummary>[];
+    for (final character in selectedCharacters) {
+      try {
+        final snapshot = await apiClient.fetchScheduler(character.ocid);
+        if (!snapshot.hasDailyItems) {
+          missingCharacters.add(character);
+        }
+      } on ApiException {
+        // A failed lookup should not turn into a missed-login notification.
+      }
+    }
+
+    if (missingCharacters.isEmpty) {
+      return;
+    }
+
+    await LocalNotificationService.instance.showNotification(
+      id: 1001,
+      title: '오늘 접속 기록이 없어요',
+      body: '${_characterNames(missingCharacters)} 접속 후 일일 숙제를 확인해주세요.',
+    );
+    await notificationHistory.markSent(ruleKey);
+  }
+
+  Future<void> _checkWeeklyReminderNotification(DateTime now) async {
+    final ruleKey = 'weekly-reminder-${_dateKey(now)}';
+    if (await notificationHistory.hasSent(ruleKey)) {
+      return;
+    }
+
+    final incompleteCharacters = <NexonCharacterSummary>[];
+    for (final character in selectedCharacters) {
+      try {
+        final snapshot = await apiClient.fetchScheduler(character.ocid);
+        final cachedSnapshot = await schedulerCache.load(character.ocid);
+        final displayedSnapshot = cachedSnapshot == null
+            ? snapshot
+            : snapshot.withCachedEmptySections(cachedSnapshot);
+        final hasIncompleteWeeklyContent =
+            displayedSnapshot.weeklyItems.any((item) => !item.done);
+        final hasIncompleteWeeklyBoss = displayedSnapshot.bossItems
+            .where(_isWeeklyBoss)
+            .any((item) => !item.done);
+        if (hasIncompleteWeeklyContent || hasIncompleteWeeklyBoss) {
+          incompleteCharacters.add(character);
+        }
+      } on ApiException {
+        // A failed lookup should not turn into an unfinished-content notification.
+      }
+    }
+
+    if (incompleteCharacters.isEmpty) {
+      return;
+    }
+
+    await LocalNotificationService.instance.showNotification(
+      id: 1002,
+      title: '이번 주 숙제가 남아 있어요',
+      body: '${_characterNames(incompleteCharacters)} 목요일 전에 주간 콘텐츠를 확인해주세요.',
+    );
+    await notificationHistory.markSent(ruleKey);
+  }
+
+  bool _isWeeklyBoss(SchedulerItemSummary item) {
+    final cycle = item.cycle.trim().toLowerCase();
+    return cycle == 'weekly' || cycle == 'week' || cycle == '주간';
+  }
+
+  String _dateKey(DateTime dateTime) {
+    final month = dateTime.month.toString().padLeft(2, '0');
+    final day = dateTime.day.toString().padLeft(2, '0');
+    return '${dateTime.year}-$month-$day';
+  }
+
+  String _characterNames(List<NexonCharacterSummary> characters) {
+    if (characters.length == 1) {
+      return '${characters.first.characterName}님의';
+    }
+    return '${characters.first.characterName}님 외 ${characters.length - 1}명의';
   }
 
   void selectSection(AppSection section) {

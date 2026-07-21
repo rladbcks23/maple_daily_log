@@ -10,6 +10,18 @@ class LocalNotificationService {
   var _initialized = false;
 
   Future<void> showTestNotification() async {
+    await showNotification(
+      id: 1,
+      title: '메이플 숙제알리미',
+      body: '알림이 정상적으로 작동합니다.',
+    );
+  }
+
+  Future<void> showNotification({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
     if (!_initialized) {
       await _plugin.initialize(
         const InitializationSettings(
@@ -24,9 +36,9 @@ class LocalNotificationService {
     }
 
     await _plugin.show(
-      1,
-      '메이플 숙제알리미',
-      '알림이 정상적으로 작동합니다.',
+      id,
+      title,
+      body,
       const NotificationDetails(
         windows: WindowsNotificationDetails(
           duration: WindowsNotificationDuration.short,
