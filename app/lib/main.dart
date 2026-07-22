@@ -1334,8 +1334,13 @@ class _DashboardPanel extends StatelessWidget {
       }
       for (final item in snapshot.weeklyItems) {
         weeklyContentCharacters.putIfAbsent(item.title, () => []);
-        if (item.done) {
-          weeklyContentCharacters[item.title]!.add(character.characterName);
+        final isSuro = _isGuildSuroItem(item);
+        final isCompleted = isSuro ? (item.currentCount ?? 0) >= 1 : item.done;
+        if (isCompleted) {
+          final label = isSuro
+              ? '${character.characterName} · ${item.currentCount}점'
+              : character.characterName;
+          weeklyContentCharacters[item.title]!.add(label);
         }
       }
     }
@@ -2103,6 +2108,10 @@ class _DashboardEmptyState extends StatelessWidget {
 bool _isDashboardWeeklyBoss(SchedulerItemSummary item) {
   final cycle = item.cycle.trim().toLowerCase();
   return cycle == 'weekly' || cycle == 'week' || cycle == '주간';
+}
+
+bool _isGuildSuroItem(SchedulerItemSummary item) {
+  return item.title.replaceAll(' ', '').contains('지하수로');
 }
 
 class _CharacterSelectPanel extends StatelessWidget {
