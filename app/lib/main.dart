@@ -152,8 +152,8 @@ class AppColors {
   static const selectedBorder = Color(0xFFB8C8F8);
   static const navAccent = Color(0xFFE98946);
   static const navBorder = Color(0xFFF1B98C);
-  static const completionTag = Color(0xFFE5F3F1);
-  static const completionTagText = Color(0xFF287C78);
+  static const completionTag = Color(0xFFF3F0EB);
+  static const completionTagText = Color(0xFF665E54);
   static const button = Color(0xFF3D4048);
   static const disabled = Color(0xFFB8BEC9);
 }
