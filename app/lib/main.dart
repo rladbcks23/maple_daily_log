@@ -374,12 +374,11 @@ class _MapleAppShellState extends State<_MapleAppShell>
           return a.characterName.compareTo(b.characterName);
         });
 
-      final selected = await showModalBottomSheet<NexonCharacterSummary>(
+      final selected = await showDialog<NexonCharacterSummary>(
         context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
+        barrierDismissible: true,
         builder: (context) {
-          return _CharacterPickerSheet(
+          return _CharacterPickerDialog(
             characters: sortedCharacters,
             selectedCharacter: selectedCharacter,
             selectedCharacters: selectedCharacters,
@@ -3632,8 +3631,8 @@ class _AddCharacterCard extends StatelessWidget {
   }
 }
 
-class _CharacterPickerSheet extends StatelessWidget {
-  const _CharacterPickerSheet({
+class _CharacterPickerDialog extends StatelessWidget {
+  const _CharacterPickerDialog({
     required this.characters,
     required this.selectedCharacter,
     required this.selectedCharacters,
@@ -3645,85 +3644,105 @@ class _CharacterPickerSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Container(
+    final dialogSize = MediaQuery.sizeOf(context);
+    return Dialog(
+      insetPadding: const EdgeInsets.all(28),
+      backgroundColor: Colors.transparent,
+      child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.78,
+          maxWidth: 880,
+          maxHeight: dialogSize.height * 0.78,
         ),
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    '캐릭터 선택',
-                    style: TextStyle(
-                      color: AppColors.text,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      '캐릭터 선택',
+                      style: TextStyle(
+                        color: AppColors.text,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close_rounded),
-                  tooltip: '닫기',
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (characters.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 32),
-                child: Text(
-                  '불러온 캐릭터가 없어요.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppColors.muted,
-                    fontWeight: FontWeight.w700,
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                    tooltip: '닫기',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              if (characters.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32),
+                  child: Text(
+                    '불러온 캐릭터가 없어요.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppColors.muted,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final columnCount = constraints.maxWidth >= 740
+                          ? 4
+                          : constraints.maxWidth >= 520
+                              ? 3
+                              : 2;
+                      return GridView.builder(
+                        itemCount: characters.length,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: columnCount,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.82,
+                        ),
+                        itemBuilder: (context, index) {
+                          final character = characters[index];
+                          final selected =
+                              _isSameCharacter(character, selectedCharacter);
+                          final added = selectedCharacters.any(
+                            (selectedCharacter) =>
+                                _isSameCharacter(character, selectedCharacter),
+                          );
+
+                          return _CharacterPickerCard(
+                            character: character,
+                            selected: selected,
+                            added: added,
+                            onTap: () => Navigator.of(context).pop(character),
+                          );
+                        },
+                      );
+                    },
                   ),
                 ),
-              )
-            else
-              Flexible(
-                child: ListView.separated(
-                  itemCount: characters.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final character = characters[index];
-                    final selected =
-                        _isSameCharacter(character, selectedCharacter);
-                    final added = selectedCharacters.any(
-                      (selectedCharacter) =>
-                          _isSameCharacter(character, selectedCharacter),
-                    );
-
-                    return _CharacterPickerTile(
-                      character: character,
-                      selected: selected,
-                      added: added,
-                      onTap: () => Navigator.of(context).pop(character),
-                    );
-                  },
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _CharacterPickerTile extends StatelessWidget {
-  const _CharacterPickerTile({
+class _CharacterPickerCard extends StatelessWidget {
+  const _CharacterPickerCard({
     required this.character,
     required this.selected,
     required this.added,
@@ -3738,37 +3757,40 @@ class _CharacterPickerTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? AppColors.selected : AppColors.surface,
-      borderRadius: BorderRadius.circular(13),
+      color: selected ? const Color(0xFFFFF4EC) : AppColors.surface,
+      borderRadius: BorderRadius.circular(10),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(13),
+        borderRadius: BorderRadius.circular(10),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(13),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: selected ? AppColors.selectedBorder : AppColors.softBorder,
+              width: selected ? 2 : 1,
+              color: selected ? AppColors.navBorder : AppColors.softBorder,
             ),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                width: 38,
-                height: 38,
+              Expanded(
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
                     Positioned.fill(
-                      child: _WorldImage(character: character, radius: 11),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: _CharacterImage(character: character, radius: 8),
+                      ),
                     ),
                     if (added)
                       Positioned(
-                        right: -2,
-                        bottom: -2,
+                        top: 6,
+                        right: 6,
                         child: Container(
-                          width: 16,
-                          height: 16,
+                          width: 24,
+                          height: 24,
                           decoration: BoxDecoration(
                             color: AppColors.navAccent,
                             shape: BoxShape.circle,
@@ -3777,64 +3799,35 @@ class _CharacterPickerTile extends StatelessWidget {
                           child: const Icon(
                             Icons.check_rounded,
                             color: Colors.white,
-                            size: 12,
+                            size: 16,
                           ),
                         ),
                       ),
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _displayCharacterName(character),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.text,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _characterDescription(character),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 10),
+              Text(
+                _displayCharacterName(character),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
-              if (added) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? AppColors.navAccent
-                        : const Color(0xFFFFF4EC),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: AppColors.navBorder),
-                  ),
-                  child: Text(
-                    selected ? '선택중' : '추가됨',
-                    style: TextStyle(
-                      color: selected ? Colors.white : AppColors.navAccent,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
+              const SizedBox(height: 4),
+              Text(
+                _characterDescription(character),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
-              ],
+              ),
             ],
           ),
         ),
