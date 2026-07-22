@@ -1440,8 +1440,8 @@ class _DashboardSectionTitle extends StatelessWidget {
           subtitle,
           style: const TextStyle(
             color: AppColors.muted,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ],
@@ -1659,8 +1659,8 @@ class _DashboardCharacterHeader extends StatelessWidget {
           '${character.worldName} · Lv.${character.characterLevel ?? '-'}',
           style: const TextStyle(
             color: AppColors.muted,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
           ),
         ),
         const SizedBox(height: 18),
@@ -1691,8 +1691,8 @@ class _CharacterMetric extends StatelessWidget {
           label,
           style: const TextStyle(
             color: AppColors.muted,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
           ),
         ),
         const SizedBox(height: 3),
@@ -1969,9 +1969,9 @@ class _SharedWeeklyContentSummary extends StatelessWidget {
                   child: Text(
                     item.characterNames.join(', '),
                     style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                      color: AppColors.navAccent,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
@@ -2032,16 +2032,38 @@ class _WeeklyContentCharacterList extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Text(
-                    entry.value.isEmpty ? '완료 캐릭터 없음' : entry.value.join(', '),
-                    style: TextStyle(
-                      color: entry.value.isEmpty
-                          ? AppColors.muted
-                          : AppColors.navAccent,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                  const SizedBox(width: 12),
+                  if (entry.value.isEmpty)
+                    const Text(
+                      '완료 캐릭터 없음',
+                      style: TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    )
+                  else
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.selected,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          entry.value.join(', '),
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
