@@ -334,6 +334,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     });
     unawaited(loadDashboardSnapshots());
     unawaited(loadScheduler(selected));
+    unawaited(refreshRegisteredSchedulers(skipOcid: selected.ocid));
     unawaited(checkScheduledNotifications());
   }
 
@@ -377,6 +378,15 @@ class _MapleAppShellState extends State<_MapleAppShell>
           if (entry.value != null) entry.key: entry.value!,
       };
     });
+  }
+
+  Future<void> refreshRegisteredSchedulers({String? skipOcid}) async {
+    for (final character in [...selectedCharacters]) {
+      if (character.ocid == skipOcid) {
+        continue;
+      }
+      await loadScheduler(character);
+    }
   }
 
   Future<void> loadInitialNoticeData() async {
@@ -555,22 +565,25 @@ class _MapleAppShellState extends State<_MapleAppShell>
     bool refresh = false,
   }) async {
     final cachedSnapshot = await schedulerCache.load(character.ocid);
-    if (!mounted || !_isSameCharacter(character, selectedCharacter)) {
+    if (!mounted) {
       return;
     }
 
+    final isCurrentCharacter = _isSameCharacter(character, selectedCharacter);
     final hasCachedSnapshot = cachedSnapshot != null;
-    setState(() {
-      if (refresh || hasCachedSnapshot) {
-        isSchedulerRefreshing = true;
-      } else {
-        isSchedulerLoading = true;
-      }
-      schedulerErrorMessage = null;
-      if (hasCachedSnapshot) {
-        schedulerSnapshot = cachedSnapshot;
-      }
-    });
+    if (isCurrentCharacter) {
+      setState(() {
+        if (refresh || hasCachedSnapshot) {
+          isSchedulerRefreshing = true;
+        } else {
+          isSchedulerLoading = true;
+        }
+        schedulerErrorMessage = null;
+        if (hasCachedSnapshot) {
+          schedulerSnapshot = cachedSnapshot;
+        }
+      });
+    }
 
     try {
       final snapshot = await apiClient.fetchScheduler(
@@ -581,44 +594,26 @@ class _MapleAppShellState extends State<_MapleAppShell>
           ? snapshot
           : snapshot.withCachedEmptySections(cachedSnapshot);
 
-      if (snapshot.hasDailyItems ||
-          snapshot.hasWeeklyItems ||
-          snapshot.hasBossItems) {
-        final snapshotToCache = SchedulerSnapshot(
-          dailyItems: snapshot.hasDailyItems
-              ? snapshot.dailyItems
-              : cachedSnapshot?.dailyItems ?? const [],
-          weeklyItems: snapshot.hasWeeklyItems
-              ? snapshot.weeklyItems
-              : cachedSnapshot?.weeklyItems ?? const [],
-          bossItems: snapshot.hasBossItems
-              ? snapshot
-                  .withCachedEmptySections(cachedSnapshot ?? snapshot)
-                  .bossItems
-              : cachedSnapshot?.bossItems ?? const [],
-          weeklyBossClearCount: snapshot.weeklyBossClearCount ??
-              cachedSnapshot?.weeklyBossClearCount,
-          weeklyBossClearLimit: snapshot.weeklyBossClearLimit ??
-              cachedSnapshot?.weeklyBossClearLimit,
-        );
-        await schedulerCache.save(character.ocid, snapshotToCache);
-      }
-      if (!mounted || !_isSameCharacter(character, selectedCharacter)) {
+      await schedulerCache.save(character.ocid, displayedSnapshot);
+      if (!mounted) {
         return;
       }
 
       setState(() {
-        schedulerSnapshot = displayedSnapshot;
         dashboardSnapshots = Map<String, SchedulerSnapshot>.from(
           dashboardSnapshots,
         )..[character.ocid] = displayedSnapshot;
+        if (_isSameCharacter(character, selectedCharacter)) {
+          schedulerSnapshot = displayedSnapshot;
+        }
       });
     } catch (error) {
-      if (!mounted || !_isSameCharacter(character, selectedCharacter)) {
+      if (!mounted) {
         return;
       }
 
-      if (!hasCachedSnapshot) {
+      if (!hasCachedSnapshot &&
+          _isSameCharacter(character, selectedCharacter)) {
         setState(() {
           schedulerErrorMessage = error.toString();
         });
