@@ -1409,6 +1409,7 @@ class _DashboardPanel extends StatelessWidget {
 
     return Scrollbar(
       child: SingleChildScrollView(
+        primary: true,
         padding: const EdgeInsets.only(right: 6, bottom: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
