@@ -50,6 +50,12 @@ class SundayEventCache {
   }
 
   Future<void> save(NoticeItemSummary event) async {
+    final cachedEvent = await load();
+    if (cachedEvent != null &&
+        cachedEvent.link == event.link &&
+        cachedEvent.title == event.title) {
+      return;
+    }
     final file = await _cacheFile;
     await file.writeAsString(jsonEncode({'event': event.toCacheJson()}));
   }
