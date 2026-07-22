@@ -554,6 +554,7 @@ class SchedulerItemSummary {
     final done = hasExplicitDone ||
         state == '2' ||
         _isEpicDungeonDone(normalizedTitle, current, max) ||
+        _isGuildWeeklyMissionDone(normalizedTitle, current, max) ||
         _isCountDone(normalizedTitle, current, max);
 
     return SchedulerItemSummary(
@@ -608,6 +609,19 @@ class SchedulerItemSummary {
 
   static bool _isEpicDungeon(String title) {
     return title.contains('에픽 던전');
+  }
+
+  static bool _isGuildWeeklyMissionDone(
+    String title,
+    int? current,
+    int? max,
+  ) {
+    return title.contains('길드') &&
+        title.contains('주간') &&
+        current != null &&
+        max != null &&
+        max > 0 &&
+        current >= max;
   }
 
   static bool _isCountDone(String title, int? current, int? max) {
