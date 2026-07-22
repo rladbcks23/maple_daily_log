@@ -2058,16 +2058,15 @@ class _SharedWeeklyContentSummary extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(49, 0, 20, 15),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Text(
-                    (item.completionDetails.isEmpty
-                            ? item.characterNames
-                            : item.completionDetails)
-                        .join(', '),
-                    style: const TextStyle(
-                      color: AppColors.navAccent,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final label in item.completionDetails.isEmpty
+                          ? item.characterNames
+                          : item.completionDetails)
+                        _CompletionCharacterTag(label: label),
+                    ],
                   ),
                 ),
               ),
@@ -2075,6 +2074,33 @@ class _SharedWeeklyContentSummary extends StatelessWidget {
               const Divider(height: 1, color: AppColors.border),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _CompletionCharacterTag extends StatelessWidget {
+  const _CompletionCharacterTag({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.completionTag,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.completionTagBorder),
+      ),
+      child: Text(
+        label,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: AppColors.completionTagText,
+          fontSize: 14,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -2142,27 +2168,8 @@ class _WeeklyContentCharacterList extends StatelessWidget {
                       constraints: const BoxConstraints(maxWidth: 280),
                       child: Align(
                         alignment: Alignment.centerRight,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.completionTag,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: AppColors.completionTagBorder,
-                            ),
-                          ),
-                          child: Text(
-                            entry.value.join(', '),
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.completionTagText,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                        child: _CompletionCharacterTag(
+                          label: entry.value.join(', '),
                         ),
                       ),
                     ),
