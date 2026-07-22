@@ -27,7 +27,14 @@ class SundayEventCache {
       if (decoded is! Map) {
         return null;
       }
-      return NoticeItemSummary.fromJson(Map<String, dynamic>.from(decoded));
+      final cachedEvent = decoded['event'] ?? decoded;
+      if (cachedEvent is! Map) {
+        return null;
+      }
+      final event = NoticeItemSummary.fromJson(
+        Map<String, dynamic>.from(cachedEvent),
+      );
+      return event.title.isEmpty ? null : event;
     } on FileSystemException {
       return null;
     } on FormatException {
@@ -35,8 +42,15 @@ class SundayEventCache {
     }
   }
 
+  Future<void> ensure() async {
+    final file = await _cacheFile;
+    if (!await file.exists()) {
+      await file.writeAsString(jsonEncode({'event': null}));
+    }
+  }
+
   Future<void> save(NoticeItemSummary event) async {
     final file = await _cacheFile;
-    await file.writeAsString(jsonEncode(event.toCacheJson()));
+    await file.writeAsString(jsonEncode({'event': event.toCacheJson()}));
   }
 }

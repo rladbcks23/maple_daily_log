@@ -220,7 +220,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     );
     unawaited(initializeDesktopControls());
     unawaited(initializeNotifications());
-    unawaited(loadCachedCharacters());
+    unawaited(initializeCachedState());
     if (!widget.startupData.hasLoadedNotices) {
       unawaited(loadInitialNoticeData());
     }
@@ -302,6 +302,19 @@ class _MapleAppShellState extends State<_MapleAppShell>
   Future<void> exitApplication() async {
     await trayManager.destroy();
     await windowManager.destroy();
+  }
+
+  Future<void> initializeCachedState() async {
+    await Future.wait([
+      characterCache.ensure(),
+      characterProfileCache.ensure(),
+      schedulerCache.ensure(),
+      sundayEventCache.ensure(),
+    ]);
+    if (!mounted) {
+      return;
+    }
+    await loadCachedCharacters();
   }
 
   Future<void> loadCachedCharacters() async {

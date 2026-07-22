@@ -57,6 +57,15 @@ class CharacterCache {
     }
   }
 
+  Future<void> ensure() async {
+    final file = await _cacheFile;
+    if (!await file.exists()) {
+      await file.writeAsString(
+        jsonEncode({'characters': const [], 'selectedOcid': ''}),
+      );
+    }
+  }
+
   Future<void> save(
     List<NexonCharacterSummary> characters,
     NexonCharacterSummary? selectedCharacter,

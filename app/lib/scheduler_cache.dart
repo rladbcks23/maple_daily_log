@@ -38,6 +38,13 @@ class SchedulerCache {
     }
   }
 
+  Future<void> ensure() async {
+    final file = await _cacheFile;
+    if (!await file.exists()) {
+      await file.writeAsString(jsonEncode({}));
+    }
+  }
+
   Future<void> save(String ocid, SchedulerSnapshot snapshot) async {
     final file = await _cacheFile;
     Map<String, dynamic> cache = {};

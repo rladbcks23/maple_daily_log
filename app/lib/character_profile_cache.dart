@@ -46,6 +46,13 @@ class CharacterProfileCache {
     }
   }
 
+  Future<void> ensure() async {
+    final file = await _cacheFile;
+    if (!await file.exists()) {
+      await file.writeAsString(jsonEncode({'characters': const []}));
+    }
+  }
+
   Future<void> mergeAndSave(
     Iterable<NexonCharacterSummary> characters,
   ) async {
