@@ -157,6 +157,7 @@ class AppColors {
 }
 
 enum AppSection {
+  dashboard('대시보드', Icons.dashboard_outlined),
   character('캐릭터 선택', Icons.person_add_alt_1_rounded),
   scheduler('스케쥴러', Icons.event_note_rounded),
   events('진행중인 이벤트', Icons.celebration_rounded),
@@ -771,7 +772,9 @@ class _MapleAppShellState extends State<_MapleAppShell>
   }
 
   void selectSection(AppSection section) {
-    if (section != AppSection.character && selectedCharacter == null) {
+    if (section != AppSection.dashboard &&
+        section != AppSection.character &&
+        selectedCharacter == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('캐릭터를 먼저 선택해주세요.')),
       );
@@ -856,6 +859,16 @@ class _AppSidebar extends StatelessWidget {
             children: [
               const _SidebarBrand(),
               const SizedBox(height: 18),
+              _SidebarNavItem(
+                section: AppSection.dashboard,
+                selected: currentSection == AppSection.dashboard,
+                enabled: true,
+                onPressed: () => onSelectSection(AppSection.dashboard),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+                child: Divider(height: 1, color: AppColors.border),
+              ),
               _SidebarCharacterButton(
                 selectedCharacter: selectedCharacter,
                 selected: currentSection == AppSection.character,
@@ -866,7 +879,8 @@ class _AppSidebar extends StatelessWidget {
                 child: Divider(height: 1, color: AppColors.border),
               ),
               for (final section in AppSection.values)
-                if (section != AppSection.character)
+                if (section != AppSection.dashboard &&
+                    section != AppSection.character)
                   _SidebarNavItem(
                     section: section,
                     selected: currentSection == section,
@@ -1141,7 +1155,10 @@ class _MainPanel extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                if (currentSection != AppSection.character) ...[
+                if (currentSection == AppSection.scheduler ||
+                    currentSection == AppSection.events ||
+                    currentSection == AppSection.notices ||
+                    currentSection == AppSection.sunday) ...[
                   const SizedBox(width: 5),
                   Tooltip(
                     message: '강제 새로고침',
@@ -1178,29 +1195,31 @@ class _MainPanel extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Expanded(
-              child: currentSection == AppSection.character
-                  ? _CharacterSelectPanel(
-                      selectedCharacter: selectedCharacter,
-                      selectedCharacters: selectedCharacters,
-                      isLoading: isLoading,
-                      errorMessage: errorMessage,
-                      onAddCharacter: onAddCharacter,
-                      onSelectCharacter: onSelectCharacter,
-                      onDeleteCharacter: onDeleteCharacter,
-                      onMoveCharacter: onMoveCharacter,
-                    )
-                  : _LockedFeaturePanel(
-                      section: currentSection,
-                      selectedCharacter: selectedCharacter,
-                      schedulerSnapshot: schedulerSnapshot,
-                      noticeItems: noticeItems,
-                      sundayEvent: sundayEvent,
-                      schedulerLoading: isSchedulerLoading,
-                      noticeLoading: isNoticeLoading,
-                      schedulerErrorMessage: schedulerErrorMessage,
-                      noticeErrorMessage: noticeErrorMessage,
-                      onSelectSection: onSelectSection,
-                    ),
+              child: switch (currentSection) {
+                AppSection.dashboard => const _DashboardPlaceholder(),
+                AppSection.character => _CharacterSelectPanel(
+                    selectedCharacter: selectedCharacter,
+                    selectedCharacters: selectedCharacters,
+                    isLoading: isLoading,
+                    errorMessage: errorMessage,
+                    onAddCharacter: onAddCharacter,
+                    onSelectCharacter: onSelectCharacter,
+                    onDeleteCharacter: onDeleteCharacter,
+                    onMoveCharacter: onMoveCharacter,
+                  ),
+                _ => _LockedFeaturePanel(
+                    section: currentSection,
+                    selectedCharacter: selectedCharacter,
+                    schedulerSnapshot: schedulerSnapshot,
+                    noticeItems: noticeItems,
+                    sundayEvent: sundayEvent,
+                    schedulerLoading: isSchedulerLoading,
+                    noticeLoading: isNoticeLoading,
+                    schedulerErrorMessage: schedulerErrorMessage,
+                    noticeErrorMessage: noticeErrorMessage,
+                    onSelectSection: onSelectSection,
+                  ),
+              },
             ),
           ],
         ),
@@ -1238,6 +1257,44 @@ class _RefreshButton extends StatelessWidget {
       disabledColor: AppColors.disabled,
       iconSize: 22,
       visualDensity: VisualDensity.compact,
+    );
+  }
+}
+
+class _DashboardPlaceholder extends StatelessWidget {
+  const _DashboardPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 360,
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.dashboard_outlined,
+              size: 34,
+              color: AppColors.navAccent,
+            ),
+            SizedBox(height: 14),
+            Text(
+              '대시보드를 준비하고 있어요.',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1396,7 +1453,10 @@ class _LockedFeaturePanel extends StatelessWidget {
             errorMessage: noticeErrorMessage,
           ),
         AppSection.sunday => _SundayOverviewPanel(event: sundayEvent),
-        AppSection.character || AppSection.scheduler => const SizedBox.shrink(),
+        AppSection.dashboard ||
+        AppSection.character ||
+        AppSection.scheduler =>
+          const SizedBox.shrink(),
       };
     }
 
