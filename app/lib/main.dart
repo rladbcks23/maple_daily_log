@@ -7,6 +7,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'api_client.dart';
 import 'character_cache.dart';
+import 'character_profile_cache.dart';
 import 'local_notification_service.dart';
 import 'notification_history.dart';
 import 'scheduler_cache.dart';
@@ -186,6 +187,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     with WindowListener, TrayListener {
   final ApiClient apiClient = ApiClient();
   final CharacterCache characterCache = CharacterCache();
+  final CharacterProfileCache characterProfileCache = CharacterProfileCache();
   final SchedulerCache schedulerCache = SchedulerCache();
   final SundayEventCache sundayEventCache = SundayEventCache();
   final NotificationHistory notificationHistory = NotificationHistory();
@@ -360,12 +362,23 @@ class _MapleAppShellState extends State<_MapleAppShell>
     });
 
     try {
+      final cachedProfilesFuture = characterProfileCache.load();
       final characters = await apiClient.fetchNexonCharacters();
       if (!mounted) {
         return;
       }
+      final cachedProfiles = await cachedProfilesFuture;
+      if (!mounted) {
+        return;
+      }
 
-      final sortedCharacters = [...characters]..sort((a, b) {
+      final sortedCharacters = characters
+          .map(
+            (character) =>
+                character.merge(cachedProfiles[character.ocid] ?? character),
+          )
+          .toList()
+        ..sort((a, b) {
           final levelComparison =
               (b.characterLevel ?? -1).compareTo(a.characterLevel ?? -1);
           if (levelComparison != 0) {
@@ -383,6 +396,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
             selectedCharacter: selectedCharacter,
             selectedCharacters: selectedCharacters,
             loadCharacterBasic: apiClient.fetchCharacterBasic,
+            cacheCharacterBasics: characterProfileCache.mergeAndSave,
           );
         },
       );
@@ -394,6 +408,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
         if (!mounted) {
           return;
         }
+        unawaited(characterProfileCache.mergeAndSave([detailed]));
 
         setState(() {
           final nextCharacters = [...selectedCharacters];
@@ -3640,6 +3655,7 @@ class _CharacterPickerDialog extends StatefulWidget {
     required this.selectedCharacter,
     required this.selectedCharacters,
     required this.loadCharacterBasic,
+    required this.cacheCharacterBasics,
   });
 
   final List<NexonCharacterSummary> characters;
@@ -3647,6 +3663,8 @@ class _CharacterPickerDialog extends StatefulWidget {
   final List<NexonCharacterSummary> selectedCharacters;
   final Future<NexonCharacterSummary> Function(NexonCharacterSummary character)
       loadCharacterBasic;
+  final Future<void> Function(Iterable<NexonCharacterSummary> characters)
+      cacheCharacterBasics;
 
   @override
   State<_CharacterPickerDialog> createState() => _CharacterPickerDialogState();
@@ -3659,16 +3677,21 @@ class _CharacterPickerDialogState extends State<_CharacterPickerDialog> {
   void initState() {
     super.initState();
     characters = [...widget.characters];
-    unawaited(_loadCharacterImages());
+    unawaited(_loadMissingCharacterImages());
   }
 
-  Future<void> _loadCharacterImages() async {
+  Future<void> _loadMissingCharacterImages() async {
     const batchSize = 4;
-    for (var start = 0; start < characters.length; start += batchSize) {
-      final end = start + batchSize > characters.length
-          ? characters.length
+    final missingImageCharacters = characters
+        .where((character) => character.characterImage.isEmpty)
+        .toList();
+    for (var start = 0;
+        start < missingImageCharacters.length;
+        start += batchSize) {
+      final end = start + batchSize > missingImageCharacters.length
+          ? missingImageCharacters.length
           : start + batchSize;
-      final batch = characters.sublist(start, end);
+      final batch = missingImageCharacters.sublist(start, end);
       final details = await Future.wait(
         batch.map(widget.loadCharacterBasic),
       );
@@ -3685,6 +3708,7 @@ class _CharacterPickerDialogState extends State<_CharacterPickerDialog> {
           }
         }
       });
+      await widget.cacheCharacterBasics(details);
     }
   }
 
@@ -3829,11 +3853,7 @@ class _CharacterPickerCard extends StatelessWidget {
                     Positioned.fill(
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: _CharacterImage(
-                          character: character,
-                          radius: 8,
-                          scale: 2.05,
-                        ),
+                        child: _CharacterImage(character: character, radius: 8),
                       ),
                     ),
                     if (added)
@@ -3892,12 +3912,10 @@ class _CharacterImage extends StatelessWidget {
   const _CharacterImage({
     required this.character,
     required this.radius,
-    this.scale = 1.45,
   });
 
   final NexonCharacterSummary character;
   final double radius;
-  final double scale;
 
   @override
   Widget build(BuildContext context) {
@@ -3922,7 +3940,7 @@ class _CharacterImage extends StatelessWidget {
             width: 96,
             height: 96,
             child: Transform.scale(
-              scale: scale,
+              scale: 1.45,
               child: image,
             ),
           ),
