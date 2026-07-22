@@ -3829,7 +3829,11 @@ class _CharacterPickerCard extends StatelessWidget {
                     Positioned.fill(
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: _CharacterImage(character: character, radius: 8),
+                        child: _CharacterImage(
+                          character: character,
+                          radius: 8,
+                          scale: 2.05,
+                        ),
                       ),
                     ),
                     if (added)
@@ -3888,10 +3892,12 @@ class _CharacterImage extends StatelessWidget {
   const _CharacterImage({
     required this.character,
     required this.radius,
+    this.scale = 1.45,
   });
 
   final NexonCharacterSummary character;
   final double radius;
+  final double scale;
 
   @override
   Widget build(BuildContext context) {
@@ -3916,7 +3922,7 @@ class _CharacterImage extends StatelessWidget {
             width: 96,
             height: 96,
             child: Transform.scale(
-              scale: 1.45,
+              scale: scale,
               child: image,
             ),
           ),
