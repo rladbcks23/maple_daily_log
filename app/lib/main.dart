@@ -475,7 +475,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
         });
         persistCharacters();
         unawaited(loadDashboardSnapshots());
-        await loadScheduler(detailed);
+        await loadScheduler(detailed, refresh: true);
       }
     } catch (error) {
       if (!mounted) {
@@ -505,7 +505,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
       schedulerErrorMessage = null;
     });
     persistCharacters();
-    await loadScheduler(character);
+    await loadScheduler(character, refresh: true);
   }
 
   void openCharacterScheduler(NexonCharacterSummary character) {
