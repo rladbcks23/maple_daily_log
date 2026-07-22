@@ -152,6 +152,8 @@ class AppColors {
   static const selectedBorder = Color(0xFFB8C8F8);
   static const navAccent = Color(0xFFE98946);
   static const navBorder = Color(0xFFF1B98C);
+  static const completionTag = Color(0xFFE5F3F1);
+  static const completionTagText = Color(0xFF287C78);
   static const button = Color(0xFF3D4048);
   static const disabled = Color(0xFFB8BEC9);
 }
@@ -2055,14 +2057,14 @@ class _WeeklyContentCharacterList extends StatelessWidget {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: AppColors.selected,
+                          color: AppColors.completionTag,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           entry.value.join(', '),
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: AppColors.primary,
+                            color: AppColors.completionTagText,
                             fontSize: 14,
                             fontWeight: FontWeight.w900,
                           ),
