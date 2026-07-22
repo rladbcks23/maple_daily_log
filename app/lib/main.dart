@@ -201,6 +201,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   NexonCharacterSummary? selectedCharacter;
   List<NexonCharacterSummary> selectedCharacters = const [];
   SchedulerSnapshot? schedulerSnapshot;
+  Map<String, SchedulerSnapshot> dashboardSnapshots = const {};
   List<NoticeItemSummary> noticeItems = const [];
   NoticeItemSummary? sundayEvent;
 
@@ -312,12 +313,31 @@ class _MapleAppShellState extends State<_MapleAppShell>
       selectedCharacters = cachedData.characters;
       selectedCharacter = selected;
     });
+    unawaited(loadDashboardSnapshots());
     unawaited(loadScheduler(selected));
     unawaited(checkScheduledNotifications());
   }
 
   void persistCharacters() {
     unawaited(characterCache.save(selectedCharacters, selectedCharacter));
+  }
+
+  Future<void> loadDashboardSnapshots() async {
+    final entries = await Future.wait(
+      selectedCharacters.map((character) async {
+        final snapshot = await schedulerCache.load(character.ocid);
+        return MapEntry(character.ocid, snapshot);
+      }),
+    );
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      dashboardSnapshots = {
+        for (final entry in entries)
+          if (entry.value != null) entry.key: entry.value!,
+      };
+    });
   }
 
   Future<void> loadInitialNoticeData() async {
@@ -386,6 +406,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
           schedulerErrorMessage = null;
         });
         persistCharacters();
+        unawaited(loadDashboardSnapshots());
         await loadScheduler(detailed);
       }
     } catch (error) {
@@ -427,6 +448,9 @@ class _MapleAppShellState extends State<_MapleAppShell>
       selectedCharacters = selectedCharacters
           .where((selected) => !_isSameCharacter(selected, character))
           .toList();
+      dashboardSnapshots = Map<String, SchedulerSnapshot>.from(
+        dashboardSnapshots,
+      )..remove(character.ocid);
       if (deletesSelected) {
         nextSelectedCharacter =
             selectedCharacters.isEmpty ? null : selectedCharacters.first;
@@ -527,6 +551,9 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
       setState(() {
         schedulerSnapshot = displayedSnapshot;
+        dashboardSnapshots = Map<String, SchedulerSnapshot>.from(
+          dashboardSnapshots,
+        )..[character.ocid] = displayedSnapshot;
       });
     } catch (error) {
       if (!mounted || !_isSameCharacter(character, selectedCharacter)) {
@@ -807,6 +834,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
               selectedCharacter: selectedCharacter,
               selectedCharacters: selectedCharacters,
               schedulerSnapshot: schedulerSnapshot,
+              dashboardSnapshots: dashboardSnapshots,
               noticeItems: noticeItems,
               sundayEvent: sundayEvent,
               isLoading: isLoading,
@@ -1099,6 +1127,7 @@ class _MainPanel extends StatelessWidget {
     required this.selectedCharacter,
     required this.selectedCharacters,
     required this.schedulerSnapshot,
+    required this.dashboardSnapshots,
     required this.noticeItems,
     required this.sundayEvent,
     required this.isLoading,
@@ -1122,6 +1151,7 @@ class _MainPanel extends StatelessWidget {
   final NexonCharacterSummary? selectedCharacter;
   final List<NexonCharacterSummary> selectedCharacters;
   final SchedulerSnapshot? schedulerSnapshot;
+  final Map<String, SchedulerSnapshot> dashboardSnapshots;
   final List<NoticeItemSummary> noticeItems;
   final NoticeItemSummary? sundayEvent;
   final bool isLoading;
@@ -1200,7 +1230,10 @@ class _MainPanel extends StatelessWidget {
             const SizedBox(height: 24),
             Expanded(
               child: switch (currentSection) {
-                AppSection.dashboard => const _DashboardPlaceholder(),
+                AppSection.dashboard => _DashboardPanel(
+                    characters: selectedCharacters,
+                    snapshots: dashboardSnapshots,
+                  ),
                 AppSection.character => _CharacterSelectPanel(
                     selectedCharacter: selectedCharacter,
                     selectedCharacters: selectedCharacters,
@@ -1265,35 +1298,305 @@ class _RefreshButton extends StatelessWidget {
   }
 }
 
-class _DashboardPlaceholder extends StatelessWidget {
-  const _DashboardPlaceholder();
+class _DashboardPanel extends StatelessWidget {
+  const _DashboardPanel({required this.characters, required this.snapshots});
+
+  final List<NexonCharacterSummary> characters;
+  final Map<String, SchedulerSnapshot> snapshots;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 360,
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: const Column(
-          mainAxisSize: MainAxisSize.min,
+    if (characters.isEmpty) {
+      return const _DashboardEmptyState(
+        message: '등록된 캐릭터가 없습니다.\n캐릭터 선택에서 알림 대상을 추가해주세요.',
+      );
+    }
+
+    SchedulerSnapshot? accountSnapshot;
+    for (final character in characters) {
+      final snapshot = snapshots[character.ocid];
+      if (snapshot?.weeklyBossClearLimit != null) {
+        accountSnapshot = snapshot;
+        break;
+      }
+    }
+
+    final weeklyContentCharacters = <String, List<String>>{};
+    for (final character in characters) {
+      final snapshot = snapshots[character.ocid];
+      if (snapshot == null) {
+        continue;
+      }
+      for (final item in snapshot.weeklyItems) {
+        weeklyContentCharacters.putIfAbsent(item.title, () => []);
+        if (item.done) {
+          weeklyContentCharacters[item.title]!.add(character.characterName);
+        }
+      }
+    }
+
+    final clearCount = accountSnapshot?.weeklyBossClearCount;
+    final clearLimit = accountSnapshot?.weeklyBossClearLimit;
+    final hasAccountBossData = clearCount != null && clearLimit != null;
+
+    return Scrollbar(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.only(right: 6, bottom: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(
-              Icons.dashboard_outlined,
-              size: 34,
-              color: AppColors.navAccent,
+            const _DashboardSectionTitle(
+              title: '메이플 ID 주간 보스',
+              subtitle: '이번 주 계정 단위로 처치할 수 있는 보스 현황',
             ),
-            SizedBox(height: 14),
-            Text(
-              '대시보드를 준비하고 있어요.',
+            const SizedBox(height: 12),
+            _AccountBossSummary(
+              clearCount: clearCount,
+              clearLimit: clearLimit,
+              hasData: hasAccountBossData,
+            ),
+            const SizedBox(height: 30),
+            const _DashboardSectionTitle(
+              title: '캐릭터별 진행 현황',
+              subtitle: '등록한 캐릭터의 주간 보스와 일일 콘텐츠 완료 수',
+            ),
+            const SizedBox(height: 12),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final cardWidth = constraints.maxWidth >= 900
+                    ? (constraints.maxWidth - 18) / 2
+                    : constraints.maxWidth;
+                return Wrap(
+                  spacing: 18,
+                  runSpacing: 18,
+                  children: [
+                    for (final character in characters)
+                      SizedBox(
+                        width: cardWidth,
+                        child: _CharacterProgressCard(
+                          character: character,
+                          snapshot: snapshots[character.ocid],
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 30),
+            const _DashboardSectionTitle(
+              title: '주간 콘텐츠 완료 캐릭터',
+              subtitle: '주간 제한 콘텐츠를 어느 캐릭터로 완료했는지 확인합니다.',
+            ),
+            const SizedBox(height: 12),
+            _WeeklyContentCharacterList(
+              items: weeklyContentCharacters,
+              hasSchedulerData: snapshots.isNotEmpty,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DashboardSectionTitle extends StatelessWidget {
+  const _DashboardSectionTitle({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: AppColors.text,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: const TextStyle(
+            color: AppColors.muted,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AccountBossSummary extends StatelessWidget {
+  const _AccountBossSummary({
+    required this.clearCount,
+    required this.clearLimit,
+    required this.hasData,
+  });
+
+  final int? clearCount;
+  final int? clearLimit;
+  final bool hasData;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!hasData) {
+      return const _DashboardEmptyState(
+        message: '주간 보스 데이터를 아직 불러오지 못했습니다.\n캐릭터의 스케쥴러를 조회하면 현황이 표시됩니다.',
+      );
+    }
+
+    final count = clearCount!;
+    final limit = clearLimit!;
+    final progress = limit == 0 ? 0.0 : (count / limit).clamp(0.0, 1.0);
+    final percentage = (progress * 100).round();
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 116,
+            height: 116,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 108,
+                  height: 108,
+                  child: CircularProgressIndicator(
+                    value: progress,
+                    strokeWidth: 12,
+                    backgroundColor: AppColors.selected,
+                    color: AppColors.navAccent,
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$percentage%',
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const Text(
+                      '처치 완료',
+                      style: TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 26),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '이번 주 주간 보스',
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '$count / $limit',
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  '남은 처치 가능 횟수 ${limit - count}회',
+                  style: const TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CharacterProgressCard extends StatelessWidget {
+  const _CharacterProgressCard(
+      {required this.character, required this.snapshot});
+
+  final NexonCharacterSummary character;
+  final SchedulerSnapshot? snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    if (snapshot == null) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: _dashboardCardDecoration(),
+        child: _DashboardCharacterHeader(
+            character: character,
+            child: const Text(
+              '스케쥴러 데이터가 없습니다.',
               style: TextStyle(
-                color: AppColors.text,
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
+                  color: AppColors.muted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600),
+            )),
+      );
+    }
+
+    final weeklyBosses = snapshot!.bossItems
+        .where((item) => _isDashboardWeeklyBoss(item))
+        .toList();
+    final completedBosses = weeklyBosses.where((item) => item.done).length;
+    final completedDaily =
+        snapshot!.dailyItems.where((item) => item.done).length;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: _dashboardCardDecoration(),
+      child: _DashboardCharacterHeader(
+        character: character,
+        child: Row(
+          children: [
+            Expanded(
+              child: _CharacterMetric(
+                icon: Icons.shield_outlined,
+                label: '주간 보스',
+                value: '$completedBosses / ${weeklyBosses.length}',
+              ),
+            ),
+            Container(width: 1, height: 42, color: AppColors.border),
+            Expanded(
+              child: _CharacterMetric(
+                icon: Icons.today_outlined,
+                label: '일일 콘텐츠',
+                value: '$completedDaily / ${snapshot!.dailyItems.length}',
               ),
             ),
           ],
@@ -1301,6 +1604,185 @@ class _DashboardPlaceholder extends StatelessWidget {
       ),
     );
   }
+}
+
+BoxDecoration _dashboardCardDecoration() => BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: AppColors.border),
+    );
+
+class _DashboardCharacterHeader extends StatelessWidget {
+  const _DashboardCharacterHeader(
+      {required this.character, required this.child});
+
+  final NexonCharacterSummary character;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          character.characterName,
+          style: const TextStyle(
+            color: AppColors.text,
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          '${character.worldName} · Lv.${character.characterLevel ?? '-'}',
+          style: const TextStyle(
+            color: AppColors.muted,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 18),
+        child,
+      ],
+    );
+  }
+}
+
+class _CharacterMetric extends StatelessWidget {
+  const _CharacterMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, size: 20, color: AppColors.navAccent),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.muted,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.text,
+            fontSize: 17,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _WeeklyContentCharacterList extends StatelessWidget {
+  const _WeeklyContentCharacterList({
+    required this.items,
+    required this.hasSchedulerData,
+  });
+
+  final Map<String, List<String>> items;
+  final bool hasSchedulerData;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!hasSchedulerData) {
+      return const _DashboardEmptyState(
+        message: '스케쥴러를 조회한 캐릭터가 없습니다.',
+      );
+    }
+    if (items.isEmpty) {
+      return const _DashboardEmptyState(
+        message: '등록된 주간 콘텐츠가 없습니다.',
+      );
+    }
+
+    return Container(
+      decoration: _dashboardCardDecoration(),
+      child: Column(
+        children: [
+          for (final entry in items.entries) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.assignment_turned_in_outlined,
+                    size: 19,
+                    color: AppColors.navAccent,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      entry.key,
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    entry.value.isEmpty ? '완료 캐릭터 없음' : entry.value.join(', '),
+                    style: TextStyle(
+                      color: entry.value.isEmpty
+                          ? AppColors.muted
+                          : AppColors.navAccent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (entry.key != items.entries.last.key)
+              const Divider(height: 1, color: AppColors.border),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardEmptyState extends StatelessWidget {
+  const _DashboardEmptyState({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+      decoration: _dashboardCardDecoration(),
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: AppColors.muted,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          height: 1.45,
+        ),
+      ),
+    );
+  }
+}
+
+bool _isDashboardWeeklyBoss(SchedulerItemSummary item) {
+  final cycle = item.cycle.trim().toLowerCase();
+  return cycle == 'weekly' || cycle == 'week' || cycle == '주간';
 }
 
 class _CharacterSelectPanel extends StatelessWidget {
