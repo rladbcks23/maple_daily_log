@@ -1312,13 +1312,20 @@ class _DashboardPanel extends StatelessWidget {
       );
     }
 
-    SchedulerSnapshot? accountSnapshot;
+    var weeklyBossClearCount = 0;
+    var weeklyBossClearLimit = 0;
+    var loadedCharacterCount = 0;
     for (final character in characters) {
       final snapshot = snapshots[character.ocid];
-      if (snapshot?.weeklyBossClearLimit != null) {
-        accountSnapshot = snapshot;
-        break;
+      if (snapshot == null) {
+        continue;
       }
+      loadedCharacterCount++;
+      final weeklyBosses =
+          snapshot.bossItems.where(_isDashboardWeeklyBoss).toList();
+      weeklyBossClearCount += snapshot.weeklyBossClearCount ??
+          weeklyBosses.where((item) => item.done).length;
+      weeklyBossClearLimit += snapshot.weeklyBossClearLimit ?? 12;
     }
 
     final weeklyContentCharacters = <String, List<String>>{};
@@ -1335,9 +1342,11 @@ class _DashboardPanel extends StatelessWidget {
       }
     }
 
-    final clearCount = accountSnapshot?.weeklyBossClearCount;
-    final clearLimit = accountSnapshot?.weeklyBossClearLimit;
-    final hasAccountBossData = clearCount != null && clearLimit != null;
+    final monsterParkUsage = _buildMonsterParkUsage(characters, snapshots);
+    final sharedContentUsage = _buildSharedWeeklyContentUsage(
+      characters,
+      snapshots,
+    );
 
     return Scrollbar(
       child: SingleChildScrollView(
@@ -1346,15 +1355,23 @@ class _DashboardPanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const _DashboardSectionTitle(
-              title: '메이플 ID 주간 보스',
-              subtitle: '이번 주 계정 단위로 처치할 수 있는 보스 현황',
+              title: '등록 캐릭터 주간 보스',
+              subtitle: '캐릭터당 주간 보스 12회 기준으로 집계합니다.',
             ),
             const SizedBox(height: 12),
             _AccountBossSummary(
-              clearCount: clearCount,
-              clearLimit: clearLimit,
-              hasData: hasAccountBossData,
+              clearCount: weeklyBossClearCount,
+              clearLimit: weeklyBossClearLimit,
+              loadedCharacterCount: loadedCharacterCount,
+              totalCharacterCount: characters.length,
             ),
+            const SizedBox(height: 30),
+            const _DashboardSectionTitle(
+              title: '몬스터파크',
+              subtitle: '월드당 일 14회, 캐릭터당 일 7회 제한입니다.',
+            ),
+            const SizedBox(height: 12),
+            _MonsterParkSummary(items: monsterParkUsage),
             const SizedBox(height: 30),
             const _DashboardSectionTitle(
               title: '캐릭터별 진행 현황',
@@ -1388,6 +1405,8 @@ class _DashboardPanel extends StatelessWidget {
               subtitle: '주간 제한 콘텐츠를 어느 캐릭터로 완료했는지 확인합니다.',
             ),
             const SizedBox(height: 12),
+            _SharedWeeklyContentSummary(items: sharedContentUsage),
+            const SizedBox(height: 18),
             _WeeklyContentCharacterList(
               items: weeklyContentCharacters,
               hasSchedulerData: snapshots.isNotEmpty,
@@ -1436,23 +1455,25 @@ class _AccountBossSummary extends StatelessWidget {
   const _AccountBossSummary({
     required this.clearCount,
     required this.clearLimit,
-    required this.hasData,
+    required this.loadedCharacterCount,
+    required this.totalCharacterCount,
   });
 
-  final int? clearCount;
-  final int? clearLimit;
-  final bool hasData;
+  final int clearCount;
+  final int clearLimit;
+  final int loadedCharacterCount;
+  final int totalCharacterCount;
 
   @override
   Widget build(BuildContext context) {
-    if (!hasData) {
+    if (loadedCharacterCount == 0) {
       return const _DashboardEmptyState(
         message: '주간 보스 데이터를 아직 불러오지 못했습니다.\n캐릭터의 스케쥴러를 조회하면 현황이 표시됩니다.',
       );
     }
 
-    final count = clearCount!;
-    final limit = clearLimit!;
+    final count = clearCount;
+    final limit = clearLimit;
     final progress = limit == 0 ? 0.0 : (count / limit).clamp(0.0, 1.0);
     final percentage = (progress * 100).round();
 
@@ -1529,7 +1550,7 @@ class _AccountBossSummary extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  '남은 처치 가능 횟수 ${limit - count}회',
+                  '조회된 캐릭터 $loadedCharacterCount / $totalCharacterCount명 · 남은 처치 가능 횟수 ${limit - count}회',
                   style: const TextStyle(
                     color: AppColors.muted,
                     fontSize: 12,
@@ -1573,7 +1594,9 @@ class _CharacterProgressCard extends StatelessWidget {
     final weeklyBosses = snapshot!.bossItems
         .where((item) => _isDashboardWeeklyBoss(item))
         .toList();
-    final completedBosses = weeklyBosses.where((item) => item.done).length;
+    final completedBosses = snapshot!.weeklyBossClearCount ??
+        weeklyBosses.where((item) => item.done).length;
+    final weeklyBossLimit = snapshot!.weeklyBossClearLimit ?? 12;
     final completedDaily =
         snapshot!.dailyItems.where((item) => item.done).length;
 
@@ -1588,7 +1611,7 @@ class _CharacterProgressCard extends StatelessWidget {
               child: _CharacterMetric(
                 icon: Icons.shield_outlined,
                 label: '주간 보스',
-                value: '$completedBosses / ${weeklyBosses.length}',
+                value: '$completedBosses / $weeklyBossLimit',
               ),
             ),
             Container(width: 1, height: 42, color: AppColors.border),
@@ -1683,6 +1706,282 @@ class _CharacterMetric extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _MonsterParkWorldUsage {
+  const _MonsterParkWorldUsage({
+    required this.worldName,
+    required this.totalCount,
+    required this.characterCounts,
+  });
+
+  final String worldName;
+  final int totalCount;
+  final List<_MonsterParkCharacterUsage> characterCounts;
+}
+
+class _MonsterParkCharacterUsage {
+  const _MonsterParkCharacterUsage({
+    required this.characterName,
+    required this.count,
+  });
+
+  final String characterName;
+  final int count;
+}
+
+List<_MonsterParkWorldUsage> _buildMonsterParkUsage(
+  List<NexonCharacterSummary> characters,
+  Map<String, SchedulerSnapshot> snapshots,
+) {
+  final grouped = <String, List<_MonsterParkCharacterUsage>>{};
+  for (final character in characters) {
+    final snapshot = snapshots[character.ocid];
+    if (snapshot == null) {
+      continue;
+    }
+    final count = snapshot.dailyItems
+        .where(_isMonsterParkItem)
+        .fold<int>(0, (sum, item) => sum + (item.currentCount ?? 0));
+    if (!snapshot.dailyItems.any(_isMonsterParkItem)) {
+      continue;
+    }
+    grouped.putIfAbsent(character.worldName, () => []).add(
+          _MonsterParkCharacterUsage(
+            characterName: character.characterName,
+            count: count,
+          ),
+        );
+  }
+  return grouped.entries
+      .map(
+        (entry) => _MonsterParkWorldUsage(
+          worldName: entry.key,
+          totalCount: entry.value.fold(0, (sum, item) => sum + item.count),
+          characterCounts: entry.value,
+        ),
+      )
+      .toList();
+}
+
+bool _isMonsterParkItem(SchedulerItemSummary item) {
+  return item.title.replaceAll(' ', '').contains('몬스터파크');
+}
+
+class _MonsterParkSummary extends StatelessWidget {
+  const _MonsterParkSummary({required this.items});
+
+  final List<_MonsterParkWorldUsage> items;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return const _DashboardEmptyState(
+        message: '몬스터파크 데이터를 아직 불러오지 못했습니다.',
+      );
+    }
+
+    return Column(
+      children: [
+        for (final item in items)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(20),
+            decoration: _dashboardCardDecoration(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.worldName,
+                        style: const TextStyle(
+                          color: AppColors.text,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${item.totalCount} / 14',
+                      style: const TextStyle(
+                        color: AppColors.navAccent,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final character in item.characterCounts)
+                      _MonsterParkCharacterChip(character: character),
+                  ],
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _MonsterParkCharacterChip extends StatelessWidget {
+  const _MonsterParkCharacterChip({required this.character});
+
+  final _MonsterParkCharacterUsage character;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: AppColors.selected,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        '${character.characterName} ${character.count} / 7',
+        style: const TextStyle(
+          color: AppColors.primary,
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _SharedWeeklyContentRule {
+  const _SharedWeeklyContentRule({
+    required this.title,
+    required this.scope,
+    required this.limit,
+    required this.matches,
+  });
+
+  final String title;
+  final String scope;
+  final int limit;
+  final bool Function(SchedulerItemSummary item) matches;
+}
+
+class _SharedWeeklyContentUsage {
+  const _SharedWeeklyContentUsage({
+    required this.rule,
+    required this.characterNames,
+  });
+
+  final _SharedWeeklyContentRule rule;
+  final List<String> characterNames;
+}
+
+final _sharedWeeklyContentRules = <_SharedWeeklyContentRule>[
+  _SharedWeeklyContentRule(
+    title: '에픽 던전',
+    scope: '넥슨 ID',
+    limit: 3,
+    matches: (item) => item.title.replaceAll(' ', '').contains('에픽던전'),
+  ),
+  _SharedWeeklyContentRule(
+    title: '익스트림 몬스터파커',
+    scope: '월드',
+    limit: 2,
+    matches: (item) => item.title.replaceAll(' ', '').contains('익스트림몬스터파커'),
+  ),
+];
+
+List<_SharedWeeklyContentUsage> _buildSharedWeeklyContentUsage(
+  List<NexonCharacterSummary> characters,
+  Map<String, SchedulerSnapshot> snapshots,
+) {
+  return [
+    for (final rule in _sharedWeeklyContentRules)
+      _SharedWeeklyContentUsage(
+        rule: rule,
+        characterNames: [
+          for (final character in characters)
+            if ((snapshots[character.ocid]?.weeklyItems ?? const [])
+                .any((item) => rule.matches(item) && item.done))
+              character.characterName,
+        ],
+      ),
+  ];
+}
+
+class _SharedWeeklyContentSummary extends StatelessWidget {
+  const _SharedWeeklyContentSummary({required this.items});
+
+  final List<_SharedWeeklyContentUsage> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: _dashboardCardDecoration(),
+      child: Column(
+        children: [
+          for (final item in items) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.people_outline_rounded,
+                    size: 19,
+                    color: AppColors.navAccent,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      '${item.rule.title} · ${item.rule.scope}당 주 ${item.rule.limit}캐릭터',
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    item.characterNames.isEmpty
+                        ? '완료 캐릭터 없음'
+                        : '${item.characterNames.length} / ${item.rule.limit}',
+                    style: TextStyle(
+                      color: item.characterNames.isEmpty
+                          ? AppColors.muted
+                          : AppColors.navAccent,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (item.characterNames.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(49, 0, 20, 15),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    item.characterNames.join(', '),
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            if (item != items.last)
+              const Divider(height: 1, color: AppColors.border),
+          ],
+        ],
+      ),
     );
   }
 }
