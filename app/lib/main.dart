@@ -597,9 +597,12 @@ class _MapleAppShellState extends State<_MapleAppShell>
         character.ocid,
         forceRefresh: refresh,
       );
-      final displayedSnapshot = cachedSnapshot == null
+      final mergedSnapshot = cachedSnapshot == null
           ? snapshot
           : snapshot.withCachedEmptySections(cachedSnapshot);
+      final displayedSnapshot = snapshot.dailyItems.isEmpty
+          ? mergedSnapshot.asUnfinishedWithoutDailyLogin()
+          : mergedSnapshot;
 
       await schedulerCache.save(character.ocid, displayedSnapshot);
       if (!mounted) {
