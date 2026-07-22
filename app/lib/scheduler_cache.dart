@@ -25,11 +25,21 @@ class SchedulerCache {
         return null;
       }
       final decoded = jsonDecode(await file.readAsString());
-      if (decoded is! Map || decoded[ocid] is! Map) {
+      if (decoded is! Map) {
         return null;
       }
+      final snapshots = decoded['snapshots'] is Map
+          ? Map<String, dynamic>.from(decoded['snapshots'] as Map)
+          : Map<String, dynamic>.from(decoded);
+      final entry = snapshots[ocid];
+      if (entry is! Map) {
+        return null;
+      }
+      final snapshot = entry['snapshot'] is Map
+          ? Map<String, dynamic>.from(entry['snapshot'] as Map)
+          : Map<String, dynamic>.from(entry);
       return SchedulerSnapshot.fromCacheJson(
-        Map<String, dynamic>.from(decoded[ocid] as Map),
+        snapshot,
       );
     } on FileSystemException {
       return null;
@@ -41,26 +51,31 @@ class SchedulerCache {
   Future<void> ensure() async {
     final file = await _cacheFile;
     if (!await file.exists()) {
-      await file.writeAsString(jsonEncode({}));
+      await file.writeAsString(jsonEncode({'snapshots': {}}));
     }
   }
 
   Future<void> save(String ocid, SchedulerSnapshot snapshot) async {
     final file = await _cacheFile;
-    Map<String, dynamic> cache = {};
+    Map<String, dynamic> snapshots = {};
     if (await file.exists()) {
       try {
         final decoded = jsonDecode(await file.readAsString());
         if (decoded is Map) {
-          cache = Map<String, dynamic>.from(decoded);
+          snapshots = decoded['snapshots'] is Map
+              ? Map<String, dynamic>.from(decoded['snapshots'] as Map)
+              : Map<String, dynamic>.from(decoded);
         }
       } on FileSystemException {
-        cache = {};
+        snapshots = {};
       } on FormatException {
-        cache = {};
+        snapshots = {};
       }
     }
-    cache[ocid] = snapshot.toCacheJson();
-    await file.writeAsString(jsonEncode(cache));
+    snapshots[ocid] = {
+      'cachedAt': DateTime.now().toIso8601String(),
+      'snapshot': snapshot.toCacheJson(),
+    };
+    await file.writeAsString(jsonEncode({'snapshots': snapshots}));
   }
 }
