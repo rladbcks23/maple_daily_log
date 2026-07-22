@@ -1354,12 +1354,12 @@ class _DashboardPanel extends StatelessWidget {
           children: [
             const _DashboardSectionTitle(
               title: '주간 보스 결정석',
-              subtitle: '월드당 주 180개 판매 한도 · 처치 기록 기준입니다.',
+              subtitle: '등록된 캐릭터당 주 12개 · 처치 기록 기준입니다.',
             ),
             const SizedBox(height: 12),
             _AccountBossSummary(
               clearCount: weeklyBossClearCount,
-              clearLimit: 180,
+              clearLimit: characters.length * 12,
               loadedCharacterCount: loadedCharacterCount,
               totalCharacterCount: characters.length,
             ),
@@ -1531,7 +1531,7 @@ class _AccountBossSummary extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '이번 주 결정석 판매 한도',
+                  '이번 주 주간 결정석',
                   style: TextStyle(
                     color: AppColors.muted,
                     fontSize: 13,
