@@ -31,7 +31,110 @@ class MapleTaskReminderApp extends StatelessWidget {
         scaffoldBackgroundColor: AppColors.background,
         useMaterial3: true,
       ),
-      home: const MapleAppShell(),
+      home: const _StartupGate(),
+    );
+  }
+}
+
+class _StartupData {
+  const _StartupData({
+    required this.noticeItems,
+    this.sundayEvent,
+    required this.hasLoadedNotices,
+  });
+
+  final List<NoticeItemSummary> noticeItems;
+  final NoticeItemSummary? sundayEvent;
+  final bool hasLoadedNotices;
+}
+
+class _StartupGate extends StatefulWidget {
+  const _StartupGate();
+
+  @override
+  State<_StartupGate> createState() => _StartupGateState();
+}
+
+class _StartupGateState extends State<_StartupGate> {
+  late final Future<_StartupData> _startupData = _loadStartupData();
+
+  Future<_StartupData> _loadStartupData() async {
+    final apiClient = ApiClient();
+    final sundayCache = SundayEventCache();
+    final cachedSundayEvent = await sundayCache.load();
+
+    try {
+      final noticeItems = await apiClient.fetchCurrentNotices();
+      var sundayEvent = _findSpecialSundayEvent(noticeItems);
+      sundayEvent ??= await apiClient.fetchLatestSundayEvent();
+      if (sundayEvent != null) {
+        await sundayCache.save(sundayEvent);
+      }
+      return _StartupData(
+        noticeItems: noticeItems,
+        sundayEvent: sundayEvent ?? cachedSundayEvent,
+        hasLoadedNotices: true,
+      );
+    } catch (_) {
+      return _StartupData(
+        noticeItems: const [],
+        sundayEvent: cachedSundayEvent,
+        hasLoadedNotices: false,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<_StartupData>(
+      future: _startupData,
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return _MapleAppShell(startupData: snapshot.requireData);
+        }
+        return const _StartupLoadingScreen();
+      },
+    );
+  }
+}
+
+class _StartupLoadingScreen extends StatelessWidget {
+  const _StartupLoadingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.asset(
+                'assets/images/app_logo.png',
+                width: 56,
+                height: 56,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              '메이플 숙제알리미',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 18),
+            const SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -66,14 +169,16 @@ enum AppSection {
   final IconData icon;
 }
 
-class MapleAppShell extends StatefulWidget {
-  const MapleAppShell({super.key});
+class _MapleAppShell extends StatefulWidget {
+  const _MapleAppShell({required this.startupData});
+
+  final _StartupData startupData;
 
   @override
-  State<MapleAppShell> createState() => _MapleAppShellState();
+  State<_MapleAppShell> createState() => _MapleAppShellState();
 }
 
-class _MapleAppShellState extends State<MapleAppShell>
+class _MapleAppShellState extends State<_MapleAppShell>
     with WindowListener, TrayListener {
   final ApiClient apiClient = ApiClient();
   final CharacterCache characterCache = CharacterCache();
@@ -101,13 +206,17 @@ class _MapleAppShellState extends State<MapleAppShell>
   @override
   void initState() {
     super.initState();
+    noticeItems = widget.startupData.noticeItems;
+    sundayEvent = widget.startupData.sundayEvent;
     LocalNotificationService.instance.setOnNotificationTap(
       handleNotificationTap,
     );
     unawaited(initializeDesktopControls());
     unawaited(initializeNotifications());
     unawaited(loadCachedCharacters());
-    unawaited(loadInitialNoticeData());
+    if (!widget.startupData.hasLoadedNotices) {
+      unawaited(loadInitialNoticeData());
+    }
     notificationTimer = Timer.periodic(
       const Duration(minutes: 1),
       (_) => unawaited(checkScheduledNotifications()),
