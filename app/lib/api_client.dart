@@ -273,11 +273,15 @@ class SchedulerSnapshot {
     required this.dailyItems,
     required this.weeklyItems,
     required this.bossItems,
+    this.weeklyBossClearCount,
+    this.weeklyBossClearLimit,
   });
 
   final List<SchedulerItemSummary> dailyItems;
   final List<SchedulerItemSummary> weeklyItems;
   final List<SchedulerItemSummary> bossItems;
+  final int? weeklyBossClearCount;
+  final int? weeklyBossClearLimit;
 
   bool get hasDailyItems => dailyItems.isNotEmpty;
   bool get hasWeeklyItems => weeklyItems.isNotEmpty;
@@ -294,6 +298,8 @@ class SchedulerSnapshot {
           ? cached.weeklyItems.map((item) => item.asUnfinished()).toList()
           : weeklyItems,
       bossItems: _mergeMissingBossCycles(cached),
+      weeklyBossClearCount: weeklyBossClearCount ?? cached.weeklyBossClearCount,
+      weeklyBossClearLimit: weeklyBossClearLimit ?? cached.weeklyBossClearLimit,
     );
   }
 
@@ -338,6 +344,8 @@ class SchedulerSnapshot {
       'dailyItems': dailyItems.map((item) => item.toCacheJson()).toList(),
       'weeklyItems': weeklyItems.map((item) => item.toCacheJson()).toList(),
       'bossItems': bossItems.map((item) => item.toCacheJson()).toList(),
+      'weeklyBossClearCount': weeklyBossClearCount,
+      'weeklyBossClearLimit': weeklyBossClearLimit,
     };
   }
 
@@ -359,6 +367,8 @@ class SchedulerSnapshot {
       dailyItems: readItems('dailyItems'),
       weeklyItems: readItems('weeklyItems'),
       bossItems: readItems('bossItems'),
+      weeklyBossClearCount: _readInt(json, ['weeklyBossClearCount']),
+      weeklyBossClearLimit: _readInt(json, ['weeklyBossClearLimit']),
     );
   }
 
@@ -382,7 +392,31 @@ class SchedulerSnapshot {
         'boss_contents_info',
         'boss_content_info',
       ]),
+      weeklyBossClearCount: _readInt(json, [
+        'weekly_boss_clear_count',
+        'weekly_boss_clear_cnt',
+      ]),
+      weeklyBossClearLimit: _readInt(json, [
+        'weekly_boss_clear_limit',
+        'weekly_boss_clear_limit_count',
+      ]),
     );
+  }
+
+  static int? _readInt(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is int) {
+        return value;
+      }
+      if (value is num) {
+        return value.toInt();
+      }
+      if (value is String) {
+        return int.tryParse(value);
+      }
+    }
+    return null;
   }
 
   static List<SchedulerItemSummary> _readItems(

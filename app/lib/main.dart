@@ -514,6 +514,10 @@ class _MapleAppShellState extends State<_MapleAppShell>
                   .withCachedEmptySections(cachedSnapshot ?? snapshot)
                   .bossItems
               : cachedSnapshot?.bossItems ?? const [],
+          weeklyBossClearCount: snapshot.weeklyBossClearCount ??
+              cachedSnapshot?.weeklyBossClearCount,
+          weeklyBossClearLimit: snapshot.weeklyBossClearLimit ??
+              cachedSnapshot?.weeklyBossClearLimit,
         );
         await schedulerCache.save(character.ocid, snapshotToCache);
       }
