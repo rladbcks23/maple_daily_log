@@ -2050,23 +2050,27 @@ class _WeeklyContentCharacterList extends StatelessWidget {
                       ),
                     )
                   else
-                    Flexible(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.completionTag,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          entry.value.join(', '),
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.completionTagText,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 280),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.completionTag,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            entry.value.join(', '),
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.completionTagText,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
                       ),
