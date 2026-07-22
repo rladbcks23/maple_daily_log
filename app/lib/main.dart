@@ -1353,7 +1353,7 @@ class _DashboardPanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const _DashboardSectionTitle(
-              title: '주간 보스 결정석',
+              title: '주간 보스 현황',
               subtitle: '등록된 캐릭터당 주 12개 · 처치 기록 기준입니다.',
             ),
             const SizedBox(height: 12),
@@ -1531,7 +1531,7 @@ class _AccountBossSummary extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '이번 주 주간 결정석',
+                  '이번주 처치한 주간 보스',
                   style: TextStyle(
                     color: AppColors.muted,
                     fontSize: 13,
@@ -1549,7 +1549,7 @@ class _AccountBossSummary extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  '조회된 캐릭터 $loadedCharacterCount / $totalCharacterCount명 · 처치 기록 기준 · 남은 판매 가능 수 $remaining개',
+                  '조회된 캐릭터 $loadedCharacterCount / $totalCharacterCount명 · 처치 기록 기준 · 남은 주간 보스 $remaining마리',
                   style: const TextStyle(
                     color: AppColors.muted,
                     fontSize: 12,
