@@ -1386,6 +1386,9 @@ class _DashboardPanel extends StatelessWidget {
         continue;
       }
       for (final item in snapshot.weeklyItems) {
+        if (_isSharedWeeklyContentItem(item)) {
+          continue;
+        }
         weeklyContentCharacters.putIfAbsent(item.title, () => []);
         final isSuro = _isGuildSuroItem(item);
         final isCompleted = isSuro ? (item.currentCount ?? 0) >= 1 : item.done;
@@ -1933,10 +1936,12 @@ class _SharedWeeklyContentUsage {
   const _SharedWeeklyContentUsage({
     required this.rule,
     required this.characterNames,
+    required this.completionDetails,
   });
 
   final _SharedWeeklyContentRule rule;
   final List<String> characterNames;
+  final List<String> completionDetails;
 }
 
 final _sharedWeeklyContentRules = <_SharedWeeklyContentRule>[
@@ -1962,13 +1967,41 @@ List<_SharedWeeklyContentUsage> _buildSharedWeeklyContentUsage(
     for (final rule in _sharedWeeklyContentRules)
       _SharedWeeklyContentUsage(
         rule: rule,
-        characterNames: [
-          for (final character in characters)
-            if ((snapshots[character.ocid]?.weeklyItems ?? const [])
-                .any((item) => rule.matches(item) && item.done))
-              character.characterName,
-        ],
+        characterNames: _completedCharacterNames(rule, characters, snapshots),
+        completionDetails: rule.title == '에픽 던전'
+            ? _epicDungeonCompletionDetails(rule, characters, snapshots)
+            : const [],
       ),
+  ];
+}
+
+bool _isSharedWeeklyContentItem(SchedulerItemSummary item) {
+  return _sharedWeeklyContentRules.any((rule) => rule.matches(item));
+}
+
+List<String> _completedCharacterNames(
+  _SharedWeeklyContentRule rule,
+  List<NexonCharacterSummary> characters,
+  Map<String, SchedulerSnapshot> snapshots,
+) {
+  return [
+    for (final character in characters)
+      if ((snapshots[character.ocid]?.weeklyItems ?? const [])
+          .any((item) => rule.matches(item) && item.done))
+        character.characterName,
+  ];
+}
+
+List<String> _epicDungeonCompletionDetails(
+  _SharedWeeklyContentRule rule,
+  List<NexonCharacterSummary> characters,
+  Map<String, SchedulerSnapshot> snapshots,
+) {
+  return [
+    for (final character in characters)
+      for (final item in snapshots[character.ocid]?.weeklyItems ?? const [])
+        if (rule.matches(item) && item.done)
+          '${character.characterName} · ${item.title}',
   ];
 }
 
@@ -2025,7 +2058,10 @@ class _SharedWeeklyContentSummary extends StatelessWidget {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    item.characterNames.join(', '),
+                    (item.completionDetails.isEmpty
+                            ? item.characterNames
+                            : item.completionDetails)
+                        .join(', '),
                     style: const TextStyle(
                       color: AppColors.navAccent,
                       fontSize: 14,
