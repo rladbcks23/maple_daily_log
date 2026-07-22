@@ -1313,7 +1313,6 @@ class _DashboardPanel extends StatelessWidget {
     }
 
     var weeklyBossClearCount = 0;
-    var weeklyBossClearLimit = 0;
     var loadedCharacterCount = 0;
     for (final character in characters) {
       final snapshot = snapshots[character.ocid];
@@ -1325,7 +1324,6 @@ class _DashboardPanel extends StatelessWidget {
           snapshot.bossItems.where(_isDashboardWeeklyBoss).toList();
       weeklyBossClearCount += snapshot.weeklyBossClearCount ??
           weeklyBosses.where((item) => item.done).length;
-      weeklyBossClearLimit += snapshot.weeklyBossClearLimit ?? 12;
     }
 
     final weeklyContentCharacters = <String, List<String>>{};
@@ -1355,13 +1353,13 @@ class _DashboardPanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const _DashboardSectionTitle(
-              title: '등록 캐릭터 주간 보스',
-              subtitle: '캐릭터당 주간 보스 12회 기준으로 집계합니다.',
+              title: '주간 보스 결정석',
+              subtitle: '월드당 주 180개 판매 한도 · 처치 기록 기준입니다.',
             ),
             const SizedBox(height: 12),
             _AccountBossSummary(
               clearCount: weeklyBossClearCount,
-              clearLimit: weeklyBossClearLimit,
+              clearLimit: 180,
               loadedCharacterCount: loadedCharacterCount,
               totalCharacterCount: characters.length,
             ),
@@ -1476,6 +1474,7 @@ class _AccountBossSummary extends StatelessWidget {
     final limit = clearLimit;
     final progress = limit == 0 ? 0.0 : (count / limit).clamp(0.0, 1.0);
     final percentage = (progress * 100).round();
+    final remaining = (limit - count).clamp(0, limit);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -1532,7 +1531,7 @@ class _AccountBossSummary extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '이번 주 주간 보스',
+                  '이번 주 결정석 판매 한도',
                   style: TextStyle(
                     color: AppColors.muted,
                     fontSize: 13,
@@ -1550,7 +1549,7 @@ class _AccountBossSummary extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  '조회된 캐릭터 $loadedCharacterCount / $totalCharacterCount명 · 남은 처치 가능 횟수 ${limit - count}회',
+                  '조회된 캐릭터 $loadedCharacterCount / $totalCharacterCount명 · 처치 기록 기준 · 남은 판매 가능 수 $remaining개',
                   style: const TextStyle(
                     color: AppColors.muted,
                     fontSize: 12,
