@@ -445,6 +445,8 @@ class SchedulerItemSummary {
     required this.difficulty,
     required this.cycle,
     required this.done,
+    this.currentCount,
+    this.maxCount,
   });
 
   final String title;
@@ -452,6 +454,8 @@ class SchedulerItemSummary {
   final String difficulty;
   final String cycle;
   final bool done;
+  final int? currentCount;
+  final int? maxCount;
 
   SchedulerItemSummary asUnfinished({bool resetProgress = false}) {
     return SchedulerItemSummary(
@@ -460,6 +464,8 @@ class SchedulerItemSummary {
       difficulty: difficulty,
       cycle: cycle,
       done: false,
+      currentCount: resetProgress ? 0 : currentCount,
+      maxCount: maxCount,
     );
   }
 
@@ -473,6 +479,9 @@ class SchedulerItemSummary {
       'meta': meta,
       'difficulty': difficulty,
       'cycle': cycle,
+      'done': done,
+      'currentCount': currentCount,
+      'maxCount': maxCount,
     };
   }
 
@@ -482,7 +491,9 @@ class SchedulerItemSummary {
       meta: json['meta'] as String? ?? '',
       difficulty: json['difficulty'] as String? ?? '',
       cycle: json['cycle'] as String? ?? '',
-      done: false,
+      done: json['done'] == true,
+      currentCount: _readInt(json, ['currentCount']),
+      maxCount: _readInt(json, ['maxCount']),
     );
   }
 
@@ -551,6 +562,8 @@ class SchedulerItemSummary {
       difficulty: difficulty,
       cycle: cycle,
       done: done,
+      currentCount: current,
+      maxCount: max,
     );
   }
 
