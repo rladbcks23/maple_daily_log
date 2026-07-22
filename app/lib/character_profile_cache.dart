@@ -74,4 +74,27 @@ class CharacterProfileCache {
       }),
     );
   }
+
+  Future<void> replaceAndSave(
+    Iterable<NexonCharacterSummary> characters,
+  ) async {
+    final cachedProfiles = await load();
+    final nextProfiles = <String, NexonCharacterSummary>{};
+    for (final character in characters) {
+      if (character.ocid.isEmpty) {
+        continue;
+      }
+      nextProfiles[character.ocid] =
+          (cachedProfiles[character.ocid] ?? character).merge(character);
+    }
+
+    final file = await _cacheFile;
+    await file.writeAsString(
+      jsonEncode({
+        'characters': nextProfiles.values
+            .map((character) => character.toCacheJson())
+            .toList(),
+      }),
+    );
+  }
 }

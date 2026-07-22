@@ -315,6 +315,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
       return;
     }
     await loadCachedCharacters();
+    unawaited(refreshCharacterListCache());
   }
 
   Future<void> loadCachedCharacters() async {
@@ -338,6 +339,26 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
   void persistCharacters() {
     unawaited(characterCache.save(selectedCharacters, selectedCharacter));
+  }
+
+  Future<void> refreshCharacterListCache() async {
+    try {
+      final characters = await apiClient.fetchNexonCharacters();
+      await characterProfileCache.replaceAndSave(characters);
+
+      const batchSize = 4;
+      for (var start = 0; start < characters.length; start += batchSize) {
+        final end = start + batchSize > characters.length
+            ? characters.length
+            : start + batchSize;
+        final details = await Future.wait(
+          characters.sublist(start, end).map(apiClient.fetchCharacterBasic),
+        );
+        await characterProfileCache.mergeAndSave(details);
+      }
+    } catch (_) {
+      // Keep the most recently cached character list when the API fails.
+    }
   }
 
   Future<void> loadDashboardSnapshots() async {
@@ -381,6 +402,10 @@ class _MapleAppShellState extends State<_MapleAppShell>
         return;
       }
       final cachedProfiles = await cachedProfilesFuture;
+      if (!mounted) {
+        return;
+      }
+      await characterProfileCache.replaceAndSave(characters);
       if (!mounted) {
         return;
       }
