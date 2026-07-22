@@ -382,12 +382,15 @@ class _MapleAppShellState extends State<_MapleAppShell>
             characters: sortedCharacters,
             selectedCharacter: selectedCharacter,
             selectedCharacters: selectedCharacters,
+            loadCharacterBasic: apiClient.fetchCharacterBasic,
           );
         },
       );
 
       if (selected != null && mounted) {
-        final detailed = await apiClient.fetchCharacterBasic(selected);
+        final detailed = selected.characterImage.isEmpty
+            ? await apiClient.fetchCharacterBasic(selected)
+            : selected;
         if (!mounted) {
           return;
         }
@@ -3631,16 +3634,59 @@ class _AddCharacterCard extends StatelessWidget {
   }
 }
 
-class _CharacterPickerDialog extends StatelessWidget {
+class _CharacterPickerDialog extends StatefulWidget {
   const _CharacterPickerDialog({
     required this.characters,
     required this.selectedCharacter,
     required this.selectedCharacters,
+    required this.loadCharacterBasic,
   });
 
   final List<NexonCharacterSummary> characters;
   final NexonCharacterSummary? selectedCharacter;
   final List<NexonCharacterSummary> selectedCharacters;
+  final Future<NexonCharacterSummary> Function(NexonCharacterSummary character)
+      loadCharacterBasic;
+
+  @override
+  State<_CharacterPickerDialog> createState() => _CharacterPickerDialogState();
+}
+
+class _CharacterPickerDialogState extends State<_CharacterPickerDialog> {
+  late List<NexonCharacterSummary> characters;
+
+  @override
+  void initState() {
+    super.initState();
+    characters = [...widget.characters];
+    unawaited(_loadCharacterImages());
+  }
+
+  Future<void> _loadCharacterImages() async {
+    const batchSize = 4;
+    for (var start = 0; start < characters.length; start += batchSize) {
+      final end = start + batchSize > characters.length
+          ? characters.length
+          : start + batchSize;
+      final batch = characters.sublist(start, end);
+      final details = await Future.wait(
+        batch.map(widget.loadCharacterBasic),
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        for (final detail in details) {
+          final index = characters.indexWhere(
+            (character) => character.ocid == detail.ocid,
+          );
+          if (index != -1) {
+            characters[index] = characters[index].merge(detail);
+          }
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -3715,9 +3761,11 @@ class _CharacterPickerDialog extends StatelessWidget {
                         ),
                         itemBuilder: (context, index) {
                           final character = characters[index];
-                          final selected =
-                              _isSameCharacter(character, selectedCharacter);
-                          final added = selectedCharacters.any(
+                          final selected = _isSameCharacter(
+                            character,
+                            widget.selectedCharacter,
+                          );
+                          final added = widget.selectedCharacters.any(
                             (selectedCharacter) =>
                                 _isSameCharacter(character, selectedCharacter),
                           );
@@ -3853,7 +3901,7 @@ class _CharacterImage extends StatelessWidget {
         : Image.network(
             imageUrl,
             fit: BoxFit.cover,
-            alignment: Alignment.topCenter,
+            alignment: Alignment.center,
             errorBuilder: (context, error, stackTrace) =>
                 _CharacterImageFallback(character: character),
           );
@@ -3863,7 +3911,7 @@ class _CharacterImage extends StatelessWidget {
       child: SizedBox.expand(
         child: FittedBox(
           fit: BoxFit.cover,
-          alignment: Alignment.topCenter,
+          alignment: Alignment.center,
           child: SizedBox(
             width: 96,
             height: 96,
