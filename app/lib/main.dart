@@ -600,11 +600,29 @@ class _MapleAppShellState extends State<_MapleAppShell>
       final mergedSnapshot = cachedSnapshot == null
           ? snapshot
           : snapshot.withCachedEmptySections(cachedSnapshot);
-      final displayedSnapshot = snapshot.dailyItems.isEmpty
-          ? mergedSnapshot.asUnfinishedWithoutDailyLogin()
-          : mergedSnapshot;
-
-      await schedulerCache.save(character.ocid, displayedSnapshot);
+      final displayedSnapshot = mergedSnapshot;
+      if (snapshot.hasDailyItems ||
+          snapshot.hasWeeklyItems ||
+          snapshot.hasBossItems) {
+        final snapshotToCache = SchedulerSnapshot(
+          dailyItems: snapshot.hasDailyItems
+              ? snapshot.dailyItems
+              : cachedSnapshot?.dailyItems ?? const [],
+          weeklyItems: snapshot.hasWeeklyItems
+              ? snapshot.weeklyItems
+              : cachedSnapshot?.weeklyItems ?? const [],
+          bossItems: snapshot.hasBossItems
+              ? snapshot
+                  .withCachedEmptySections(cachedSnapshot ?? snapshot)
+                  .bossItems
+              : cachedSnapshot?.bossItems ?? const [],
+          weeklyBossClearCount: snapshot.weeklyBossClearCount ??
+              cachedSnapshot?.weeklyBossClearCount,
+          weeklyBossClearLimit: snapshot.weeklyBossClearLimit ??
+              cachedSnapshot?.weeklyBossClearLimit,
+        );
+        await schedulerCache.save(character.ocid, snapshotToCache);
+      }
       if (!mounted) {
         return;
       }

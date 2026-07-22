@@ -303,20 +303,6 @@ class SchedulerSnapshot {
     );
   }
 
-  SchedulerSnapshot asUnfinishedWithoutDailyLogin() {
-    return SchedulerSnapshot(
-      dailyItems: dailyItems,
-      weeklyItems: weeklyItems
-          .map((item) => item.asUnfinished(resetProgress: true))
-          .toList(),
-      bossItems: bossItems
-          .map((item) => item.asUnfinished(resetProgress: true))
-          .toList(),
-      weeklyBossClearCount: 0,
-      weeklyBossClearLimit: weeklyBossClearLimit,
-    );
-  }
-
   List<SchedulerItemSummary> _mergeMissingBossCycles(
     SchedulerSnapshot cached,
   ) {
