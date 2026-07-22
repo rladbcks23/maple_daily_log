@@ -51,7 +51,7 @@ class SchedulerCache {
   Future<void> ensure() async {
     final file = await _cacheFile;
     if (!await file.exists()) {
-      await file.writeAsString(jsonEncode({'snapshots': {}}));
+      await file.writeAsString(jsonEncode({}));
     }
   }
 
@@ -72,10 +72,7 @@ class SchedulerCache {
         snapshots = {};
       }
     }
-    snapshots[ocid] = {
-      'cachedAt': DateTime.now().toIso8601String(),
-      'snapshot': snapshot.toCacheJson(),
-    };
-    await file.writeAsString(jsonEncode({'snapshots': snapshots}));
+    snapshots[ocid] = snapshot.toCacheJson();
+    await file.writeAsString(jsonEncode(snapshots));
   }
 }
