@@ -152,8 +152,8 @@ class AppColors {
   static const selectedBorder = Color(0xFFB8C8F8);
   static const navAccent = Color(0xFFE98946);
   static const navBorder = Color(0xFFF1B98C);
-  static const completionTag = Color(0xFFFCEAE5);
-  static const completionTagText = Color(0xFFAD4E3A);
+  static const completionTag = Color(0xFFFFF3EF);
+  static const completionTagText = Color(0xFFB77F70);
   static const button = Color(0xFF3D4048);
   static const disabled = Color(0xFFB8BEC9);
 }
@@ -2069,7 +2069,7 @@ class _WeeklyContentCharacterList extends StatelessWidget {
                             style: const TextStyle(
                               color: AppColors.completionTagText,
                               fontSize: 14,
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                         ),
