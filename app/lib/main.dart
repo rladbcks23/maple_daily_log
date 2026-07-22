@@ -508,6 +508,13 @@ class _MapleAppShellState extends State<_MapleAppShell>
     await loadScheduler(character);
   }
 
+  void openCharacterScheduler(NexonCharacterSummary character) {
+    if (!_isSameCharacter(character, selectedCharacter)) {
+      unawaited(selectCharacter(character));
+    }
+    selectSection(AppSection.scheduler);
+  }
+
   void deleteCharacter(NexonCharacterSummary character) {
     final deletesSelected = _isSameCharacter(character, selectedCharacter);
     NexonCharacterSummary? nextSelectedCharacter;
@@ -903,6 +910,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
               onTestNotification: showTestNotification,
               onSelectSection: selectSection,
               onSelectCharacter: selectCharacter,
+              onOpenCharacterScheduler: openCharacterScheduler,
               onDeleteCharacter: deleteCharacter,
               onMoveCharacter: moveCharacter,
             ),
@@ -1196,6 +1204,7 @@ class _MainPanel extends StatelessWidget {
     required this.onTestNotification,
     required this.onSelectSection,
     required this.onSelectCharacter,
+    required this.onOpenCharacterScheduler,
     required this.onDeleteCharacter,
     required this.onMoveCharacter,
   });
@@ -1220,6 +1229,7 @@ class _MainPanel extends StatelessWidget {
   final Future<void> Function() onTestNotification;
   final ValueChanged<AppSection> onSelectSection;
   final ValueChanged<NexonCharacterSummary> onSelectCharacter;
+  final ValueChanged<NexonCharacterSummary> onOpenCharacterScheduler;
   final ValueChanged<NexonCharacterSummary> onDeleteCharacter;
   final void Function(NexonCharacterSummary character, int offset)
       onMoveCharacter;
@@ -1286,6 +1296,7 @@ class _MainPanel extends StatelessWidget {
                 AppSection.dashboard => _DashboardPanel(
                     characters: selectedCharacters,
                     snapshots: dashboardSnapshots,
+                    onOpenCharacterScheduler: onOpenCharacterScheduler,
                   ),
                 AppSection.character => _CharacterSelectPanel(
                     selectedCharacter: selectedCharacter,
@@ -1352,10 +1363,15 @@ class _RefreshButton extends StatelessWidget {
 }
 
 class _DashboardPanel extends StatelessWidget {
-  const _DashboardPanel({required this.characters, required this.snapshots});
+  const _DashboardPanel({
+    required this.characters,
+    required this.snapshots,
+    required this.onOpenCharacterScheduler,
+  });
 
   final List<NexonCharacterSummary> characters;
   final Map<String, SchedulerSnapshot> snapshots;
+  final ValueChanged<NexonCharacterSummary> onOpenCharacterScheduler;
 
   @override
   Widget build(BuildContext context) {
@@ -1453,6 +1469,8 @@ class _DashboardPanel extends StatelessWidget {
                         child: _CharacterProgressCard(
                           character: character,
                           snapshot: snapshots[character.ocid],
+                          onOpenScheduler: () =>
+                              onOpenCharacterScheduler(character),
                         ),
                       ),
                   ],
@@ -1628,11 +1646,15 @@ class _AccountBossSummary extends StatelessWidget {
 }
 
 class _CharacterProgressCard extends StatelessWidget {
-  const _CharacterProgressCard(
-      {required this.character, required this.snapshot});
+  const _CharacterProgressCard({
+    required this.character,
+    required this.snapshot,
+    required this.onOpenScheduler,
+  });
 
   final NexonCharacterSummary character;
   final SchedulerSnapshot? snapshot;
+  final VoidCallback onOpenScheduler;
 
   @override
   Widget build(BuildContext context) {
@@ -1642,6 +1664,7 @@ class _CharacterProgressCard extends StatelessWidget {
         decoration: _dashboardCardDecoration(),
         child: _DashboardCharacterHeader(
             character: character,
+            onTap: onOpenScheduler,
             child: const Text(
               '스케쥴러 데이터가 없습니다.',
               style: TextStyle(
@@ -1666,6 +1689,7 @@ class _CharacterProgressCard extends StatelessWidget {
       decoration: _dashboardCardDecoration(),
       child: _DashboardCharacterHeader(
         character: character,
+        onTap: onOpenScheduler,
         child: Row(
           children: [
             Expanded(
@@ -1697,23 +1721,40 @@ BoxDecoration _dashboardCardDecoration() => BoxDecoration(
     );
 
 class _DashboardCharacterHeader extends StatelessWidget {
-  const _DashboardCharacterHeader(
-      {required this.character, required this.child});
+  const _DashboardCharacterHeader({
+    required this.character,
+    required this.child,
+    this.onTap,
+  });
 
   final NexonCharacterSummary character;
   final Widget child;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          character.characterName,
-          style: const TextStyle(
-            color: AppColors.text,
-            fontSize: 16,
-            fontWeight: FontWeight.w900,
+        MouseRegion(
+          cursor: onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(4),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                child: Text(
+                  character.characterName,
+                  style: const TextStyle(
+                    color: AppColors.text,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 3),
