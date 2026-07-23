@@ -381,11 +381,15 @@ class _MapleAppShellState extends State<_MapleAppShell>
   }
 
   Future<void> refreshRegisteredSchedulers({String? skipOcid}) async {
-    for (final character in [...selectedCharacters]) {
-      if (character.ocid == skipOcid) {
-        continue;
-      }
-      await loadScheduler(character);
+    final characters = selectedCharacters
+        .where((character) => character.ocid != skipOcid)
+        .toList();
+    const batchSize = 4;
+    for (var start = 0; start < characters.length; start += batchSize) {
+      final end = start + batchSize > characters.length
+          ? characters.length
+          : start + batchSize;
+      await Future.wait(characters.sublist(start, end).map(loadScheduler));
     }
   }
 

@@ -1,5 +1,24 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import local
+
 import requests
 from django.conf import settings
+
+
+_session_state = local()
+
+
+def _session():
+    session = getattr(_session_state, "session", None)
+    if session is None:
+        session = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=4,
+            pool_maxsize=4,
+        )
+        session.mount("https://", adapter)
+        _session_state.session = session
+    return session
 
 
 class NexonApiError(Exception):
@@ -16,7 +35,7 @@ class NexonClient:
         if not self.api_key:
             raise NexonApiError("NEXON_API_KEY is not configured")
 
-        response = requests.get(
+        response = _session().get(
             f"{self.base_url}{path}",
             params=params or {},
             headers={"x-nxopen-api-key": self.api_key},
@@ -63,9 +82,18 @@ class NexonClient:
         return self.request("/maplestory/v1/notice-update")
 
     def current_notices(self):
-        return {
-            "notice": self.notice_list(),
-            "event": self.event_list(),
-            "cashshop": self.cashshop_list(),
-            "update": self.update_list(),
+        fetchers = {
+            "notice": self.notice_list,
+            "event": self.event_list,
+            "cashshop": self.cashshop_list,
+            "update": self.update_list,
         }
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = {
+                notice_type: executor.submit(fetch)
+                for notice_type, fetch in fetchers.items()
+            }
+            return {
+                notice_type: future.result()
+                for notice_type, future in futures.items()
+            }

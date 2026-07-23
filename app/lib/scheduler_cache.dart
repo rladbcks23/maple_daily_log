@@ -4,6 +4,8 @@ import 'dart:io';
 import 'api_client.dart';
 
 class SchedulerCache {
+  Future<void> _pendingWrite = Future.value();
+
   Future<File> get _cacheFile async {
     final appDataDirectory = Platform.environment['LOCALAPPDATA'] ??
         Platform.environment['APPDATA'] ??
@@ -19,6 +21,7 @@ class SchedulerCache {
   }
 
   Future<SchedulerSnapshot?> load(String ocid) async {
+    await _pendingWrite;
     try {
       final file = await _cacheFile;
       if (!await file.exists()) {
@@ -49,6 +52,7 @@ class SchedulerCache {
   }
 
   Future<void> ensure() async {
+    await _pendingWrite;
     final file = await _cacheFile;
     if (!await file.exists()) {
       await file.writeAsString(jsonEncode({}));
@@ -56,6 +60,15 @@ class SchedulerCache {
   }
 
   Future<void> save(String ocid, SchedulerSnapshot snapshot) async {
+    final write = _pendingWrite.then((_) => _save(ocid, snapshot));
+    _pendingWrite = write.then<void>(
+      (_) {},
+      onError: (_, __) {},
+    );
+    return write;
+  }
+
+  Future<void> _save(String ocid, SchedulerSnapshot snapshot) async {
     final file = await _cacheFile;
     Map<String, dynamic> snapshots = {};
     if (await file.exists()) {
