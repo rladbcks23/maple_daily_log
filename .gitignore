@@ -5,6 +5,7 @@
 build/
 .gradle/
 out/
+dist/
 __pycache__/
 *.py[cod]
 .venv/
