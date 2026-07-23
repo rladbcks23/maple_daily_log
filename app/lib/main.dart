@@ -2476,6 +2476,7 @@ class _SchedulerOverviewPanel extends StatelessWidget {
     if (data == null) {
       return const _BlockedPanel();
     }
+    final dailyItems = _groupDailyQuestItems(data.dailyItems);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -2484,7 +2485,7 @@ class _SchedulerOverviewPanel extends StatelessWidget {
           children: [
             _SchedulerCard(
               title: '일일 콘텐츠',
-              items: data.dailyItems,
+              items: dailyItems,
               emptyMessage: '오늘 접속 기록이 아직 없어요.\n게임 접속 후 잠시 뒤 다시 확인해주세요.',
             ),
             const SizedBox(height: 20),
@@ -2507,7 +2508,7 @@ class _SchedulerOverviewPanel extends StatelessWidget {
               children: [
                 _SchedulerCard(
                   title: '일일 콘텐츠',
-                  items: data.dailyItems,
+                  items: dailyItems,
                   emptyMessage: '오늘 접속 기록이 아직 없어요.\n게임 접속 후 잠시 뒤 다시 확인해주세요.',
                 ),
                 const SizedBox(height: 20),
@@ -2537,6 +2538,74 @@ class _SchedulerOverviewPanel extends StatelessWidget {
       },
     );
   }
+}
+
+List<SchedulerItemSummary> _groupDailyQuestItems(
+  List<SchedulerItemSummary> items,
+) {
+  const arcaneRiverRegions = [
+    '소멸의 여로',
+    '츄츄 아일랜드',
+    '레헬른',
+    '아르카나',
+    '모라스',
+    '에스페라',
+    '셀라스',
+    '문브릿지',
+    '고통의 미궁',
+    '리멘',
+  ];
+  const grandisRegions = [
+    '세르니움',
+    '호텔 아르크스',
+    '오디움',
+    '도원경',
+    '아르테리아',
+    '카르시온',
+    '탈라하트',
+  ];
+
+  final remainingItems = <SchedulerItemSummary>[];
+  final arcaneRiverQuests = <SchedulerItemSummary>[];
+  final grandisQuests = <SchedulerItemSummary>[];
+
+  for (final item in items) {
+    if (!item.title.contains('[일일 퀘스트]')) {
+      remainingItems.add(item);
+    } else if (arcaneRiverRegions.any(item.title.contains)) {
+      arcaneRiverQuests.add(item);
+    } else if (grandisRegions.any(item.title.contains)) {
+      grandisQuests.add(item);
+    } else {
+      remainingItems.add(item);
+    }
+  }
+
+  return [
+    ...remainingItems,
+    if (arcaneRiverQuests.isNotEmpty)
+      _dailyQuestGroupItem('아케인리버 일일퀘스트', arcaneRiverQuests),
+    if (grandisQuests.isNotEmpty)
+      _dailyQuestGroupItem('그란디스 일일퀘스트', grandisQuests),
+  ];
+}
+
+SchedulerItemSummary _dailyQuestGroupItem(
+  String title,
+  List<SchedulerItemSummary> quests,
+) {
+  final completedCount = quests.where((quest) => quest.done).length;
+  final totalCount = quests.length;
+
+  return SchedulerItemSummary(
+    title: title,
+    meta: '$completedCount / $totalCount',
+    difficulty: '',
+    cycle: '',
+    done: completedCount == totalCount,
+    currentCount: completedCount,
+    maxCount: totalCount,
+  );
 }
 
 class _SchedulerCard extends StatelessWidget {
