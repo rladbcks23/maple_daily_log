@@ -2060,12 +2060,11 @@ List<String> _epicDungeonCompletionDetails(
   List<NexonCharacterSummary> characters,
   Map<String, SchedulerSnapshot> snapshots,
 ) {
-  return [
+  return {
     for (final character in characters)
       for (final item in snapshots[character.ocid]?.weeklyItems ?? const [])
-        if (rule.matches(item) && item.done)
-          '${character.characterName} · ${item.title}',
-  ];
+        if (rule.matches(item) && item.done) item.title,
+  }.toList();
 }
 
 class _SharedWeeklyContentSummary extends StatelessWidget {
