@@ -2091,7 +2091,9 @@ class _SharedWeeklyContentSummary extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      '${item.rule.title} · ${item.rule.scope}당 주 ${item.rule.limit}캐릭터',
+                      item.rule.title == '에픽 던전'
+                          ? '에픽 던전 · 넥슨 ID당 각 던전 주 1회'
+                          : '${item.rule.title} · ${item.rule.scope}당 주 ${item.rule.limit}캐릭터',
                       style: const TextStyle(
                         color: AppColors.text,
                         fontSize: 14,
