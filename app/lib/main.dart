@@ -1469,7 +1469,7 @@ class _DashboardPanel extends StatelessWidget {
             const SizedBox(height: 30),
             const _DashboardSectionTitle(
               title: '몬스터파크',
-              subtitle: '월드당 일 14회, 캐릭터당 일 7회 제한입니다.',
+              subtitle: '월드당 일 14회 제한이며 등록된 캐릭터를 함께 표시합니다.',
             ),
             const SizedBox(height: 12),
             _MonsterParkSummary(items: monsterParkUsage),
@@ -1841,53 +1841,51 @@ class _MonsterParkWorldUsage {
   const _MonsterParkWorldUsage({
     required this.worldName,
     required this.totalCount,
-    required this.characterCounts,
+    required this.characterNames,
   });
 
   final String worldName;
-  final int totalCount;
-  final List<_MonsterParkCharacterUsage> characterCounts;
-}
-
-class _MonsterParkCharacterUsage {
-  const _MonsterParkCharacterUsage({
-    required this.characterName,
-    required this.count,
-  });
-
-  final String characterName;
-  final int count;
+  final int? totalCount;
+  final List<String> characterNames;
 }
 
 List<_MonsterParkWorldUsage> _buildMonsterParkUsage(
   List<NexonCharacterSummary> characters,
   Map<String, SchedulerSnapshot> snapshots,
 ) {
-  final grouped = <String, List<_MonsterParkCharacterUsage>>{};
+  final groupedCharacters = <String, List<String>>{};
+  final worldCounts = <String, int>{};
+
   for (final character in characters) {
+    groupedCharacters
+        .putIfAbsent(character.worldName, () => [])
+        .add(character.characterName);
+
     final snapshot = snapshots[character.ocid];
     if (snapshot == null) {
       continue;
     }
-    final count = snapshot.dailyItems
-        .where(_isMonsterParkItem)
-        .fold<int>(0, (sum, item) => sum + (item.currentCount ?? 0));
-    if (!snapshot.dailyItems.any(_isMonsterParkItem)) {
+    final monsterParkItems =
+        snapshot.dailyItems.where(_isMonsterParkItem).toList();
+    if (monsterParkItems.isEmpty) {
       continue;
     }
-    grouped.putIfAbsent(character.worldName, () => []).add(
-          _MonsterParkCharacterUsage(
-            characterName: character.characterName,
-            count: count,
-          ),
-        );
+    final count = monsterParkItems.fold<int>(
+      0,
+      (sum, item) => sum + (item.currentCount ?? 0),
+    );
+    final previousCount = worldCounts[character.worldName];
+    if (previousCount == null || count > previousCount) {
+      worldCounts[character.worldName] = count;
+    }
   }
-  return grouped.entries
+
+  return groupedCharacters.entries
       .map(
         (entry) => _MonsterParkWorldUsage(
           worldName: entry.key,
-          totalCount: entry.value.fold(0, (sum, item) => sum + item.count),
-          characterCounts: entry.value,
+          totalCount: worldCounts[entry.key],
+          characterNames: entry.value,
         ),
       )
       .toList();
@@ -1934,7 +1932,9 @@ class _MonsterParkSummary extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${item.totalCount} / 14',
+                      item.totalCount == null
+                          ? '조회 필요'
+                          : '${item.totalCount} / 14',
                       style: const TextStyle(
                         color: AppColors.navAccent,
                         fontSize: 17,
@@ -1948,8 +1948,10 @@ class _MonsterParkSummary extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    for (final character in item.characterCounts)
-                      _MonsterParkCharacterChip(character: character),
+                    for (final characterName in item.characterNames)
+                      _MonsterParkCharacterChip(
+                        characterName: characterName,
+                      ),
                   ],
                 ),
               ],
@@ -1961,9 +1963,9 @@ class _MonsterParkSummary extends StatelessWidget {
 }
 
 class _MonsterParkCharacterChip extends StatelessWidget {
-  const _MonsterParkCharacterChip({required this.character});
+  const _MonsterParkCharacterChip({required this.characterName});
 
-  final _MonsterParkCharacterUsage character;
+  final String characterName;
 
   @override
   Widget build(BuildContext context) {
@@ -1974,7 +1976,7 @@ class _MonsterParkCharacterChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
-        '${character.characterName} ${character.count} / 7',
+        characterName,
         style: const TextStyle(
           color: AppColors.primary,
           fontSize: 12,
