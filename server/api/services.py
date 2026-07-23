@@ -1,4 +1,5 @@
 import re
+from concurrent.futures import ThreadPoolExecutor
 from html import unescape
 
 import requests
@@ -212,20 +213,32 @@ def collect_latest_closed_sunday_event(client=None):
 
 
 def fill_event_details(items, client):
+    targets = []
     for item in items:
-        if item.get("noticeType") != "event":
-            continue
-
         needs_thumbnail = not item.get("thumbnail")
         needs_sunday_content = is_sunday_maple_title(item.get("title"))
-        if not needs_thumbnail and not needs_sunday_content:
-            continue
+        if item.get("noticeType") == "event" and (
+            needs_thumbnail or needs_sunday_content
+        ):
+            targets.append(item)
 
+    def fetch_detail(item):
         try:
-            detail = client.event_detail(item["noticeId"])
+            return item, client.event_detail(item["noticeId"])
         except Exception:
-            continue
+            return item, None
 
+    if not targets:
+        return
+
+    with ThreadPoolExecutor(max_workers=min(4, len(targets))) as executor:
+        details = executor.map(fetch_detail, targets)
+
+    for item, detail in details:
+        if detail is None:
+            continue
+        needs_thumbnail = not item.get("thumbnail")
+        needs_sunday_content = is_sunday_maple_title(item.get("title"))
         if needs_thumbnail:
             thumbnail = first_image_url(detail)
             item["thumbnail"] = thumbnail

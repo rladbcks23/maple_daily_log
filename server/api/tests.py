@@ -1,3 +1,6 @@
+from unittest.mock import patch
+
+from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
@@ -79,6 +82,7 @@ class NoticeSnapshotTests(TestCase):
 
 class ApiTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
 
     def test_health(self):
@@ -100,3 +104,36 @@ class ApiTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()[0]["character_name"], "테스트캐릭")
+
+    @patch("api.views.NexonClient.character_basic")
+    def test_character_basic_uses_server_cache(self, character_basic):
+        character_basic.return_value = {
+            "character_name": "테스트캐릭",
+            "world_name": "스카니아",
+        }
+
+        first = self.client.get("/api/nexon/characters/ocid-1/basic")
+        second = self.client.get("/api/nexon/characters/ocid-1/basic")
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(character_basic.call_count, 1)
+
+    @patch("api.views.NexonClient.character_basic")
+    def test_character_basic_refresh_bypasses_server_cache(
+        self,
+        character_basic,
+    ):
+        character_basic.return_value = {
+            "character_name": "테스트캐릭",
+            "world_name": "스카니아",
+        }
+
+        self.client.get("/api/nexon/characters/ocid-1/basic")
+        refreshed = self.client.get(
+            "/api/nexon/characters/ocid-1/basic",
+            {"refresh": "1"},
+        )
+
+        self.assertEqual(refreshed.status_code, 200)
+        self.assertEqual(character_basic.call_count, 2)

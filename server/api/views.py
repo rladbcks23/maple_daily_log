@@ -20,6 +20,7 @@ from .services import (
 
 SCHEDULER_CACHE_SECONDS = 30
 CHARACTER_LIST_CACHE_SECONDS = 600
+CHARACTER_BASIC_CACHE_SECONDS = 86400
 CURRENT_NOTICES_CACHE_SECONDS = 300
 LATEST_SUNDAY_CACHE_SECONDS = 21600
 
@@ -114,7 +115,15 @@ class NexonOcidView(APIView):
 class NexonBasicView(APIView):
     def get(self, request, ocid):
         try:
-            return Response(NexonClient().character_basic(ocid, date=request.query_params.get("date")))
+            date = request.query_params.get("date")
+            cache_key = f"nexon:character-basic:{ocid}:{date or 'today'}"
+            payload = cached_response(
+                cache_key,
+                CHARACTER_BASIC_CACHE_SECONDS,
+                request.query_params.get("refresh") == "1",
+                lambda: NexonClient().character_basic(ocid, date=date),
+            )
+            return Response(payload)
         except NexonApiError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
 
