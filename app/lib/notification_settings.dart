@@ -9,6 +9,7 @@ class NotificationSettings {
     required this.checkOnStartup,
     required this.dailyEnabled,
     required this.weeklyEnabled,
+    required this.weeklyWeekdays,
     required this.monthlyEnabled,
     required this.noticeEnabled,
   });
@@ -20,6 +21,7 @@ class NotificationSettings {
     checkOnStartup: true,
     dailyEnabled: true,
     weeklyEnabled: true,
+    weeklyWeekdays: [DateTime.tuesday, DateTime.wednesday],
     monthlyEnabled: true,
     noticeEnabled: true,
   );
@@ -30,6 +32,7 @@ class NotificationSettings {
   final bool checkOnStartup;
   final bool dailyEnabled;
   final bool weeklyEnabled;
+  final List<int> weeklyWeekdays;
   final bool monthlyEnabled;
   final bool noticeEnabled;
 
@@ -40,6 +43,7 @@ class NotificationSettings {
     bool? checkOnStartup,
     bool? dailyEnabled,
     bool? weeklyEnabled,
+    List<int>? weeklyWeekdays,
     bool? monthlyEnabled,
     bool? noticeEnabled,
   }) {
@@ -50,6 +54,7 @@ class NotificationSettings {
       checkOnStartup: checkOnStartup ?? this.checkOnStartup,
       dailyEnabled: dailyEnabled ?? this.dailyEnabled,
       weeklyEnabled: weeklyEnabled ?? this.weeklyEnabled,
+      weeklyWeekdays: weeklyWeekdays ?? this.weeklyWeekdays,
       monthlyEnabled: monthlyEnabled ?? this.monthlyEnabled,
       noticeEnabled: noticeEnabled ?? this.noticeEnabled,
     );
@@ -62,6 +67,7 @@ class NotificationSettings {
         'checkOnStartup': checkOnStartup,
         'dailyEnabled': dailyEnabled,
         'weeklyEnabled': weeklyEnabled,
+        'weeklyWeekdays': weeklyWeekdays,
         'monthlyEnabled': monthlyEnabled,
         'noticeEnabled': noticeEnabled,
       };
@@ -82,6 +88,7 @@ class NotificationSettings {
           NotificationSettings.defaults.dailyEnabled,
       weeklyEnabled: json['weeklyEnabled'] as bool? ??
           NotificationSettings.defaults.weeklyEnabled,
+      weeklyWeekdays: _readWeekdays(json['weeklyWeekdays']),
       monthlyEnabled: json['monthlyEnabled'] as bool? ??
           NotificationSettings.defaults.monthlyEnabled,
       noticeEnabled: json['noticeEnabled'] as bool? ??
@@ -99,6 +106,22 @@ class NotificationSettings {
       return null;
     }
     return parsed;
+  }
+
+  static List<int> _readWeekdays(Object? value) {
+    if (value is! List) {
+      return NotificationSettings.defaults.weeklyWeekdays;
+    }
+
+    final weekdays = value
+        .map((item) => _readBoundedInt(item, DateTime.monday, DateTime.sunday))
+        .whereType<int>()
+        .toSet()
+        .toList()
+      ..sort();
+    return weekdays.isEmpty
+        ? NotificationSettings.defaults.weeklyWeekdays
+        : weekdays;
   }
 }
 

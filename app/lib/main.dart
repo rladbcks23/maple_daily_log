@@ -888,8 +888,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
         await _checkDailyLoginNotification(now);
       }
       if (notificationSettings.weeklyEnabled &&
-          (now.weekday == DateTime.tuesday ||
-              now.weekday == DateTime.wednesday)) {
+          notificationSettings.weeklyWeekdays.contains(now.weekday)) {
         await _checkWeeklyReminderNotification(now);
       }
     } finally {
@@ -1608,6 +1607,62 @@ class _NotificationSettingsButton extends StatelessWidget {
                         });
                       },
                     ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 2, bottom: 12),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final weekday in const [
+                            DateTime.monday,
+                            DateTime.tuesday,
+                            DateTime.wednesday,
+                            DateTime.thursday,
+                            DateTime.friday,
+                            DateTime.saturday,
+                            DateTime.sunday,
+                          ])
+                            FilterChip(
+                              label: Text(_weekdayLabel(weekday)),
+                              selected: draft.weeklyWeekdays.contains(weekday),
+                              onSelected: saving ||
+                                      !draft.enabled ||
+                                      !draft.weeklyEnabled
+                                  ? null
+                                  : (selected) {
+                                      final weekdays =
+                                          draft.weeklyWeekdays.toSet();
+                                      if (selected) {
+                                        weekdays.add(weekday);
+                                      } else if (weekdays.length > 1) {
+                                        weekdays.remove(weekday);
+                                      }
+                                      setDialogState(() {
+                                        draft = draft.copyWith(
+                                          weeklyWeekdays: weekdays.toList()
+                                            ..sort(),
+                                        );
+                                      });
+                                    },
+                              selectedColor:
+                                  AppColors.navAccent.withValues(alpha: 0.15),
+                              checkmarkColor: AppColors.navAccent,
+                              side: BorderSide(
+                                color: draft.weeklyWeekdays.contains(weekday)
+                                    ? AppColors.navAccent
+                                    : AppColors.border,
+                              ),
+                              labelStyle: TextStyle(
+                                color: draft.weeklyWeekdays.contains(weekday)
+                                    ? AppColors.navAccent
+                                    : AppColors.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                     _NotificationSettingSwitch(
                       title: '월간 알림',
                       subtitle: '월간 콘텐츠 알림 기준으로 사용합니다.',
@@ -1711,6 +1766,19 @@ class _NotificationSettingsButton extends StatelessWidget {
     final displayHour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
     final minute = time.minute.toString().padLeft(2, '0');
     return '$period $displayHour:$minute';
+  }
+
+  String _weekdayLabel(int weekday) {
+    return switch (weekday) {
+      DateTime.monday => '월',
+      DateTime.tuesday => '화',
+      DateTime.wednesday => '수',
+      DateTime.thursday => '목',
+      DateTime.friday => '금',
+      DateTime.saturday => '토',
+      DateTime.sunday => '일',
+      _ => '',
+    };
   }
 
   TimeOfDay? _normalizedTime(String hourText, String minuteText) {
