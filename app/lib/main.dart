@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:tray_manager/tray_manager.dart';
@@ -798,7 +799,9 @@ class _MapleAppShellState extends State<_MapleAppShell>
   }
 
   Future<void> checkScheduledNotifications() async {
-    if (isCheckingScheduledNotifications || selectedCharacters.isEmpty) {
+    if (!notificationSettings.enabled ||
+        isCheckingScheduledNotifications ||
+        selectedCharacters.isEmpty) {
       return;
     }
 
@@ -812,22 +815,27 @@ class _MapleAppShellState extends State<_MapleAppShell>
   }
 
   Future<void> checkStartupScheduledNotifications() async {
-    if (!notificationSettings.checkOnStartup) {
+    if (!notificationSettings.enabled || !notificationSettings.checkOnStartup) {
       return;
     }
     await runScheduledNotificationChecks(DateTime.now());
   }
 
   Future<void> runScheduledNotificationChecks(DateTime now) async {
-    if (isCheckingScheduledNotifications || selectedCharacters.isEmpty) {
+    if (!notificationSettings.enabled ||
+        isCheckingScheduledNotifications ||
+        selectedCharacters.isEmpty) {
       return;
     }
 
     isCheckingScheduledNotifications = true;
     try {
-      await _checkDailyLoginNotification(now);
-      if (now.weekday == DateTime.tuesday ||
-          now.weekday == DateTime.wednesday) {
+      if (notificationSettings.dailyEnabled) {
+        await _checkDailyLoginNotification(now);
+      }
+      if (notificationSettings.weeklyEnabled &&
+          (now.weekday == DateTime.tuesday ||
+              now.weekday == DateTime.wednesday)) {
         await _checkWeeklyReminderNotification(now);
       }
     } finally {
@@ -1340,27 +1348,10 @@ class _MainPanel extends StatelessWidget {
                   ),
                 ],
                 const Spacer(),
-                OutlinedButton.icon(
-                  onPressed: () => onTestNotification(),
-                  icon: const Icon(Icons.notifications_outlined, size: 18),
-                  label: const Text('알림 테스트'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.text,
-                    side: const BorderSide(color: AppColors.border),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 13,
-                      vertical: 10,
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
                 _NotificationSettingsButton(
                   settings: notificationSettings,
                   onChanged: onNotificationSettingsChanged,
+                  onTestNotification: onTestNotification,
                 ),
               ],
             ),
@@ -1407,10 +1398,12 @@ class _NotificationSettingsButton extends StatelessWidget {
   const _NotificationSettingsButton({
     required this.settings,
     required this.onChanged,
+    required this.onTestNotification,
   });
 
   final NotificationSettings settings;
   final Future<void> Function(NotificationSettings settings) onChanged;
+  final Future<void> Function() onTestNotification;
 
   @override
   Widget build(BuildContext context) {
@@ -1432,23 +1425,22 @@ class _NotificationSettingsButton extends StatelessWidget {
   Future<void> _openDialog(BuildContext context) async {
     var draft = settings;
     var saving = false;
+    final hourController = TextEditingController(
+      text: draft.reminderHour.toString().padLeft(2, '0'),
+    );
+    final minuteController = TextEditingController(
+      text: draft.reminderMinute.toString().padLeft(2, '0'),
+    );
 
     await showDialog<void>(
       context: context,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final timeLabel = _formatTime(
-              TimeOfDay(
-                hour: draft.reminderHour,
-                minute: draft.reminderMinute,
-              ),
-            );
-
             return AlertDialog(
               title: const Text('알림 설정'),
               content: SizedBox(
-                width: 360,
+                width: 410,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1466,11 +1458,13 @@ class _NotificationSettingsButton extends StatelessWidget {
                       onPressed: saving
                           ? null
                           : () async {
-                              final picked = await showTimePicker(
-                                context: context,
-                                initialTime: TimeOfDay(
-                                  hour: draft.reminderHour,
-                                  minute: draft.reminderMinute,
+                              final picked = await showDialog<TimeOfDay>(
+                                context: dialogContext,
+                                builder: (_) => _BoundedTimePickerDialog(
+                                  initialTime: TimeOfDay(
+                                    hour: draft.reminderHour,
+                                    minute: draft.reminderMinute,
+                                  ),
                                 ),
                               );
                               if (picked == null) {
@@ -1481,41 +1475,99 @@ class _NotificationSettingsButton extends StatelessWidget {
                                   reminderHour: picked.hour,
                                   reminderMinute: picked.minute,
                                 );
+                                hourController.text =
+                                    picked.hour.toString().padLeft(2, '0');
+                                minuteController.text =
+                                    picked.minute.toString().padLeft(2, '0');
                               });
                             },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.text,
-                        side: const BorderSide(color: AppColors.navBorder),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: const BorderSide(color: AppColors.border),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         textStyle: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      child: Text(timeLabel),
+                      child: Text(
+                        _formatTime(
+                          TimeOfDay(
+                            hour: draft.reminderHour,
+                            minute: draft.reminderMinute,
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 14),
-                    SwitchListTile(
+                    _NotificationSettingSwitch(
+                      title: '알림 ON/OFF',
+                      subtitle: '전체 알림을 한 번에 켜거나 끕니다.',
+                      value: draft.enabled,
+                      saving: saving,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          draft = draft.copyWith(enabled: value);
+                        });
+                      },
+                    ),
+                    _NotificationSettingSwitch(
+                      title: '앱 시작 시 알림',
+                      subtitle: '컴퓨터를 켤 때 놓친 알림을 한 번 확인합니다.',
                       value: draft.checkOnStartup,
-                      onChanged: saving
-                          ? null
-                          : (value) {
-                              setDialogState(() {
-                                draft = draft.copyWith(checkOnStartup: value);
-                              });
-                            },
-                      contentPadding: EdgeInsets.zero,
-                      activeColor: AppColors.navAccent,
-                      title: const Text(
-                        '앱 시작 시 알림 검사',
-                        style: TextStyle(
-                          color: AppColors.text,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
+                      saving: saving || !draft.enabled,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          draft = draft.copyWith(checkOnStartup: value);
+                        });
+                      },
+                    ),
+                    _NotificationSettingSwitch(
+                      title: '일간 알림',
+                      subtitle: '오늘 접속 기록과 일일 콘텐츠를 확인합니다.',
+                      value: draft.dailyEnabled,
+                      saving: saving || !draft.enabled,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          draft = draft.copyWith(dailyEnabled: value);
+                        });
+                      },
+                    ),
+                    _NotificationSettingSwitch(
+                      title: '주간 알림',
+                      subtitle: '화/수에 주간 콘텐츠와 주간 보스를 확인합니다.',
+                      value: draft.weeklyEnabled,
+                      saving: saving || !draft.enabled,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          draft = draft.copyWith(weeklyEnabled: value);
+                        });
+                      },
+                    ),
+                    _NotificationSettingSwitch(
+                      title: '월간 알림',
+                      subtitle: '월간 콘텐츠 알림 기준으로 사용합니다.',
+                      value: draft.monthlyEnabled,
+                      saving: saving || !draft.enabled,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          draft = draft.copyWith(monthlyEnabled: value);
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: saving ? null : () => onTestNotification(),
+                      icon: const Icon(Icons.notifications_outlined, size: 18),
+                      label: const Text('알림 테스트'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.text,
+                        side: const BorderSide(color: AppColors.border),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        textStyle: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
                         ),
-                      ),
-                      subtitle: const Text(
-                        '컴퓨터를 켤 때 오늘 일일 알림과 화/수 주간 알림을 한 번 확인합니다.',
                       ),
                     ),
                   ],
@@ -1530,8 +1582,24 @@ class _NotificationSettingsButton extends StatelessWidget {
                   onPressed: saving
                       ? null
                       : () async {
+                          final normalized = _normalizedTime(
+                            hourController.text,
+                            minuteController.text,
+                          );
+                          if (normalized == null) {
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(
+                              const SnackBar(
+                                content: Text('시간은 0~23, 분은 0~59로 입력해주세요.'),
+                              ),
+                            );
+                            return;
+                          }
                           setDialogState(() {
                             saving = true;
+                            draft = draft.copyWith(
+                              reminderHour: normalized.hour,
+                              reminderMinute: normalized.minute,
+                            );
                           });
                           await onChanged(draft);
                           if (dialogContext.mounted) {
@@ -1559,6 +1627,8 @@ class _NotificationSettingsButton extends StatelessWidget {
         );
       },
     );
+    hourController.dispose();
+    minuteController.dispose();
   }
 
   String _formatTime(TimeOfDay time) {
@@ -1566,6 +1636,360 @@ class _NotificationSettingsButton extends StatelessWidget {
     final displayHour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
     final minute = time.minute.toString().padLeft(2, '0');
     return '$period $displayHour:$minute';
+  }
+
+  TimeOfDay? _normalizedTime(String hourText, String minuteText) {
+    final hour = int.tryParse(hourText);
+    final minute = int.tryParse(minuteText);
+    if (hour == null ||
+        minute == null ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59) {
+      return null;
+    }
+    return TimeOfDay(hour: hour, minute: minute);
+  }
+}
+
+class _BoundedTimePickerDialog extends StatefulWidget {
+  const _BoundedTimePickerDialog({required this.initialTime});
+
+  final TimeOfDay initialTime;
+
+  @override
+  State<_BoundedTimePickerDialog> createState() =>
+      _BoundedTimePickerDialogState();
+}
+
+class _BoundedTimePickerDialogState extends State<_BoundedTimePickerDialog> {
+  late int _hour;
+  late int _minute;
+  late bool _isPm;
+  late final TextEditingController _hourController;
+  late final TextEditingController _minuteController;
+
+  int get _displayHour {
+    final hour = _hour % 12;
+    return hour == 0 ? 12 : hour;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _hour = widget.initialTime.hour;
+    _minute = widget.initialTime.minute;
+    _isPm = _hour >= 12;
+    _hourController = TextEditingController(text: _displayHour.toString());
+    _minuteController = TextEditingController(
+      text: _minute.toString().padLeft(2, '0'),
+    );
+  }
+
+  @override
+  void dispose() {
+    _hourController.dispose();
+    _minuteController.dispose();
+    super.dispose();
+  }
+
+  void _setDisplayHour(String value) {
+    final parsed = int.tryParse(value);
+    if (parsed == null || parsed < 1 || parsed > 12) {
+      return;
+    }
+    setState(() {
+      _hour = _to24Hour(parsed, _isPm);
+    });
+  }
+
+  void _setMinuteInput(String value) {
+    final parsed = int.tryParse(value);
+    if (parsed == null || parsed < 0 || parsed > 59) {
+      return;
+    }
+    setState(() {
+      _minute = parsed;
+    });
+  }
+
+  void _setMinute(int minute) {
+    setState(() {
+      _minute = minute;
+      _minuteController.text = minute.toString().padLeft(2, '0');
+    });
+  }
+
+  void _setPeriod(bool isPm) {
+    setState(() {
+      _isPm = isPm;
+      _hour = _to24Hour(_displayHour, _isPm);
+    });
+  }
+
+  int _to24Hour(int displayHour, bool isPm) {
+    final normalized = displayHour % 12;
+    return isPm ? normalized + 12 : normalized;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('알림 시간 선택'),
+      content: SizedBox(
+        width: 520,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 190,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _hourController,
+                          keyboardType: TextInputType.number,
+                          maxLength: 2,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.text,
+                            fontSize: 30,
+                            fontWeight: FontWeight.w900,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: '시',
+                            counterText: '',
+                            border: OutlineInputBorder(),
+                          ),
+                          onChanged: _setDisplayHour,
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(
+                          ':',
+                          style: TextStyle(
+                            color: AppColors.text,
+                            fontSize: 30,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: _minuteController,
+                          keyboardType: TextInputType.number,
+                          maxLength: 2,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.text,
+                            fontSize: 30,
+                            fontWeight: FontWeight.w900,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: '분',
+                            counterText: '',
+                            border: OutlineInputBorder(),
+                          ),
+                          onChanged: _setMinuteInput,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(value: false, label: Text('AM')),
+                      ButtonSegment(value: true, label: Text('PM')),
+                    ],
+                    selected: {_isPm},
+                    style: ButtonStyle(
+                      foregroundColor:
+                          WidgetStateProperty.resolveWith<Color>((states) {
+                        return states.contains(WidgetState.selected)
+                            ? Colors.white
+                            : AppColors.text;
+                      }),
+                      backgroundColor:
+                          WidgetStateProperty.resolveWith<Color>((states) {
+                        return states.contains(WidgetState.selected)
+                            ? AppColors.navAccent
+                            : Colors.white;
+                      }),
+                    ),
+                    onSelectionChanged: (selected) {
+                      _setPeriod(selected.first);
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    '시/분을 직접 입력하거나 시계에서 분을 선택하세요.',
+                    style: TextStyle(color: AppColors.muted, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 28),
+            _ClockDial(minute: _minute, onMinuteChanged: _setMinute),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          onPressed: () {
+            Navigator.pop(context, TimeOfDay(hour: _hour, minute: _minute));
+          },
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.navAccent,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('확인'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ClockDial extends StatelessWidget {
+  const _ClockDial({required this.minute, required this.onMinuteChanged});
+
+  static const double size = 240;
+  static const double interactiveRadius = 112;
+
+  final int minute;
+  final ValueChanged<int> onMinuteChanged;
+
+  void _handlePointer(Offset localPosition) {
+    const center = Offset(size / 2, size / 2);
+    final distance = (localPosition - center).distance;
+    if (distance > interactiveRadius) {
+      return;
+    }
+
+    final angle = math.atan2(
+      localPosition.dy - center.dy,
+      localPosition.dx - center.dx,
+    );
+    final normalized = (angle + math.pi / 2 + math.pi * 2) % (math.pi * 2);
+    final rawMinute = ((normalized / (math.pi * 2)) * 60).round() % 60;
+    final roundedMinute = ((rawMinute / 5).round() * 5) % 60;
+    onMinuteChanged(roundedMinute);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.deferToChild,
+      onTapDown: (details) => _handlePointer(details.localPosition),
+      onPanUpdate: (details) => _handlePointer(details.localPosition),
+      child: CustomPaint(
+        size: const Size.square(size),
+        painter: _ClockDialPainter(minute: minute),
+      ),
+    );
+  }
+}
+
+class _ClockDialPainter extends CustomPainter {
+  const _ClockDialPainter({required this.minute});
+
+  final int minute;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2;
+    final backgroundPaint = Paint()..color = AppColors.navAccent.withAlpha(18);
+    final handPaint = Paint()
+      ..color = AppColors.navAccent
+      ..strokeWidth = 2.2
+      ..strokeCap = StrokeCap.round;
+    final selectedPaint = Paint()..color = AppColors.navAccent;
+    final dotPaint = Paint()..color = AppColors.navAccent;
+
+    canvas.drawCircle(center, radius, backgroundPaint);
+
+    final selectedAngle = (minute / 60) * math.pi * 2 - math.pi / 2;
+    final selectedOffset = Offset(
+      center.dx + math.cos(selectedAngle) * (radius - 38),
+      center.dy + math.sin(selectedAngle) * (radius - 38),
+    );
+    canvas.drawLine(center, selectedOffset, handPaint);
+    canvas.drawCircle(center, 4, dotPaint);
+    canvas.drawCircle(selectedOffset, 24, selectedPaint);
+
+    for (var value = 0; value < 60; value += 5) {
+      final angle = (value / 60) * math.pi * 2 - math.pi / 2;
+      final offset = Offset(
+        center.dx + math.cos(angle) * (radius - 38),
+        center.dy + math.sin(angle) * (radius - 38),
+      );
+      final isSelected = value == minute;
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: value.toString().padLeft(2, '0'),
+          style: TextStyle(
+            color: isSelected ? Colors.white : AppColors.text,
+            fontSize: 15,
+            fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      textPainter.paint(
+        canvas,
+        offset - Offset(textPainter.width / 2, textPainter.height / 2),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ClockDialPainter oldDelegate) {
+    return oldDelegate.minute != minute;
+  }
+}
+
+class _NotificationSettingSwitch extends StatelessWidget {
+  const _NotificationSettingSwitch({
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.saving,
+    required this.onChanged,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool value;
+  final bool saving;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      value: value,
+      onChanged: saving ? null : onChanged,
+      contentPadding: EdgeInsets.zero,
+      activeThumbColor: AppColors.navAccent,
+      title: Text(
+        title,
+        style: const TextStyle(
+          color: AppColors.text,
+          fontSize: 14,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      subtitle: Text(subtitle),
+    );
   }
 }
 

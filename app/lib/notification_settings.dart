@@ -5,35 +5,59 @@ class NotificationSettings {
   const NotificationSettings({
     required this.reminderHour,
     required this.reminderMinute,
+    required this.enabled,
     required this.checkOnStartup,
+    required this.dailyEnabled,
+    required this.weeklyEnabled,
+    required this.monthlyEnabled,
   });
 
   static const defaults = NotificationSettings(
     reminderHour: 21,
     reminderMinute: 0,
+    enabled: true,
     checkOnStartup: true,
+    dailyEnabled: true,
+    weeklyEnabled: true,
+    monthlyEnabled: true,
   );
 
   final int reminderHour;
   final int reminderMinute;
+  final bool enabled;
   final bool checkOnStartup;
+  final bool dailyEnabled;
+  final bool weeklyEnabled;
+  final bool monthlyEnabled;
 
   NotificationSettings copyWith({
     int? reminderHour,
     int? reminderMinute,
+    bool? enabled,
     bool? checkOnStartup,
+    bool? dailyEnabled,
+    bool? weeklyEnabled,
+    bool? monthlyEnabled,
   }) {
     return NotificationSettings(
       reminderHour: reminderHour ?? this.reminderHour,
       reminderMinute: reminderMinute ?? this.reminderMinute,
+      enabled: enabled ?? this.enabled,
       checkOnStartup: checkOnStartup ?? this.checkOnStartup,
+      dailyEnabled: dailyEnabled ?? this.dailyEnabled,
+      weeklyEnabled: weeklyEnabled ?? this.weeklyEnabled,
+      monthlyEnabled: monthlyEnabled ?? this.monthlyEnabled,
     );
   }
 
   Map<String, dynamic> toJson() => {
         'reminderHour': reminderHour,
         'reminderMinute': reminderMinute,
+        'enabled': enabled,
         'checkOnStartup': checkOnStartup,
+        'dailyEnabled': dailyEnabled,
+        'weeklyEnabled': weeklyEnabled,
+        'monthlyEnabled': monthlyEnabled,
       };
 
   factory NotificationSettings.fromJson(Map<String, dynamic> json) {
@@ -44,8 +68,16 @@ class NotificationSettings {
     return NotificationSettings(
       reminderHour: hour,
       reminderMinute: minute,
+      enabled:
+          json['enabled'] as bool? ?? NotificationSettings.defaults.enabled,
       checkOnStartup: json['checkOnStartup'] as bool? ??
           NotificationSettings.defaults.checkOnStartup,
+      dailyEnabled: json['dailyEnabled'] as bool? ??
+          NotificationSettings.defaults.dailyEnabled,
+      weeklyEnabled: json['weeklyEnabled'] as bool? ??
+          NotificationSettings.defaults.weeklyEnabled,
+      monthlyEnabled: json['monthlyEnabled'] as bool? ??
+          NotificationSettings.defaults.monthlyEnabled,
     );
   }
 
