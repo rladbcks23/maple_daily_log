@@ -93,7 +93,8 @@ class NotificationSettingsStore {
       }
       final decoded = jsonDecode(await file.readAsString());
       if (decoded is Map) {
-        return NotificationSettings.fromJson(Map<String, dynamic>.from(decoded));
+        return NotificationSettings.fromJson(
+            Map<String, dynamic>.from(decoded));
       }
     } on FileSystemException {
       return NotificationSettings.defaults;
