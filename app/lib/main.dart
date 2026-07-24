@@ -59,17 +59,14 @@ Map<String, dynamic> _decodeWindowArguments(String rawArguments) {
 
 Future<void> _configureAlertWindow() async {
   const windowOptions = WindowOptions(
-    size: Size(400, 276),
+    size: Size(408, 306),
     center: true,
     backgroundColor: AppColors.surface,
     skipTaskbar: false,
     title: '알림',
-    titleBarStyle: TitleBarStyle.hidden,
-    windowButtonVisibility: false,
+    titleBarStyle: TitleBarStyle.normal,
   );
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.setAsFrameless();
-    await windowManager.setResizable(false);
     await windowManager.show();
     await windowManager.focus();
   });
