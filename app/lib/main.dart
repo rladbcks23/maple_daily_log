@@ -768,6 +768,16 @@ class _MapleAppShellState extends State<_MapleAppShell>
     }
   }
 
+  Future<void> saveNotificationSettings(NotificationSettings settings) async {
+    await notificationSettingsStore.save(settings);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      notificationSettings = settings;
+    });
+  }
+
   void handleNotificationTap(String? payload) {
     if (!mounted) {
       return;
@@ -960,6 +970,8 @@ class _MapleAppShellState extends State<_MapleAppShell>
               onAddCharacter: openCharacterPicker,
               onRefresh: refreshCurrentSection,
               onTestNotification: showTestNotification,
+              notificationSettings: notificationSettings,
+              onNotificationSettingsChanged: saveNotificationSettings,
               onSelectSection: selectSection,
               onSelectCharacter: selectCharacter,
               onOpenCharacterScheduler: openCharacterScheduler,
@@ -1254,6 +1266,8 @@ class _MainPanel extends StatelessWidget {
     required this.onAddCharacter,
     required this.onRefresh,
     required this.onTestNotification,
+    required this.notificationSettings,
+    required this.onNotificationSettingsChanged,
     required this.onSelectSection,
     required this.onSelectCharacter,
     required this.onOpenCharacterScheduler,
@@ -1279,6 +1293,9 @@ class _MainPanel extends StatelessWidget {
   final VoidCallback onAddCharacter;
   final Future<void> Function() onRefresh;
   final Future<void> Function() onTestNotification;
+  final NotificationSettings notificationSettings;
+  final Future<void> Function(NotificationSettings settings)
+      onNotificationSettingsChanged;
   final ValueChanged<AppSection> onSelectSection;
   final ValueChanged<NexonCharacterSummary> onSelectCharacter;
   final ValueChanged<NexonCharacterSummary> onOpenCharacterScheduler;
@@ -1340,6 +1357,11 @@ class _MainPanel extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(width: 8),
+                _NotificationSettingsButton(
+                  settings: notificationSettings,
+                  onChanged: onNotificationSettingsChanged,
+                ),
               ],
             ),
             const SizedBox(height: 24),
@@ -1378,6 +1400,172 @@ class _MainPanel extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _NotificationSettingsButton extends StatelessWidget {
+  const _NotificationSettingsButton({
+    required this.settings,
+    required this.onChanged,
+  });
+
+  final NotificationSettings settings;
+  final Future<void> Function(NotificationSettings settings) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: '알림 설정',
+      child: IconButton(
+        onPressed: () => _openDialog(context),
+        icon: const Icon(Icons.settings_outlined),
+        color: AppColors.text,
+        iconSize: 22,
+        style: IconButton.styleFrom(
+          side: const BorderSide(color: AppColors.border),
+          padding: const EdgeInsets.all(11),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openDialog(BuildContext context) async {
+    var draft = settings;
+    var saving = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final timeLabel = _formatTime(
+              TimeOfDay(
+                hour: draft.reminderHour,
+                minute: draft.reminderMinute,
+              ),
+            );
+
+            return AlertDialog(
+              title: const Text('알림 설정'),
+              content: SizedBox(
+                width: 360,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      '예약 알림 시간',
+                      style: TextStyle(
+                        color: AppColors.text,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: saving
+                          ? null
+                          : () async {
+                              final picked = await showTimePicker(
+                                context: context,
+                                initialTime: TimeOfDay(
+                                  hour: draft.reminderHour,
+                                  minute: draft.reminderMinute,
+                                ),
+                              );
+                              if (picked == null) {
+                                return;
+                              }
+                              setDialogState(() {
+                                draft = draft.copyWith(
+                                  reminderHour: picked.hour,
+                                  reminderMinute: picked.minute,
+                                );
+                              });
+                            },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.text,
+                        side: const BorderSide(color: AppColors.navBorder),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      child: Text(timeLabel),
+                    ),
+                    const SizedBox(height: 14),
+                    SwitchListTile(
+                      value: draft.checkOnStartup,
+                      onChanged: saving
+                          ? null
+                          : (value) {
+                              setDialogState(() {
+                                draft = draft.copyWith(checkOnStartup: value);
+                              });
+                            },
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: AppColors.navAccent,
+                      title: const Text(
+                        '앱 시작 시 알림 검사',
+                        style: TextStyle(
+                          color: AppColors.text,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        '컴퓨터를 켤 때 오늘 일일 알림과 화/수 주간 알림을 한 번 확인합니다.',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: saving ? null : () => Navigator.pop(context),
+                  child: const Text('취소'),
+                ),
+                FilledButton(
+                  onPressed: saving
+                      ? null
+                      : () async {
+                          setDialogState(() {
+                            saving = true;
+                          });
+                          await onChanged(draft);
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext);
+                          }
+                        },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.navAccent,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: saving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('저장'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _formatTime(TimeOfDay time) {
+    final period = time.hour < 12 ? '오전' : '오후';
+    final displayHour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$period $displayHour:$minute';
   }
 }
 
