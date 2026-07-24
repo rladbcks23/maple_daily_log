@@ -99,6 +99,29 @@ class ApiClient {
         .toList();
   }
 
+  Future<List<NoticeItemSummary>> checkNewNotices() async {
+    final response =
+        await _httpClient.post(Uri.parse('$baseUrl/api/notices/check-new'));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException('새 공지사항을 확인하지 못했습니다. (${response.statusCode})');
+    }
+
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    final items =
+        decoded is Map<String, dynamic> ? decoded['newItems'] : decoded;
+    if (items is! List) {
+      return const [];
+    }
+
+    return items
+        .whereType<Map>()
+        .map((item) => NoticeItemSummary.fromJson(
+              Map<String, dynamic>.from(item),
+            ))
+        .toList();
+  }
+
   Future<NoticeItemSummary?> fetchLatestSundayEvent({
     bool forceRefresh = false,
   }) async {

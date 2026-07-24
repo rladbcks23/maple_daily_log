@@ -10,6 +10,7 @@ class NotificationSettings {
     required this.dailyEnabled,
     required this.weeklyEnabled,
     required this.monthlyEnabled,
+    required this.noticeEnabled,
   });
 
   static const defaults = NotificationSettings(
@@ -20,6 +21,7 @@ class NotificationSettings {
     dailyEnabled: true,
     weeklyEnabled: true,
     monthlyEnabled: true,
+    noticeEnabled: true,
   );
 
   final int reminderHour;
@@ -29,6 +31,7 @@ class NotificationSettings {
   final bool dailyEnabled;
   final bool weeklyEnabled;
   final bool monthlyEnabled;
+  final bool noticeEnabled;
 
   NotificationSettings copyWith({
     int? reminderHour,
@@ -38,6 +41,7 @@ class NotificationSettings {
     bool? dailyEnabled,
     bool? weeklyEnabled,
     bool? monthlyEnabled,
+    bool? noticeEnabled,
   }) {
     return NotificationSettings(
       reminderHour: reminderHour ?? this.reminderHour,
@@ -47,6 +51,7 @@ class NotificationSettings {
       dailyEnabled: dailyEnabled ?? this.dailyEnabled,
       weeklyEnabled: weeklyEnabled ?? this.weeklyEnabled,
       monthlyEnabled: monthlyEnabled ?? this.monthlyEnabled,
+      noticeEnabled: noticeEnabled ?? this.noticeEnabled,
     );
   }
 
@@ -58,6 +63,7 @@ class NotificationSettings {
         'dailyEnabled': dailyEnabled,
         'weeklyEnabled': weeklyEnabled,
         'monthlyEnabled': monthlyEnabled,
+        'noticeEnabled': noticeEnabled,
       };
 
   factory NotificationSettings.fromJson(Map<String, dynamic> json) {
@@ -78,6 +84,8 @@ class NotificationSettings {
           NotificationSettings.defaults.weeklyEnabled,
       monthlyEnabled: json['monthlyEnabled'] as bool? ??
           NotificationSettings.defaults.monthlyEnabled,
+      noticeEnabled: json['noticeEnabled'] as bool? ??
+          NotificationSettings.defaults.noticeEnabled,
     );
   }
 

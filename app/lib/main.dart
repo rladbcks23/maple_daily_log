@@ -198,6 +198,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
   Timer? notificationTimer;
   var isCheckingScheduledNotifications = false;
+  var isCheckingNoticeNotifications = false;
   var notificationSettings = NotificationSettings.defaults;
   var currentSection = AppSection.character;
   var isLoading = false;
@@ -326,6 +327,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     setState(() {
       notificationSettings = loadedNotificationSettings;
     });
+    unawaited(checkNewNoticeNotifications());
     await loadCachedCharacters();
     unawaited(refreshCharacterListCache());
   }
@@ -713,6 +715,9 @@ class _MapleAppShellState extends State<_MapleAppShell>
           sundayEvent = nextSundayEvent;
         }
       });
+      if (refresh) {
+        unawaited(checkNewNoticeNotifications());
+      }
     } catch (error) {
       if (!mounted) {
         return;
@@ -795,6 +800,10 @@ class _MapleAppShellState extends State<_MapleAppShell>
               ? AppSection.character
               : AppSection.scheduler;
         });
+      case 'section:notices':
+        setState(() {
+          currentSection = AppSection.notices;
+        });
     }
   }
 
@@ -819,6 +828,40 @@ class _MapleAppShellState extends State<_MapleAppShell>
       return;
     }
     await runScheduledNotificationChecks(DateTime.now());
+  }
+
+  Future<void> checkNewNoticeNotifications() async {
+    if (!notificationSettings.enabled ||
+        !notificationSettings.noticeEnabled ||
+        isCheckingNoticeNotifications) {
+      return;
+    }
+
+    isCheckingNoticeNotifications = true;
+    try {
+      final newItems = await apiClient.checkNewNotices();
+      if (newItems.isEmpty) {
+        return;
+      }
+
+      final title = newItems.length == 1
+          ? _newNoticeTitle(newItems.first)
+          : '새 공지와 이벤트가 올라왔어요';
+      final body = newItems.length == 1
+          ? newItems.first.title
+          : '${_newNoticeTitle(newItems.first)} 외 ${newItems.length - 1}건을 확인해주세요.';
+
+      await LocalNotificationService.instance.showNotification(
+        id: 1003,
+        title: title,
+        body: body,
+        payload: 'section:notices',
+      );
+    } on ApiException {
+      // 공지 알림 확인 실패는 앱 사용을 막지 않는다.
+    } finally {
+      isCheckingNoticeNotifications = false;
+    }
   }
 
   Future<void> runScheduledNotificationChecks(DateTime now) async {
@@ -930,6 +973,16 @@ class _MapleAppShellState extends State<_MapleAppShell>
       return '${characters.first.characterName}님의';
     }
     return '${characters.first.characterName}님 외 ${characters.length - 1}명의';
+  }
+
+  String _newNoticeTitle(NoticeItemSummary item) {
+    return switch (item.displayType) {
+      'event' => '새 이벤트가 올라왔어요',
+      'cashshop' => '새 캐시샵 공지가 올라왔어요',
+      'update' => '새 업데이트 공지가 올라왔어요',
+      'maintenance' => '새 점검 공지가 올라왔어요',
+      _ => '새 공지가 올라왔어요',
+    };
   }
 
   void selectSection(AppSection section) {
@@ -1552,6 +1605,17 @@ class _NotificationSettingsButton extends StatelessWidget {
                       onChanged: (value) {
                         setDialogState(() {
                           draft = draft.copyWith(monthlyEnabled: value);
+                        });
+                      },
+                    ),
+                    _NotificationSettingSwitch(
+                      title: '공지/이벤트 알림',
+                      subtitle: '새 공지, 이벤트, 캐시샵, 업데이트가 올라오면 알려줍니다.',
+                      value: draft.noticeEnabled,
+                      saving: saving || !draft.enabled,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          draft = draft.copyWith(noticeEnabled: value);
                         });
                       },
                     ),
