@@ -1172,7 +1172,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
       for (final item in partySchedules)
         if (item.id == schedule.id) schedule else item,
       if (!partySchedules.any((item) => item.id == schedule.id)) schedule,
-    ]..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+    ]..sort(_comparePartySchedules);
 
     await partyScheduleStore.save(nextSchedules);
     if (!mounted) {
@@ -1199,14 +1199,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     await savePartySchedule(
       schedule.copyWith(
         cleared: !schedule.cleared,
-        alertEnabled: schedule.cleared ? schedule.alertEnabled : false,
       ),
-    );
-  }
-
-  Future<void> togglePartyAlert(PartySchedule schedule) async {
-    await savePartySchedule(
-      schedule.copyWith(alertEnabled: !schedule.alertEnabled),
     );
   }
 
@@ -1349,14 +1342,13 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
   Future<void> _checkPartyScheduleNotifications(DateTime now) async {
     for (final schedule in partySchedules) {
-      if (!schedule.alertEnabled ||
-          schedule.cleared ||
-          schedule.scheduledAt.isAfter(now)) {
+      final targetTime = schedule.currentWeekScheduleFrom(now);
+      if (schedule.cleared || targetTime.isAfter(now)) {
         continue;
       }
 
       final ruleKey =
-          'party-schedule-${schedule.id}-${schedule.scheduledAt.toIso8601String()}';
+          'party-schedule-${schedule.id}-${_dateKey(targetTime)}-${schedule.hour}-${schedule.minute}';
       if (await notificationHistory.hasSent(ruleKey)) {
         continue;
       }
@@ -1366,7 +1358,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
       await showOverlayAlert(
         title: '파티 일정 시간이 됐어요',
         body:
-            '${schedule.difficulty.toUpperCase()} ${schedule.bossName}\n$memberText\n${_dateTimeText(schedule.scheduledAt)}',
+            '${schedule.difficulty.toUpperCase()} ${schedule.bossName}\n$memberText\n${_partyScheduleText(schedule)}',
         payload: 'section:party',
       );
       await notificationHistory.markSent(ruleKey);
@@ -1595,7 +1587,6 @@ class _MapleAppShellState extends State<_MapleAppShell>
                   onSavePartySchedule: savePartySchedule,
                   onDeletePartySchedule: deletePartySchedule,
                   onTogglePartyCleared: togglePartyCleared,
-                  onTogglePartyAlert: togglePartyAlert,
                 ),
               ),
             ],
@@ -1905,7 +1896,6 @@ class _MainPanel extends StatelessWidget {
     required this.onSavePartySchedule,
     required this.onDeletePartySchedule,
     required this.onTogglePartyCleared,
-    required this.onTogglePartyAlert,
   });
 
   final AppSection currentSection;
@@ -1939,7 +1929,6 @@ class _MainPanel extends StatelessWidget {
   final Future<void> Function(PartySchedule schedule) onSavePartySchedule;
   final Future<void> Function(PartySchedule schedule) onDeletePartySchedule;
   final Future<void> Function(PartySchedule schedule) onTogglePartyCleared;
-  final Future<void> Function(PartySchedule schedule) onTogglePartyAlert;
 
   @override
   Widget build(BuildContext context) {
@@ -2009,7 +1998,6 @@ class _MainPanel extends StatelessWidget {
                     onSave: onSavePartySchedule,
                     onDelete: onDeletePartySchedule,
                     onToggleCleared: onTogglePartyCleared,
-                    onToggleAlert: onTogglePartyAlert,
                   ),
                 _ => _LockedFeaturePanel(
                     section: currentSection,
@@ -3817,12 +3805,73 @@ bool _isGuildSuroItem(SchedulerItemSummary item) {
   return item.title.replaceAll(' ', '').contains('지하수로');
 }
 
-String _dateTimeText(DateTime dateTime) {
-  final month = dateTime.month.toString().padLeft(2, '0');
-  final day = dateTime.day.toString().padLeft(2, '0');
-  final hour = dateTime.hour.toString().padLeft(2, '0');
-  final minute = dateTime.minute.toString().padLeft(2, '0');
-  return '${dateTime.year}-$month-$day $hour:$minute';
+const _partyBossDifficultyOptions = <String, List<String>>{
+  '자쿰': ['normal', 'chaos'],
+  '매그너스': ['easy', 'normal', 'hard'],
+  '힐라': ['normal', 'hard'],
+  '카웅': ['normal'],
+  '파풀라투스': ['easy', 'normal', 'chaos'],
+  '피에르': ['normal', 'chaos'],
+  '반반': ['normal', 'chaos'],
+  '블러디퀸': ['normal', 'chaos'],
+  '벨룸': ['normal', 'chaos'],
+  '스우': ['normal', 'hard', 'extreme'],
+  '데미안': ['normal', 'hard'],
+  '가디언 엔젤 슬라임': ['normal', 'chaos'],
+  '루시드': ['easy', 'normal', 'hard'],
+  '윌': ['easy', 'normal', 'hard'],
+  '더스크': ['normal', 'chaos'],
+  '진 힐라': ['normal', 'hard'],
+  '듄켈': ['normal', 'hard'],
+  '검은 마법사': ['hard', 'extreme'],
+  '선택받은 세렌': ['normal', 'hard', 'extreme'],
+  '감시자 칼로스': ['easy', 'normal', 'chaos', 'extreme'],
+  '카링': ['easy', 'normal', 'hard', 'extreme'],
+  '림보': ['normal', 'hard'],
+  '발드릭스': ['normal', 'hard'],
+};
+
+int _comparePartySchedules(PartySchedule a, PartySchedule b) {
+  final weekdayCompare = a.weekday.compareTo(b.weekday);
+  if (weekdayCompare != 0) {
+    return weekdayCompare;
+  }
+  final hourCompare = a.hour.compareTo(b.hour);
+  if (hourCompare != 0) {
+    return hourCompare;
+  }
+  final minuteCompare = a.minute.compareTo(b.minute);
+  if (minuteCompare != 0) {
+    return minuteCompare;
+  }
+  return a.bossName.compareTo(b.bossName);
+}
+
+String _partyWeekdayLabel(int weekday) {
+  return switch (weekday) {
+    DateTime.monday => '월요일',
+    DateTime.tuesday => '화요일',
+    DateTime.wednesday => '수요일',
+    DateTime.thursday => '목요일',
+    DateTime.friday => '금요일',
+    DateTime.saturday => '토요일',
+    DateTime.sunday => '일요일',
+    _ => '화요일',
+  };
+}
+
+String _partyScheduleText(PartySchedule schedule) {
+  final hour = schedule.hour.toString().padLeft(2, '0');
+  final minute = schedule.minute.toString().padLeft(2, '0');
+  return '매주 ${_partyWeekdayLabel(schedule.weekday)} $hour:$minute';
+}
+
+int _readPartyTimeUnit(String value, int fallback, int min, int max) {
+  final parsed = int.tryParse(value.trim());
+  if (parsed == null || parsed < min || parsed > max) {
+    return fallback;
+  }
+  return parsed;
 }
 
 class _PartySchedulePanel extends StatelessWidget {
@@ -3832,7 +3881,6 @@ class _PartySchedulePanel extends StatelessWidget {
     required this.onSave,
     required this.onDelete,
     required this.onToggleCleared,
-    required this.onToggleAlert,
   });
 
   final List<PartySchedule> schedules;
@@ -3840,7 +3888,6 @@ class _PartySchedulePanel extends StatelessWidget {
   final Future<void> Function(PartySchedule schedule) onSave;
   final Future<void> Function(PartySchedule schedule) onDelete;
   final Future<void> Function(PartySchedule schedule) onToggleCleared;
-  final Future<void> Function(PartySchedule schedule) onToggleAlert;
 
   @override
   Widget build(BuildContext context) {
@@ -3882,7 +3929,6 @@ class _PartySchedulePanel extends StatelessWidget {
                       onEdit: () => _openPartyDialog(context, schedule),
                       onDelete: () => onDelete(schedule),
                       onToggleCleared: () => onToggleCleared(schedule),
-                      onToggleAlert: () => onToggleAlert(schedule),
                     );
                   },
                 ),
@@ -3899,12 +3945,21 @@ class _PartySchedulePanel extends StatelessWidget {
       text: schedule?.members.join(', ') ??
           characters.map((item) => item.characterName).take(1).join(', '),
     );
-    final bossController =
-        TextEditingController(text: schedule?.bossName ?? '');
-    final difficultyController =
-        TextEditingController(text: schedule?.difficulty ?? 'hard');
-    var selectedDateTime =
-        schedule?.scheduledAt ?? DateTime.now().add(const Duration(hours: 1));
+    var selectedBoss =
+        _partyBossDifficultyOptions.containsKey(schedule?.bossName)
+            ? schedule!.bossName
+            : _partyBossDifficultyOptions.keys.first;
+    var difficultyOptions = _partyBossDifficultyOptions[selectedBoss]!;
+    var selectedDifficulty = difficultyOptions.contains(schedule?.difficulty)
+        ? schedule!.difficulty
+        : difficultyOptions.last;
+    var selectedWeekday = schedule?.weekday ?? DateTime.tuesday;
+    final hourController = TextEditingController(
+      text: (schedule?.hour ?? 21).toString().padLeft(2, '0'),
+    );
+    final minuteController = TextEditingController(
+      text: (schedule?.minute ?? 0).toString().padLeft(2, '0'),
+    );
 
     final result = await showDialog<PartySchedule>(
       context: context,
@@ -3942,57 +3997,149 @@ class _PartySchedulePanel extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      TextField(
-                        controller: bossController,
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedBoss,
+                        isExpanded: true,
                         decoration: const InputDecoration(
-                          labelText: '처치할 보스',
-                          hintText: '검은 마법사',
+                          labelText: '보스',
                           border: OutlineInputBorder(),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: difficultyController,
-                        decoration: const InputDecoration(
-                          labelText: '난이도',
-                          hintText: 'normal / hard / chaos / extreme',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      OutlinedButton.icon(
-                        onPressed: () async {
-                          final pickedDate = await showDatePicker(
-                            context: dialogContext,
-                            initialDate: selectedDateTime,
-                            firstDate: DateTime.now()
-                                .subtract(const Duration(days: 365)),
-                            lastDate:
-                                DateTime.now().add(const Duration(days: 3650)),
-                          );
-                          if (pickedDate == null || !dialogContext.mounted) {
-                            return;
-                          }
-                          final pickedTime = await showTimePicker(
-                            context: dialogContext,
-                            initialTime:
-                                TimeOfDay.fromDateTime(selectedDateTime),
-                          );
-                          if (pickedTime == null) {
+                        items: [
+                          for (final boss in _partyBossDifficultyOptions.keys)
+                            DropdownMenuItem(
+                              value: boss,
+                              child: Text(boss),
+                            ),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) {
                             return;
                           }
                           setDialogState(() {
-                            selectedDateTime = DateTime(
-                              pickedDate.year,
-                              pickedDate.month,
-                              pickedDate.day,
-                              pickedTime.hour,
-                              pickedTime.minute,
-                            );
+                            selectedBoss = value;
+                            difficultyOptions =
+                                _partyBossDifficultyOptions[selectedBoss]!;
+                            selectedDifficulty =
+                                difficultyOptions.contains(selectedDifficulty)
+                                    ? selectedDifficulty
+                                    : difficultyOptions.last;
                           });
                         },
-                        icon: const Icon(Icons.event_rounded),
-                        label: Text(_dateTimeText(selectedDateTime)),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        key: ValueKey('party-difficulty-$selectedBoss'),
+                        initialValue: selectedDifficulty,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: '난이도',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: [
+                          for (final difficulty in difficultyOptions)
+                            DropdownMenuItem(
+                              value: difficulty,
+                              child: Text(difficulty.toUpperCase()),
+                            ),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+                          setDialogState(() {
+                            selectedDifficulty = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.navBorder),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const Text(
+                              '일정 선택',
+                              style: TextStyle(
+                                color: AppColors.text,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                for (final weekday in const [
+                                  DateTime.monday,
+                                  DateTime.tuesday,
+                                  DateTime.wednesday,
+                                  DateTime.thursday,
+                                  DateTime.friday,
+                                  DateTime.saturday,
+                                  DateTime.sunday,
+                                ])
+                                  ChoiceChip(
+                                    label: Text(_partyWeekdayLabel(weekday)),
+                                    selected: selectedWeekday == weekday,
+                                    showCheckmark: false,
+                                    onSelected: (_) {
+                                      setDialogState(() {
+                                        selectedWeekday = weekday;
+                                      });
+                                    },
+                                    selectedColor:
+                                        AppColors.navAccent.withValues(
+                                      alpha: 0.15,
+                                    ),
+                                    side: BorderSide(
+                                      color: selectedWeekday == weekday
+                                          ? AppColors.navBorder
+                                          : AppColors.border,
+                                    ),
+                                    labelStyle: TextStyle(
+                                      color: selectedWeekday == weekday
+                                          ? AppColors.navAccent
+                                          : AppColors.text,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: hourController,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: '시',
+                                      hintText: '21',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: TextField(
+                                    controller: minuteController,
+                                    keyboardType: TextInputType.number,
+                                    decoration: const InputDecoration(
+                                      labelText: '분',
+                                      hintText: '00',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 22),
                       Row(
@@ -4005,15 +4152,23 @@ class _PartySchedulePanel extends StatelessWidget {
                           const SizedBox(width: 10),
                           FilledButton(
                             onPressed: () {
-                              final bossName = bossController.text.trim();
-                              if (bossName.isEmpty) {
-                                return;
-                              }
                               final members = memberController.text
                                   .split(',')
                                   .map((item) => item.trim())
                                   .where((item) => item.isNotEmpty)
                                   .toList();
+                              final hour = _readPartyTimeUnit(
+                                hourController.text,
+                                schedule?.hour ?? 21,
+                                0,
+                                23,
+                              );
+                              final minute = _readPartyTimeUnit(
+                                minuteController.text,
+                                schedule?.minute ?? 0,
+                                0,
+                                59,
+                              );
                               Navigator.pop(
                                 dialogContext,
                                 PartySchedule(
@@ -4022,13 +4177,11 @@ class _PartySchedulePanel extends StatelessWidget {
                                           .microsecondsSinceEpoch
                                           .toString(),
                                   members: members,
-                                  bossName: bossName,
-                                  difficulty:
-                                      difficultyController.text.trim().isEmpty
-                                          ? 'hard'
-                                          : difficultyController.text.trim(),
-                                  scheduledAt: selectedDateTime,
-                                  alertEnabled: schedule?.alertEnabled ?? true,
+                                  bossName: selectedBoss,
+                                  difficulty: selectedDifficulty,
+                                  weekday: selectedWeekday,
+                                  hour: hour,
+                                  minute: minute,
                                   cleared: schedule?.cleared ?? false,
                                 ),
                               );
@@ -4048,8 +4201,8 @@ class _PartySchedulePanel extends StatelessWidget {
     );
 
     memberController.dispose();
-    bossController.dispose();
-    difficultyController.dispose();
+    hourController.dispose();
+    minuteController.dispose();
 
     if (result != null) {
       await onSave(result);
@@ -4063,21 +4216,20 @@ class _PartyScheduleCard extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onToggleCleared,
-    required this.onToggleAlert,
   });
 
   final PartySchedule schedule;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onToggleCleared;
-  final VoidCallback onToggleAlert;
 
   @override
   Widget build(BuildContext context) {
     final memberText =
         schedule.members.isEmpty ? '파티원 없음' : schedule.members.join(' · ');
-    final overdue =
-        !schedule.cleared && schedule.scheduledAt.isBefore(DateTime.now());
+    final now = DateTime.now();
+    final overdue = !schedule.cleared &&
+        schedule.currentWeekScheduleFrom(now).isBefore(now);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -4126,26 +4278,8 @@ class _PartyScheduleCard extends StatelessWidget {
             child: _PartyCardInfo(
               icon: Icons.schedule_rounded,
               label: '일정',
-              value: _dateTimeText(schedule.scheduledAt),
+              value: _partyScheduleText(schedule),
             ),
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                '알림',
-                style: TextStyle(
-                  color: AppColors.muted,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              Switch(
-                value: schedule.alertEnabled,
-                onChanged: (_) => onToggleAlert(),
-                activeThumbColor: AppColors.navAccent,
-              ),
-            ],
           ),
           _SmallIconButton(
             icon: Icons.edit_rounded,
@@ -4165,7 +4299,7 @@ class _PartyScheduleCard extends StatelessWidget {
                   : Icons.check_rounded,
               size: 18,
             ),
-            label: Text(schedule.cleared ? '처치 취소' : '처치 처리'),
+            label: Text(schedule.cleared ? '처치 취소' : '이미 처치함'),
             style: OutlinedButton.styleFrom(
               foregroundColor:
                   schedule.cleared ? AppColors.muted : AppColors.navAccent,
