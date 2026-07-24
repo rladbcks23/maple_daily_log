@@ -2,6 +2,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    AppVersionView,
     CheckNewNoticesView,
     CurrentNoticesView,
     DailyReminderCheckView,
@@ -32,4 +33,5 @@ urlpatterns = [
     path("reminders/daily-check", DailyReminderCheckView.as_view()),
     path("reminders/weekly-check", WeeklyReminderCheckView.as_view()),
     path("reminders/launcher-exit-check", LauncherExitReminderCheckView.as_view()),
+    path("app/version", AppVersionView.as_view()),
 ]

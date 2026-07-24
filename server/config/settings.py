@@ -121,6 +121,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 NEXON_API_KEY = os.getenv("NEXON_API_KEY", "")
 NEXON_API_BASE_URL = os.getenv("NEXON_API_BASE_URL", "https://open.api.nexon.com")
 NEXON_API_TIMEOUT_SECONDS = float(os.getenv("NEXON_API_TIMEOUT_SECONDS", "10"))
+APP_LATEST_VERSION = os.getenv("APP_LATEST_VERSION", "0.1.0")
+APP_DOWNLOAD_URL = os.getenv("APP_DOWNLOAD_URL", "")
+APP_RELEASE_NOTES = os.getenv("APP_RELEASE_NOTES", "")
 
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [

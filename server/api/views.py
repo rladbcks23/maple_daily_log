@@ -1,4 +1,5 @@
 from django.core.cache import cache
+from django.conf import settings
 from django.db import transaction
 from django.http import JsonResponse
 from rest_framework import status, viewsets
@@ -138,6 +139,17 @@ class CheckNewNoticesView(APIView):
             return Response(check_new_notices())
         except NexonApiError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+
+class AppVersionView(APIView):
+    def get(self, request):
+        return Response(
+            {
+                "version": settings.APP_LATEST_VERSION,
+                "downloadUrl": settings.APP_DOWNLOAD_URL,
+                "notes": settings.APP_RELEASE_NOTES,
+            }
+        )
 
 
 class ReminderCheckView(APIView):
