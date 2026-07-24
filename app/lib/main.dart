@@ -3860,6 +3860,19 @@ String _partyWeekdayLabel(int weekday) {
   };
 }
 
+String _partyWeekdayShortLabel(int weekday) {
+  return switch (weekday) {
+    DateTime.monday => '월',
+    DateTime.tuesday => '화',
+    DateTime.wednesday => '수',
+    DateTime.thursday => '목',
+    DateTime.friday => '금',
+    DateTime.saturday => '토',
+    DateTime.sunday => '일',
+    _ => '화',
+  };
+}
+
 String _partyScheduleText(PartySchedule schedule) {
   final hour = schedule.hour.toString().padLeft(2, '0');
   final minute = schedule.minute.toString().padLeft(2, '0');
@@ -3872,6 +3885,42 @@ int _readPartyTimeUnit(String value, int fallback, int min, int max) {
     return fallback;
   }
   return parsed;
+}
+
+List<String> _frequentPartyMembers(List<PartySchedule> schedules) {
+  final counts = <String, int>{};
+  for (final schedule in schedules) {
+    for (final member in schedule.members) {
+      final trimmed = member.trim();
+      if (trimmed.isEmpty) {
+        continue;
+      }
+      counts[trimmed] = (counts[trimmed] ?? 0) + 1;
+    }
+  }
+  final sorted = counts.entries.toList()
+    ..sort((a, b) {
+      final countCompare = b.value.compareTo(a.value);
+      if (countCompare != 0) {
+        return countCompare;
+      }
+      return a.key.compareTo(b.key);
+    });
+  return sorted.map((entry) => entry.key).toList();
+}
+
+void _appendPartyMember(TextEditingController controller, String member) {
+  final members = controller.text
+      .split(',')
+      .map((item) => item.trim())
+      .where((item) => item.isNotEmpty)
+      .toList();
+  if (!members.contains(member)) {
+    members.add(member);
+  }
+  controller.text = members.join(', ');
+  controller.selection =
+      TextSelection.collapsed(offset: controller.text.length);
 }
 
 class _PartySchedulePanel extends StatelessWidget {
@@ -3927,7 +3976,9 @@ class _PartySchedulePanel extends StatelessWidget {
                     return _PartyScheduleCard(
                       schedule: schedule,
                       onEdit: () => _openPartyDialog(context, schedule),
-                      onDelete: () => onDelete(schedule),
+                      onDelete: () => unawaited(
+                        _confirmDeleteSchedule(context, schedule),
+                      ),
                       onToggleCleared: () => onToggleCleared(schedule),
                     );
                   },
@@ -3935,6 +3986,34 @@ class _PartySchedulePanel extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _confirmDeleteSchedule(
+    BuildContext context,
+    PartySchedule schedule,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('파티 일정 삭제'),
+          content: Text('${schedule.bossName} 파티 일정을 삭제할까요?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('취소'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('삭제'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed == true) {
+      await onDelete(schedule);
+    }
   }
 
   Future<void> _openPartyDialog(
@@ -3945,6 +4024,8 @@ class _PartySchedulePanel extends StatelessWidget {
       text: schedule?.members.join(', ') ??
           characters.map((item) => item.characterName).take(1).join(', '),
     );
+    final frequentMembers = _frequentPartyMembers(schedules);
+    var showMemberSuggestions = false;
     var selectedBoss =
         _partyBossDifficultyOptions.containsKey(schedule?.bossName)
             ? schedule!.bossName
@@ -3990,12 +4071,58 @@ class _PartySchedulePanel extends StatelessWidget {
                       const SizedBox(height: 18),
                       TextField(
                         controller: memberController,
+                        onTap: () {
+                          setDialogState(() {
+                            showMemberSuggestions = true;
+                          });
+                        },
                         decoration: const InputDecoration(
                           labelText: '파티원',
                           hintText: '말못함채금임, 유렌괜찬',
                           border: OutlineInputBorder(),
                         ),
                       ),
+                      if (showMemberSuggestions &&
+                          frequentMembers.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        const Text(
+                          '자주 함께한 파티원',
+                          style: TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final member in frequentMembers.take(12))
+                              ActionChip(
+                                label: Text(member),
+                                onPressed: () {
+                                  setDialogState(() {
+                                    _appendPartyMember(
+                                      memberController,
+                                      member,
+                                    );
+                                  });
+                                },
+                                backgroundColor: AppColors.navAccent.withValues(
+                                  alpha: 0.1,
+                                ),
+                                side: const BorderSide(
+                                  color: AppColors.navBorder,
+                                ),
+                                labelStyle: const TextStyle(
+                                  color: AppColors.navAccent,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         initialValue: selectedBoss,
@@ -4084,7 +4211,9 @@ class _PartySchedulePanel extends StatelessWidget {
                                   DateTime.sunday,
                                 ])
                                   ChoiceChip(
-                                    label: Text(_partyWeekdayLabel(weekday)),
+                                    label: Text(
+                                      _partyWeekdayShortLabel(weekday),
+                                    ),
                                     selected: selectedWeekday == weekday,
                                     showCheckmark: false,
                                     onSelected: (_) {
