@@ -59,12 +59,13 @@ Map<String, dynamic> _decodeWindowArguments(String rawArguments) {
 
 Future<void> _configureAlertWindow() async {
   const windowOptions = WindowOptions(
-    size: Size(408, 306),
+    size: Size(400, 276),
     center: true,
     backgroundColor: AppColors.surface,
     skipTaskbar: false,
     title: '알림',
-    titleBarStyle: TitleBarStyle.normal,
+    titleBarStyle: TitleBarStyle.hidden,
+    windowButtonVisibility: false,
   );
   windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.show();
