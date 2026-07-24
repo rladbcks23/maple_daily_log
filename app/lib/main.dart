@@ -335,7 +335,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   List<NoticeItemSummary> noticeItems = const [];
   NoticeItemSummary? sundayEvent;
   _OverlayAlertData? overlayAlert;
-  Rect? previousWindowBounds;
+  var wasHiddenBeforeOverlay = false;
 
   @override
   void initState() {
@@ -438,7 +438,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     required String body,
     String? payload,
   }) async {
-    previousWindowBounds ??= await windowManager.getBounds();
+    wasHiddenBeforeOverlay = !(await windowManager.isVisible());
     if (!mounted) {
       return;
     }
@@ -451,11 +451,9 @@ class _MapleAppShellState extends State<_MapleAppShell>
       );
     });
 
-    await windowManager.setSkipTaskbar(true);
-    await windowManager.setAlwaysOnTop(true);
-    await windowManager.setSize(const Size(424, 288));
-    await windowManager.center();
+    await windowManager.setSkipTaskbar(false);
     await windowManager.show();
+    await windowManager.setAlwaysOnTop(true);
     await windowManager.focus();
   }
 
@@ -466,16 +464,13 @@ class _MapleAppShellState extends State<_MapleAppShell>
     });
 
     await windowManager.setAlwaysOnTop(false);
-    await windowManager.setSkipTaskbar(false);
-    final bounds = previousWindowBounds;
-    previousWindowBounds = null;
-    if (bounds != null) {
-      await windowManager.setBounds(bounds);
-    }
 
     if (payload != null) {
       handleNotificationTap(payload);
+    } else if (wasHiddenBeforeOverlay) {
+      await hideWindowToTray();
     }
+    wasHiddenBeforeOverlay = false;
   }
 
   Future<void> initializeCachedState() async {
