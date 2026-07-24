@@ -3898,7 +3898,7 @@ List<String> _frequentPartyMembers(List<PartySchedule> schedules) {
       counts[trimmed] = (counts[trimmed] ?? 0) + 1;
     }
   }
-  final sorted = counts.entries.toList()
+  final sorted = counts.entries.where((entry) => entry.value >= 3).toList()
     ..sort((a, b) {
       final countCompare = b.value.compareTo(a.value);
       if (countCompare != 0) {
