@@ -15,6 +15,8 @@ import 'notification_settings.dart';
 import 'scheduler_cache.dart';
 import 'sunday_event_cache.dart';
 
+const appCurrentVersion = '0.1.0';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
@@ -1494,6 +1496,10 @@ class _NotificationSettingsButton extends StatelessWidget {
     final minuteController = TextEditingController(
       text: draft.reminderMinute.toString().padLeft(2, '0'),
     );
+    final apiClient = ApiClient();
+    AppVersionInfo? updateInfo;
+    String? updateMessage;
+    var checkingUpdate = false;
 
     await showDialog<void>(
       context: context,
@@ -1502,6 +1508,7 @@ class _NotificationSettingsButton extends StatelessWidget {
           builder: (context, setDialogState) {
             return AlertDialog(
               title: const Text('알림 설정'),
+              scrollable: true,
               content: SizedBox(
                 width: 410,
                 child: Column(
@@ -1709,6 +1716,100 @@ class _NotificationSettingsButton extends StatelessWidget {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 18),
+                    const Divider(height: 1),
+                    const SizedBox(height: 14),
+                    const Text(
+                      '앱 업데이트',
+                      style: TextStyle(
+                        color: AppColors.text,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      updateMessage ?? '현재 버전 $appCurrentVersion',
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (updateInfo?.notes.isNotEmpty ?? false) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        updateInfo!.notes,
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: saving || checkingUpdate
+                                ? null
+                                : () async {
+                                    setDialogState(() {
+                                      checkingUpdate = true;
+                                      updateMessage = '최신 버전을 확인하고 있어요.';
+                                    });
+                                    try {
+                                      final info =
+                                          await apiClient.fetchAppVersionInfo();
+                                      final hasUpdate = _isNewerVersion(
+                                        info.version,
+                                        appCurrentVersion,
+                                      );
+                                      setDialogState(() {
+                                        updateInfo = info;
+                                        updateMessage = hasUpdate
+                                            ? '새 버전 ${info.version}을 사용할 수 있어요.'
+                                            : '현재 최신 버전을 사용 중이에요.';
+                                      });
+                                    } on ApiException catch (error) {
+                                      setDialogState(() {
+                                        updateMessage = error.message;
+                                      });
+                                    } finally {
+                                      setDialogState(() {
+                                        checkingUpdate = false;
+                                      });
+                                    }
+                                  },
+                            icon: checkingUpdate
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.sync_rounded, size: 18),
+                            label: const Text('버전 확인'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: _canOpenUpdate(updateInfo)
+                                ? () =>
+                                    _openDownloadUrl(updateInfo!.downloadUrl)
+                                : null,
+                            icon: const Icon(Icons.download_rounded, size: 18),
+                            label: const Text('업데이트'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.navAccent,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -1775,6 +1876,49 @@ class _NotificationSettingsButton extends StatelessWidget {
     final displayHour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
     final minute = time.minute.toString().padLeft(2, '0');
     return '$period $displayHour:$minute';
+  }
+
+  bool _canOpenUpdate(AppVersionInfo? info) {
+    return info != null &&
+        info.downloadUrl.isNotEmpty &&
+        _isNewerVersion(info.version, appCurrentVersion);
+  }
+
+  Future<void> _openDownloadUrl(String url) async {
+    if (url.isEmpty) {
+      return;
+    }
+    await Process.start(
+      'rundll32.exe',
+      ['url.dll,FileProtocolHandler', url],
+      mode: ProcessStartMode.detached,
+    );
+  }
+
+  bool _isNewerVersion(String latestVersion, String currentVersion) {
+    final latest = _versionParts(latestVersion);
+    final current = _versionParts(currentVersion);
+    for (var index = 0;
+        index < math.max(latest.length, current.length);
+        index++) {
+      final latestPart = index < latest.length ? latest[index] : 0;
+      final currentPart = index < current.length ? current[index] : 0;
+      if (latestPart > currentPart) {
+        return true;
+      }
+      if (latestPart < currentPart) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  List<int> _versionParts(String version) {
+    final coreVersion = version.split('+').first;
+    return coreVersion
+        .split('.')
+        .map((part) => int.tryParse(part) ?? 0)
+        .toList();
   }
 
   String _weekdayLabel(int weekday) {

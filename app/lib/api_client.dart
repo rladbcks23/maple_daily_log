@@ -11,6 +11,22 @@ class ApiClient {
   final http.Client _httpClient;
   final String baseUrl;
 
+  Future<AppVersionInfo> fetchAppVersionInfo() async {
+    final response =
+        await _httpClient.get(Uri.parse('$baseUrl/api/app/version'));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException('앱 버전 정보를 확인하지 못했습니다. (${response.statusCode})');
+    }
+
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (decoded is! Map<String, dynamic>) {
+      throw const ApiException('앱 버전 정보 형식이 올바르지 않습니다.');
+    }
+
+    return AppVersionInfo.fromJson(decoded);
+  }
+
   Future<List<NexonCharacterSummary>> fetchNexonCharacters() async {
     final response =
         await _httpClient.get(Uri.parse('$baseUrl/api/nexon/characters'));
@@ -937,6 +953,28 @@ class NoticeItemSummary {
       }
     }
     return false;
+  }
+}
+
+class AppVersionInfo {
+  const AppVersionInfo({
+    required this.version,
+    required this.downloadUrl,
+    required this.notes,
+  });
+
+  final String version;
+  final String downloadUrl;
+  final String notes;
+
+  factory AppVersionInfo.fromJson(Map<String, dynamic> json) {
+    return AppVersionInfo(
+      version: json['version']?.toString() ?? '',
+      downloadUrl: json['downloadUrl']?.toString() ??
+          json['download_url']?.toString() ??
+          '',
+      notes: json['notes']?.toString() ?? '',
+    );
   }
 }
 
