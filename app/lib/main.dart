@@ -438,9 +438,15 @@ class _MapleAppShellState extends State<_MapleAppShell>
     required String body,
     String? payload,
   }) async {
-    wasHiddenBeforeOverlay = !(await windowManager.isVisible());
+    final isVisible = await windowManager.isVisible();
+    wasHiddenBeforeOverlay = !isVisible;
     if (!mounted) {
       return;
+    }
+
+    if (!isVisible) {
+      await windowManager.setSkipTaskbar(false);
+      await windowManager.show();
     }
 
     setState(() {
@@ -450,11 +456,6 @@ class _MapleAppShellState extends State<_MapleAppShell>
         payload: payload,
       );
     });
-
-    await windowManager.setSkipTaskbar(false);
-    await windowManager.show();
-    await windowManager.setAlwaysOnTop(true);
-    await windowManager.focus();
   }
 
   Future<void> closeOverlayAlert() async {
@@ -462,8 +463,6 @@ class _MapleAppShellState extends State<_MapleAppShell>
     setState(() {
       overlayAlert = null;
     });
-
-    await windowManager.setAlwaysOnTop(false);
 
     if (payload != null) {
       handleNotificationTap(payload);
@@ -1160,53 +1159,57 @@ class _MapleAppShellState extends State<_MapleAppShell>
   @override
   Widget build(BuildContext context) {
     final alert = overlayAlert;
-    if (alert != null) {
-      return _OverlayAlertWindow(
-        alert: alert,
-        onConfirm: () => unawaited(closeOverlayAlert()),
-      );
-    }
-
-    return Scaffold(
-      body: Row(
-        children: [
-          _AppSidebar(
-            currentSection: currentSection,
-            selectedCharacter: selectedCharacter,
-            onAddCharacter: () => selectSection(AppSection.character),
-            onSelectSection: selectSection,
+    return Stack(
+      children: [
+        Scaffold(
+          body: Row(
+            children: [
+              _AppSidebar(
+                currentSection: currentSection,
+                selectedCharacter: selectedCharacter,
+                onAddCharacter: () => selectSection(AppSection.character),
+                onSelectSection: selectSection,
+              ),
+              Expanded(
+                child: _MainPanel(
+                  currentSection: currentSection,
+                  selectedCharacter: selectedCharacter,
+                  selectedCharacters: selectedCharacters,
+                  schedulerSnapshot: schedulerSnapshot,
+                  dashboardSnapshots: dashboardSnapshots,
+                  noticeItems: noticeItems,
+                  sundayEvent: sundayEvent,
+                  isLoading: isLoading,
+                  isSchedulerLoading: isSchedulerLoading,
+                  isSchedulerRefreshing: isSchedulerRefreshing,
+                  isNoticeLoading: isNoticeLoading,
+                  isNoticeRefreshing: isNoticeRefreshing,
+                  errorMessage: errorMessage,
+                  schedulerErrorMessage: schedulerErrorMessage,
+                  noticeErrorMessage: noticeErrorMessage,
+                  onAddCharacter: openCharacterPicker,
+                  onRefresh: refreshCurrentSection,
+                  onTestNotification: showTestNotification,
+                  notificationSettings: notificationSettings,
+                  onNotificationSettingsChanged: saveNotificationSettings,
+                  onSelectSection: selectSection,
+                  onSelectCharacter: selectCharacter,
+                  onOpenCharacterScheduler: openCharacterScheduler,
+                  onDeleteCharacter: deleteCharacter,
+                  onMoveCharacter: moveCharacter,
+                ),
+              ),
+            ],
           ),
-          Expanded(
-            child: _MainPanel(
-              currentSection: currentSection,
-              selectedCharacter: selectedCharacter,
-              selectedCharacters: selectedCharacters,
-              schedulerSnapshot: schedulerSnapshot,
-              dashboardSnapshots: dashboardSnapshots,
-              noticeItems: noticeItems,
-              sundayEvent: sundayEvent,
-              isLoading: isLoading,
-              isSchedulerLoading: isSchedulerLoading,
-              isSchedulerRefreshing: isSchedulerRefreshing,
-              isNoticeLoading: isNoticeLoading,
-              isNoticeRefreshing: isNoticeRefreshing,
-              errorMessage: errorMessage,
-              schedulerErrorMessage: schedulerErrorMessage,
-              noticeErrorMessage: noticeErrorMessage,
-              onAddCharacter: openCharacterPicker,
-              onRefresh: refreshCurrentSection,
-              onTestNotification: showTestNotification,
-              notificationSettings: notificationSettings,
-              onNotificationSettingsChanged: saveNotificationSettings,
-              onSelectSection: selectSection,
-              onSelectCharacter: selectCharacter,
-              onOpenCharacterScheduler: openCharacterScheduler,
-              onDeleteCharacter: deleteCharacter,
-              onMoveCharacter: moveCharacter,
+        ),
+        if (alert != null)
+          Positioned.fill(
+            child: _OverlayAlertWindow(
+              alert: alert,
+              onConfirm: () => unawaited(closeOverlayAlert()),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }
@@ -1868,7 +1871,14 @@ class _NotificationSettingsButton extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     OutlinedButton.icon(
-                      onPressed: saving ? null : () => onTestNotification(),
+                      onPressed: saving
+                          ? null
+                          : () {
+                              Navigator.of(dialogContext).pop();
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                unawaited(onTestNotification());
+                              });
+                            },
                       icon: const Icon(Icons.notifications_outlined, size: 18),
                       label: const Text('알림 테스트'),
                       style: OutlinedButton.styleFrom(
