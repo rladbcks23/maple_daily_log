@@ -1473,7 +1473,7 @@ class _NotificationSettingsButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: '알림 설정',
+      message: '설정',
       child: IconButton(
         onPressed: () => _openDialog(context),
         icon: const Icon(Icons.settings_outlined),
@@ -1507,7 +1507,7 @@ class _NotificationSettingsButton extends StatelessWidget {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('알림 설정'),
+              title: const Text('설정'),
               scrollable: true,
               content: SizedBox(
                 width: 410,
@@ -1515,6 +1515,15 @@ class _NotificationSettingsButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    const Text(
+                      '알림',
+                      style: TextStyle(
+                        color: AppColors.text,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     const Text(
                       '예약 알림 시간',
                       style: TextStyle(
