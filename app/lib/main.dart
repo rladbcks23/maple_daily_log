@@ -1562,7 +1562,10 @@ class _NotificationSettingsButton extends StatelessWidget {
                             },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.text,
-                        side: const BorderSide(color: AppColors.border),
+                        side: const BorderSide(
+                          color: AppColors.navBorder,
+                          width: 1.2,
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         textStyle: const TextStyle(
                           fontSize: 15,
@@ -1717,7 +1720,10 @@ class _NotificationSettingsButton extends StatelessWidget {
                       label: const Text('알림 테스트'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.text,
-                        side: const BorderSide(color: AppColors.border),
+                        side: const BorderSide(
+                          color: AppColors.navBorder,
+                          width: 1.2,
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         textStyle: const TextStyle(
                           fontSize: 13,
