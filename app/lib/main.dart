@@ -28,6 +28,7 @@ Future<void> main(List<String> args) async {
     await _configureAlertWindow();
     runApp(
       _MapleAlertWindowApp(
+        windowController: windowController,
         alert: _OverlayAlertData(
           title: windowArguments['title']?.toString() ?? '알림',
           body: windowArguments['body']?.toString() ?? '',
@@ -72,12 +73,66 @@ Future<void> _configureAlertWindow() async {
   });
 }
 
-class _MapleAlertWindowApp extends StatelessWidget {
+class _MapleAlertWindowApp extends StatefulWidget {
   const _MapleAlertWindowApp({
+    required this.windowController,
     required this.alert,
   });
 
+  final WindowController windowController;
   final _OverlayAlertData alert;
+
+  @override
+  State<_MapleAlertWindowApp> createState() => _MapleAlertWindowAppState();
+}
+
+class _MapleAlertWindowAppState extends State<_MapleAlertWindowApp>
+    with WindowListener {
+  late _OverlayAlertData alert = widget.alert;
+
+  @override
+  void initState() {
+    super.initState();
+    windowManager.setPreventClose(true);
+    windowManager.addListener(this);
+    widget.windowController.setWindowMethodHandler((call) async {
+      if (call.method != 'showAlert') {
+        return null;
+      }
+
+      final arguments = call.arguments;
+      if (arguments is! String) {
+        return null;
+      }
+
+      final decoded = _decodeWindowArguments(arguments);
+      if (!mounted) {
+        return null;
+      }
+
+      setState(() {
+        alert = _OverlayAlertData(
+          title: decoded['title']?.toString() ?? '알림',
+          body: decoded['body']?.toString() ?? '',
+        );
+      });
+      await windowManager.show();
+      await windowManager.focus();
+      return true;
+    });
+  }
+
+  @override
+  void onWindowClose() {
+    unawaited(windowManager.hide());
+  }
+
+  @override
+  void dispose() {
+    widget.windowController.setWindowMethodHandler(null);
+    windowManager.removeListener(this);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +146,7 @@ class _MapleAlertWindowApp extends StatelessWidget {
       ),
       home: _OverlayAlertWindow(
         alert: alert,
-        onConfirm: () => unawaited(windowManager.close()),
+        onConfirm: () => unawaited(windowManager.hide()),
       ),
     );
   }
@@ -398,6 +453,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   List<NoticeItemSummary> noticeItems = const [];
   NoticeItemSummary? sundayEvent;
   _OverlayAlertData? overlayAlert;
+  WindowController? alertWindowController;
   var wasHiddenBeforeOverlay = false;
 
   @override
@@ -501,19 +557,28 @@ class _MapleAppShellState extends State<_MapleAppShell>
     required String body,
     String? payload,
   }) async {
+    final alertArguments = jsonEncode({
+      'type': 'alert',
+      'title': title,
+      'body': body,
+    });
+
     try {
-      await WindowController.create(
+      final existingAlertWindow = alertWindowController;
+      if (existingAlertWindow != null) {
+        await existingAlertWindow.invokeMethod('showAlert', alertArguments);
+        return;
+      }
+
+      alertWindowController = await WindowController.create(
         WindowConfiguration(
-          arguments: jsonEncode({
-            'type': 'alert',
-            'title': title,
-            'body': body,
-          }),
+          arguments: alertArguments,
           hiddenAtLaunch: true,
         ),
       );
       return;
     } catch (_) {
+      alertWindowController = null;
       // Fall back to the in-app overlay if the native alert window fails.
     }
 
