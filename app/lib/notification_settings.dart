@@ -119,9 +119,7 @@ class NotificationSettings {
         .toSet()
         .toList()
       ..sort();
-    return weekdays.isEmpty
-        ? NotificationSettings.defaults.weeklyWeekdays
-        : weekdays;
+    return weekdays;
   }
 }
 

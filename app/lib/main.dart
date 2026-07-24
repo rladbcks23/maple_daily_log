@@ -1603,7 +1603,15 @@ class _NotificationSettingsButton extends StatelessWidget {
                       saving: saving || !draft.enabled,
                       onChanged: (value) {
                         setDialogState(() {
-                          draft = draft.copyWith(weeklyEnabled: value);
+                          draft = draft.copyWith(
+                            weeklyEnabled: value,
+                            weeklyWeekdays: value
+                                ? (draft.weeklyWeekdays.isEmpty
+                                    ? NotificationSettings
+                                        .defaults.weeklyWeekdays
+                                    : draft.weeklyWeekdays)
+                                : const [],
+                          );
                         });
                       },
                     ),
@@ -1625,28 +1633,29 @@ class _NotificationSettingsButton extends StatelessWidget {
                             FilterChip(
                               label: Text(_weekdayLabel(weekday)),
                               selected: draft.weeklyWeekdays.contains(weekday),
-                              onSelected: saving ||
-                                      !draft.enabled ||
-                                      !draft.weeklyEnabled
+                              showCheckmark: false,
+                              onSelected: saving || !draft.enabled
                                   ? null
                                   : (selected) {
                                       final weekdays =
                                           draft.weeklyWeekdays.toSet();
                                       if (selected) {
                                         weekdays.add(weekday);
-                                      } else if (weekdays.length > 1) {
+                                      } else {
                                         weekdays.remove(weekday);
                                       }
+                                      final sortedWeekdays = weekdays.toList()
+                                        ..sort();
                                       setDialogState(() {
                                         draft = draft.copyWith(
-                                          weeklyWeekdays: weekdays.toList()
-                                            ..sort(),
+                                          weeklyEnabled:
+                                              sortedWeekdays.isNotEmpty,
+                                          weeklyWeekdays: sortedWeekdays,
                                         );
                                       });
                                     },
                               selectedColor:
                                   AppColors.navAccent.withValues(alpha: 0.15),
-                              checkmarkColor: AppColors.navAccent,
                               side: BorderSide(
                                 color: draft.weeklyWeekdays.contains(weekday)
                                     ? AppColors.navAccent
