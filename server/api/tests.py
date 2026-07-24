@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from .models import NoticeSnapshot, SelectedCharacter
+from .models import NoticeSnapshot, SundayEventSnapshot
 from .services import check_new_notices, scheduler_daily_result, scheduler_weekly_result
 
 
@@ -91,19 +91,23 @@ class ApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"status": "ok"})
 
-    def test_selected_characters_list(self):
-        SelectedCharacter.objects.create(
-            character_name="테스트캐릭",
-            world_name="스카니아",
-            ocid="ocid-1",
-            character_class="비숍",
-            character_level=260,
+    def test_latest_sunday_uses_database_snapshot(self):
+        SundayEventSnapshot.objects.create(
+            notice_id="sunday-1",
+            title="썬데이 메이플",
+            link="https://example.com/sunday",
+            registered_at="2026-07-19",
+            thumbnail="https://example.com/sunday.png",
+            event_start_at="2026-07-19",
+            event_end_at="2026-07-19",
+            content="<img src='https://example.com/content.png'>",
+            content_image_urls=["https://example.com/content.png"],
         )
 
-        response = self.client.get("/api/selected-characters/")
+        response = self.client.get("/api/notices/latest-sunday")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()[0]["character_name"], "테스트캐릭")
+        self.assertEqual(response.json()["noticeId"], "sunday-1")
 
     @patch("api.views.NexonClient.character_basic")
     def test_character_basic_uses_server_cache(self, character_basic):

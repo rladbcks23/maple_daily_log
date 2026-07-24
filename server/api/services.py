@@ -1,11 +1,12 @@
 import re
 from concurrent.futures import ThreadPoolExecutor
 from html import unescape
+from types import SimpleNamespace
 
 import requests
 from django.utils import timezone
 
-from .models import NoticeSnapshot, SelectedCharacter
+from .models import NoticeSnapshot, SundayEventSnapshot
 from .nexon import NexonClient
 
 
@@ -212,6 +213,58 @@ def collect_latest_closed_sunday_event(client=None):
     return None
 
 
+def sunday_event_to_payload(snapshot):
+    if snapshot is None:
+        return None
+    return {
+        "noticeType": "event",
+        "noticeId": snapshot.notice_id,
+        "title": snapshot.title,
+        "link": snapshot.link,
+        "registeredAt": snapshot.registered_at,
+        "thumbnail": snapshot.thumbnail,
+        "thumbnailUrl": snapshot.thumbnail,
+        "eventStartAt": snapshot.event_start_at,
+        "eventEndAt": snapshot.event_end_at,
+        "content": snapshot.content,
+        "contentImageUrls": snapshot.content_image_urls,
+    }
+
+
+def latest_sunday_event_snapshot():
+    return SundayEventSnapshot.objects.order_by("-event_start_at", "-registered_at").first()
+
+
+def save_sunday_event_snapshot(event):
+    if not event:
+        return None
+    snapshot, _ = SundayEventSnapshot.objects.update_or_create(
+        notice_id=event["noticeId"],
+        defaults={
+            "title": event.get("title", ""),
+            "link": event.get("link", ""),
+            "registered_at": event.get("registeredAt", ""),
+            "thumbnail": event.get("thumbnail", "") or event.get("thumbnailUrl", ""),
+            "event_start_at": event.get("eventStartAt", ""),
+            "event_end_at": event.get("eventEndAt", ""),
+            "content": event.get("content", ""),
+            "content_image_urls": event.get("contentImageUrls", []),
+        },
+    )
+    return snapshot
+
+
+def collect_or_load_latest_sunday_event(client=None, force_refresh=False):
+    if not force_refresh:
+        cached_snapshot = latest_sunday_event_snapshot()
+        if cached_snapshot is not None:
+            return sunday_event_to_payload(cached_snapshot)
+
+    event = collect_latest_closed_sunday_event(client)
+    snapshot = save_sunday_event_snapshot(event)
+    return sunday_event_to_payload(snapshot)
+
+
 def fill_event_details(items, client):
     targets = []
     for item in items:
@@ -248,6 +301,7 @@ def fill_event_details(items, client):
             content = first_value(detail, ["contents", "content", "body", "notice_contents"], "")
             item["content"] = content
             item["contentImageUrls"] = image_urls_from_content(content)
+            save_sunday_event_snapshot(item)
 
 
 def collect_current_notice_items(client=None):
@@ -380,10 +434,16 @@ def scheduler_weekly_result(scheduler_payload):
 
 
 def selected_characters_for_request(ocid=None):
-    queryset = SelectedCharacter.objects.all()
-    if ocid:
-        queryset = queryset.filter(ocid=ocid)
-    return list(queryset)
+    if not ocid:
+        return []
+    return [
+        SimpleNamespace(
+            id=None,
+            character_name="",
+            world_name="",
+            ocid=ocid,
+        )
+    ]
 
 
 def build_reminder_result(character, scheduler_payload, mode):
@@ -449,13 +509,3 @@ def run_reminder_check(mode, ocid=None, date=None, client=None, force=False):
         "shouldNotify": any(result["shouldNotify"] for result in results),
         "results": results,
     }
-
-
-def update_character_from_basic(character, basic):
-    character.character_name = first_value(basic, ["character_name"], character.character_name)
-    character.world_name = first_value(basic, ["world_name"], character.world_name)
-    character.character_class = first_value(basic, ["character_class"], character.character_class)
-    character.character_level = first_value(basic, ["character_level"], character.character_level)
-    character.character_image = first_value(basic, ["character_image"], character.character_image)
-    character.save()
-    return character

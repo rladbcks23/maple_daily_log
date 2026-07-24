@@ -1,23 +1,6 @@
 from django.db import models
 
 
-class SelectedCharacter(models.Model):
-    character_name = models.CharField(max_length=80)
-    world_name = models.CharField(max_length=40, blank=True)
-    ocid = models.CharField(max_length=120, unique=True)
-    character_class = models.CharField(max_length=80, blank=True)
-    character_level = models.PositiveIntegerField(null=True, blank=True)
-    character_image = models.URLField(max_length=500, blank=True)
-    selected_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ["world_name", "character_name"]
-
-    def __str__(self):
-        return f"{self.world_name} {self.character_name}".strip()
-
-
 class NoticeSnapshot(models.Model):
     NOTICE = "notice"
     EVENT = "event"
@@ -46,3 +29,22 @@ class NoticeSnapshot(models.Model):
 
     def __str__(self):
         return f"[{self.notice_type}] {self.title}"
+
+
+class SundayEventSnapshot(models.Model):
+    notice_id = models.CharField(max_length=120, unique=True)
+    title = models.CharField(max_length=300)
+    link = models.URLField(max_length=500, blank=True)
+    registered_at = models.CharField(max_length=40, blank=True)
+    thumbnail = models.URLField(max_length=500, blank=True)
+    event_start_at = models.CharField(max_length=40, blank=True)
+    event_end_at = models.CharField(max_length=40, blank=True)
+    content = models.TextField(blank=True)
+    content_image_urls = models.JSONField(default=list, blank=True)
+    collected_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-event_start_at", "-registered_at", "title"]
+
+    def __str__(self):
+        return self.title

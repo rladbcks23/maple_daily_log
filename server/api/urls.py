@@ -12,13 +12,13 @@ from .views import (
     NexonOcidView,
     NexonSchedulerView,
     NoticeSnapshotViewSet,
-    SelectedCharacterViewSet,
+    SundayEventSnapshotViewSet,
     WeeklyReminderCheckView,
 )
 
 router = DefaultRouter()
-router.register("selected-characters", SelectedCharacterViewSet, basename="selected-character")
 router.register("notice-snapshots", NoticeSnapshotViewSet, basename="notice-snapshot")
+router.register("sunday-events", SundayEventSnapshotViewSet, basename="sunday-event")
 
 urlpatterns = [
     path("", include(router.urls)),

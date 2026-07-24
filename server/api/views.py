@@ -2,19 +2,17 @@ from django.core.cache import cache
 from django.db import transaction
 from django.http import JsonResponse
 from rest_framework import status, viewsets
-from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import NoticeSnapshot, SelectedCharacter
+from .models import NoticeSnapshot, SundayEventSnapshot
 from .nexon import NexonApiError, NexonClient
-from .serializers import NoticeSnapshotSerializer, SelectedCharacterSerializer
+from .serializers import NoticeSnapshotSerializer, SundayEventSnapshotSerializer
 from .services import (
     check_new_notices,
+    collect_or_load_latest_sunday_event,
     collect_current_notice_items,
-    collect_latest_closed_sunday_event,
     run_reminder_check,
-    update_character_from_basic,
 )
 
 
@@ -22,8 +20,6 @@ SCHEDULER_CACHE_SECONDS = 30
 CHARACTER_LIST_CACHE_SECONDS = 600
 CHARACTER_BASIC_CACHE_SECONDS = 86400
 CURRENT_NOTICES_CACHE_SECONDS = 300
-LATEST_SUNDAY_CACHE_SECONDS = 21600
-
 
 def cached_response(cache_key, timeout, force_refresh, fetch):
     if not force_refresh:
@@ -40,51 +36,14 @@ def health(request):
     return JsonResponse({"status": "ok"})
 
 
-class SelectedCharacterViewSet(viewsets.ModelViewSet):
-    queryset = SelectedCharacter.objects.all()
-    serializer_class = SelectedCharacterSerializer
-
-    def create(self, request, *args, **kwargs):
-        data = request.data.copy()
-        client = NexonClient()
-
-        try:
-            if not data.get("ocid") and data.get("character_name"):
-                ocid_payload = client.ocid(data["character_name"])
-                data["ocid"] = ocid_payload.get("ocid")
-
-            if data.get("ocid"):
-                basic = client.character_basic(data["ocid"])
-                data.setdefault("character_name", basic.get("character_name", ""))
-                data.setdefault("world_name", basic.get("world_name", ""))
-                data.setdefault("character_class", basic.get("character_class", ""))
-                data.setdefault("character_level", basic.get("character_level"))
-                data.setdefault("character_image", basic.get("character_image", ""))
-        except NexonApiError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
-
-        serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        character, _ = SelectedCharacter.objects.update_or_create(
-            ocid=serializer.validated_data["ocid"],
-            defaults=serializer.validated_data,
-        )
-        return Response(self.get_serializer(character).data, status=status.HTTP_201_CREATED)
-
-    @action(detail=True, methods=["post"], url_path="refresh")
-    def refresh(self, request, pk=None):
-        character = self.get_object()
-        try:
-            basic = NexonClient().character_basic(character.ocid)
-            update_character_from_basic(character, basic)
-        except NexonApiError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
-        return Response(self.get_serializer(character).data)
-
-
 class NoticeSnapshotViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = NoticeSnapshot.objects.all()
     serializer_class = NoticeSnapshotSerializer
+
+
+class SundayEventSnapshotViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = SundayEventSnapshot.objects.all()
+    serializer_class = SundayEventSnapshotSerializer
 
 
 class NexonCharactersView(APIView):
@@ -161,11 +120,8 @@ class CurrentNoticesView(APIView):
 class LatestSundayEventView(APIView):
     def get(self, request):
         try:
-            event = cached_response(
-                "nexon:latest-sunday-event",
-                LATEST_SUNDAY_CACHE_SECONDS,
-                request.query_params.get("refresh") == "1",
-                collect_latest_closed_sunday_event,
+            event = collect_or_load_latest_sunday_event(
+                force_refresh=request.query_params.get("refresh") == "1",
             )
         except NexonApiError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)

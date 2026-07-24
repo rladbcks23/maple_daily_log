@@ -1,23 +1,6 @@
 from rest_framework import serializers
 
-from .models import NoticeSnapshot, SelectedCharacter
-
-
-class SelectedCharacterSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SelectedCharacter
-        fields = [
-            "id",
-            "character_name",
-            "world_name",
-            "ocid",
-            "character_class",
-            "character_level",
-            "character_image",
-            "selected_at",
-            "updated_at",
-        ]
-        read_only_fields = ["id", "selected_at", "updated_at"]
+from .models import NoticeSnapshot, SundayEventSnapshot
 
 
 class NoticeSnapshotSerializer(serializers.ModelSerializer):
@@ -30,6 +13,25 @@ class NoticeSnapshotSerializer(serializers.ModelSerializer):
             "title",
             "link",
             "registered_at",
+            "collected_at",
+        ]
+        read_only_fields = ["id", "collected_at"]
+
+
+class SundayEventSnapshotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SundayEventSnapshot
+        fields = [
+            "id",
+            "notice_id",
+            "title",
+            "link",
+            "registered_at",
+            "thumbnail",
+            "event_start_at",
+            "event_end_at",
+            "content",
+            "content_image_urls",
             "collected_at",
         ]
         read_only_fields = ["id", "collected_at"]
