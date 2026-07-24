@@ -10,6 +10,7 @@ import 'character_cache.dart';
 import 'character_profile_cache.dart';
 import 'local_notification_service.dart';
 import 'notification_history.dart';
+import 'notification_settings.dart';
 import 'scheduler_cache.dart';
 import 'sunday_event_cache.dart';
 
@@ -191,9 +192,12 @@ class _MapleAppShellState extends State<_MapleAppShell>
   final SchedulerCache schedulerCache = SchedulerCache();
   final SundayEventCache sundayEventCache = SundayEventCache();
   final NotificationHistory notificationHistory = NotificationHistory();
+  final NotificationSettingsStore notificationSettingsStore =
+      NotificationSettingsStore();
 
   Timer? notificationTimer;
   var isCheckingScheduledNotifications = false;
+  var notificationSettings = NotificationSettings.defaults;
   var currentSection = AppSection.character;
   var isLoading = false;
   var isSchedulerLoading = false;
@@ -312,10 +316,15 @@ class _MapleAppShellState extends State<_MapleAppShell>
       characterProfileCache.ensure(),
       schedulerCache.ensure(),
       sundayEventCache.ensure(),
+      notificationSettingsStore.ensure(),
     ]);
+    final loadedNotificationSettings = await notificationSettingsStore.load();
     if (!mounted) {
       return;
     }
+    setState(() {
+      notificationSettings = loadedNotificationSettings;
+    });
     await loadCachedCharacters();
     unawaited(refreshCharacterListCache());
   }
@@ -337,7 +346,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     unawaited(loadDashboardSnapshots());
     unawaited(loadScheduler(selected));
     unawaited(refreshRegisteredSchedulers(skipOcid: selected.ocid));
-    unawaited(checkScheduledNotifications());
+    unawaited(checkStartupScheduledNotifications());
   }
 
   void persistCharacters() {
@@ -784,7 +793,23 @@ class _MapleAppShellState extends State<_MapleAppShell>
     }
 
     final now = DateTime.now();
-    if (now.hour != 21) {
+    if (now.hour != notificationSettings.reminderHour ||
+        now.minute != notificationSettings.reminderMinute) {
+      return;
+    }
+
+    await runScheduledNotificationChecks(now);
+  }
+
+  Future<void> checkStartupScheduledNotifications() async {
+    if (!notificationSettings.checkOnStartup) {
+      return;
+    }
+    await runScheduledNotificationChecks(DateTime.now());
+  }
+
+  Future<void> runScheduledNotificationChecks(DateTime now) async {
+    if (isCheckingScheduledNotifications || selectedCharacters.isEmpty) {
       return;
     }
 
