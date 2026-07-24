@@ -300,8 +300,10 @@ class _MapleAppShellState extends State<_MapleAppShell>
   }
 
   Future<void> exitApplication() async {
+    await windowManager.setPreventClose(false);
     await trayManager.destroy();
     await windowManager.destroy();
+    exit(0);
   }
 
   Future<void> initializeCachedState() async {
