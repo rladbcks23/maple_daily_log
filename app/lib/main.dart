@@ -840,16 +840,23 @@ class _MapleAppShellState extends State<_MapleAppShell>
     isCheckingNoticeNotifications = true;
     try {
       final newItems = await apiClient.checkNewNotices();
-      if (newItems.isEmpty) {
+      final notifyItems = <NoticeItemSummary>[];
+      for (final item in newItems) {
+        if (!await notificationHistory.hasSent(item.notificationKey)) {
+          notifyItems.add(item);
+        }
+      }
+
+      if (notifyItems.isEmpty) {
         return;
       }
 
-      final title = newItems.length == 1
-          ? _newNoticeTitle(newItems.first)
+      final title = notifyItems.length == 1
+          ? _newNoticeTitle(notifyItems.first)
           : '새 공지와 이벤트가 올라왔어요';
-      final body = newItems.length == 1
-          ? newItems.first.title
-          : '${_newNoticeTitle(newItems.first)} 외 ${newItems.length - 1}건을 확인해주세요.';
+      final body = notifyItems.length == 1
+          ? notifyItems.first.title
+          : '${_newNoticeTitle(notifyItems.first)} 외 ${notifyItems.length - 1}건을 확인해주세요.';
 
       await LocalNotificationService.instance.showNotification(
         id: 1003,
@@ -857,6 +864,10 @@ class _MapleAppShellState extends State<_MapleAppShell>
         body: body,
         payload: 'section:notices',
       );
+
+      for (final item in notifyItems) {
+        await notificationHistory.markSent(item.notificationKey);
+      }
     } on ApiException {
       // 공지 알림 확인 실패는 앱 사용을 막지 않는다.
     } finally {

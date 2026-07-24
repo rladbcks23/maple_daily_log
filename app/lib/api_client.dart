@@ -751,6 +751,7 @@ class SchedulerItemSummary {
 class NoticeItemSummary {
   const NoticeItemSummary({
     required this.noticeType,
+    required this.noticeId,
     required this.title,
     required this.link,
     required this.registeredAt,
@@ -765,6 +766,7 @@ class NoticeItemSummary {
   });
 
   final String noticeType;
+  final String noticeId;
   final String title;
   final String link;
   final String registeredAt;
@@ -780,6 +782,7 @@ class NoticeItemSummary {
   Map<String, dynamic> toCacheJson() {
     return {
       'noticeType': noticeType,
+      'noticeId': noticeId,
       'title': title,
       'link': link,
       'registeredAt': registeredAt,
@@ -797,6 +800,7 @@ class NoticeItemSummary {
   factory NoticeItemSummary.fromJson(Map<String, dynamic> json) {
     return NoticeItemSummary(
       noticeType: _readString(json, ['noticeType', 'notice_type', 'type']),
+      noticeId: _readString(json, ['noticeId', 'notice_id', 'id']),
       title: _readString(json, ['title', 'notice_title']),
       link: _readString(json, ['link', 'url']),
       registeredAt:
@@ -851,6 +855,14 @@ class NoticeItemSummary {
       return 'maintenance';
     }
     return noticeType;
+  }
+
+  String get notificationKey {
+    final stableId = noticeId.isNotEmpty ? noticeId : link;
+    if (stableId.isNotEmpty) {
+      return 'notice:$noticeType:$stableId';
+    }
+    return 'notice:$noticeType:$title:$registeredAt';
   }
 
   String get dateText {
