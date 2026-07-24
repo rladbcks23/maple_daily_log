@@ -1569,7 +1569,7 @@ class _NotificationSettingsButton extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         textStyle: const TextStyle(
                           fontSize: 15,
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                       child: Text(
