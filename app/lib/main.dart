@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/material.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
@@ -17,10 +19,82 @@ import 'sunday_event_cache.dart';
 
 const appCurrentVersion = '0.1.0';
 
-Future<void> main() async {
+Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
+  final windowController = await WindowController.fromCurrentEngine();
+  final windowArguments = _decodeWindowArguments(windowController.arguments);
+  if (windowArguments['type'] == 'alert') {
+    await _configureAlertWindow();
+    runApp(
+      _MapleAlertWindowApp(
+        alert: _OverlayAlertData(
+          title: windowArguments['title']?.toString() ?? '알림',
+          body: windowArguments['body']?.toString() ?? '',
+        ),
+      ),
+    );
+    return;
+  }
+
   runApp(const MapleTaskReminderApp());
+}
+
+Map<String, dynamic> _decodeWindowArguments(String rawArguments) {
+  if (rawArguments.isEmpty) {
+    return const {};
+  }
+
+  try {
+    final decoded = jsonDecode(rawArguments);
+    if (decoded is Map<String, dynamic>) {
+      return decoded;
+    }
+  } catch (_) {
+    return const {};
+  }
+
+  return const {};
+}
+
+Future<void> _configureAlertWindow() async {
+  const windowOptions = WindowOptions(
+    size: Size(408, 306),
+    center: true,
+    backgroundColor: AppColors.surface,
+    skipTaskbar: false,
+    title: '알림',
+    titleBarStyle: TitleBarStyle.normal,
+  );
+  windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.show();
+    await windowManager.focus();
+  });
+}
+
+class _MapleAlertWindowApp extends StatelessWidget {
+  const _MapleAlertWindowApp({
+    required this.alert,
+  });
+
+  final _OverlayAlertData alert;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: '알림',
+      theme: ThemeData(
+        fontFamily: 'Malgun Gothic',
+        scaffoldBackgroundColor: Colors.transparent,
+        useMaterial3: true,
+      ),
+      home: _OverlayAlertWindow(
+        alert: alert,
+        onConfirm: () => unawaited(windowManager.close()),
+      ),
+    );
+  }
 }
 
 class MapleTaskReminderApp extends StatelessWidget {
@@ -168,23 +242,12 @@ class _OverlayAlertWindow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF9B9B9B),
+      backgroundColor: AppColors.surface,
       body: Center(
         child: Container(
           width: 400,
           height: 276,
           padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.16),
-                blurRadius: 24,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
           child: Column(
             children: [
               Container(
@@ -336,8 +399,6 @@ class _MapleAppShellState extends State<_MapleAppShell>
   NoticeItemSummary? sundayEvent;
   _OverlayAlertData? overlayAlert;
   var wasHiddenBeforeOverlay = false;
-  var isDesktopOverlayAlert = false;
-  Rect? windowBoundsBeforeOverlay;
 
   @override
   void initState() {
@@ -423,10 +484,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   }
 
   Future<void> showWindowFromTray() async {
-    isDesktopOverlayAlert = false;
-    windowBoundsBeforeOverlay = null;
     await windowManager.setSkipTaskbar(false);
-    await windowManager.setResizable(true);
     await windowManager.show();
     await windowManager.focus();
   }
@@ -443,6 +501,22 @@ class _MapleAppShellState extends State<_MapleAppShell>
     required String body,
     String? payload,
   }) async {
+    try {
+      await WindowController.create(
+        WindowConfiguration(
+          arguments: jsonEncode({
+            'type': 'alert',
+            'title': title,
+            'body': body,
+          }),
+          hiddenAtLaunch: true,
+        ),
+      );
+      return;
+    } catch (_) {
+      // Fall back to the in-app overlay if the native alert window fails.
+    }
+
     final isVisible = await windowManager.isVisible();
     wasHiddenBeforeOverlay = !isVisible;
     if (!mounted) {
@@ -450,16 +524,8 @@ class _MapleAppShellState extends State<_MapleAppShell>
     }
 
     if (!isVisible) {
-      windowBoundsBeforeOverlay = await windowManager.getBounds();
-      isDesktopOverlayAlert = true;
       await windowManager.setSkipTaskbar(false);
-      await windowManager.setResizable(false);
-      await windowManager.setSize(const Size(424, 288));
-      await windowManager.center();
       await windowManager.show();
-    } else {
-      isDesktopOverlayAlert = false;
-      windowBoundsBeforeOverlay = null;
     }
 
     setState(() {
@@ -473,18 +539,9 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
   Future<void> closeOverlayAlert() async {
     final payload = overlayAlert?.payload;
-    final shouldRestoreCompactOverlay = isDesktopOverlayAlert;
-    final previousBounds = windowBoundsBeforeOverlay;
     setState(() {
       overlayAlert = null;
     });
-
-    if (shouldRestoreCompactOverlay) {
-      await windowManager.setResizable(true);
-      if (previousBounds != null) {
-        await windowManager.setBounds(previousBounds);
-      }
-    }
 
     if (payload != null) {
       if (wasHiddenBeforeOverlay) {
@@ -497,8 +554,6 @@ class _MapleAppShellState extends State<_MapleAppShell>
       await hideWindowToTray();
     }
     wasHiddenBeforeOverlay = false;
-    isDesktopOverlayAlert = false;
-    windowBoundsBeforeOverlay = null;
   }
 
   Future<void> initializeCachedState() async {
