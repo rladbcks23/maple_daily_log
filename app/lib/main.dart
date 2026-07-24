@@ -336,6 +336,8 @@ class _MapleAppShellState extends State<_MapleAppShell>
   NoticeItemSummary? sundayEvent;
   _OverlayAlertData? overlayAlert;
   var wasHiddenBeforeOverlay = false;
+  var isDesktopOverlayAlert = false;
+  Rect? windowBoundsBeforeOverlay;
 
   @override
   void initState() {
@@ -421,7 +423,10 @@ class _MapleAppShellState extends State<_MapleAppShell>
   }
 
   Future<void> showWindowFromTray() async {
+    isDesktopOverlayAlert = false;
+    windowBoundsBeforeOverlay = null;
     await windowManager.setSkipTaskbar(false);
+    await windowManager.setResizable(true);
     await windowManager.show();
     await windowManager.focus();
   }
@@ -445,8 +450,16 @@ class _MapleAppShellState extends State<_MapleAppShell>
     }
 
     if (!isVisible) {
+      windowBoundsBeforeOverlay = await windowManager.getBounds();
+      isDesktopOverlayAlert = true;
       await windowManager.setSkipTaskbar(false);
+      await windowManager.setResizable(false);
+      await windowManager.setSize(const Size(424, 288));
+      await windowManager.center();
       await windowManager.show();
+    } else {
+      isDesktopOverlayAlert = false;
+      windowBoundsBeforeOverlay = null;
     }
 
     setState(() {
@@ -460,16 +473,32 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
   Future<void> closeOverlayAlert() async {
     final payload = overlayAlert?.payload;
+    final shouldRestoreCompactOverlay = isDesktopOverlayAlert;
+    final previousBounds = windowBoundsBeforeOverlay;
     setState(() {
       overlayAlert = null;
     });
 
+    if (shouldRestoreCompactOverlay) {
+      await windowManager.setResizable(true);
+      if (previousBounds != null) {
+        await windowManager.setBounds(previousBounds);
+      }
+    }
+
     if (payload != null) {
+      if (wasHiddenBeforeOverlay) {
+        await windowManager.setSkipTaskbar(false);
+        await windowManager.show();
+        await windowManager.focus();
+      }
       handleNotificationTap(payload);
     } else if (wasHiddenBeforeOverlay) {
       await hideWindowToTray();
     }
     wasHiddenBeforeOverlay = false;
+    isDesktopOverlayAlert = false;
+    windowBoundsBeforeOverlay = null;
   }
 
   Future<void> initializeCachedState() async {
