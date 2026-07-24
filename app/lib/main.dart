@@ -144,6 +144,123 @@ class _StartupLoadingScreen extends StatelessWidget {
   }
 }
 
+class _OverlayAlertData {
+  const _OverlayAlertData({
+    required this.title,
+    required this.body,
+    this.payload,
+  });
+
+  final String title;
+  final String body;
+  final String? payload;
+}
+
+class _OverlayAlertWindow extends StatelessWidget {
+  const _OverlayAlertWindow({
+    required this.alert,
+    required this.onConfirm,
+  });
+
+  final _OverlayAlertData alert;
+  final VoidCallback onConfirm;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF9B9B9B),
+      body: Center(
+        child: Container(
+          width: 400,
+          height: 276,
+          padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.16),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFFFFE9DD),
+                ),
+                alignment: Alignment.center,
+                child: const Text(
+                  '!',
+                  style: TextStyle(
+                    color: AppColors.navAccent,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                alert.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    alert.body,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 14,
+                      height: 1.45,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton(
+                  onPressed: onConfirm,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.navAccent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  child: const Text('확인'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class AppColors {
   static const background = Color(0xFFFFFFFF);
   static const sidebar = Color(0xFFFEFBF2);
@@ -217,6 +334,8 @@ class _MapleAppShellState extends State<_MapleAppShell>
   Map<String, SchedulerSnapshot> dashboardSnapshots = const {};
   List<NoticeItemSummary> noticeItems = const [];
   NoticeItemSummary? sundayEvent;
+  _OverlayAlertData? overlayAlert;
+  Rect? previousWindowBounds;
 
   @override
   void initState() {
@@ -312,6 +431,51 @@ class _MapleAppShellState extends State<_MapleAppShell>
     await trayManager.destroy();
     await windowManager.destroy();
     exit(0);
+  }
+
+  Future<void> showOverlayAlert({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    previousWindowBounds ??= await windowManager.getBounds();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      overlayAlert = _OverlayAlertData(
+        title: title,
+        body: body,
+        payload: payload,
+      );
+    });
+
+    await windowManager.setSkipTaskbar(true);
+    await windowManager.setAlwaysOnTop(true);
+    await windowManager.setSize(const Size(424, 288));
+    await windowManager.center();
+    await windowManager.show();
+    await windowManager.focus();
+  }
+
+  Future<void> closeOverlayAlert() async {
+    final payload = overlayAlert?.payload;
+    setState(() {
+      overlayAlert = null;
+    });
+
+    await windowManager.setAlwaysOnTop(false);
+    await windowManager.setSkipTaskbar(false);
+    final bounds = previousWindowBounds;
+    previousWindowBounds = null;
+    if (bounds != null) {
+      await windowManager.setBounds(bounds);
+    }
+
+    if (payload != null) {
+      handleNotificationTap(payload);
+    }
   }
 
   Future<void> initializeCachedState() async {
@@ -758,22 +922,11 @@ class _MapleAppShellState extends State<_MapleAppShell>
   }
 
   Future<void> showTestNotification() async {
-    try {
-      await LocalNotificationService.instance.showTestNotification();
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Windows 알림을 보냈습니다.')),
-      );
-    } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('알림을 보내지 못했습니다: $error')),
-      );
-    }
+    await showOverlayAlert(
+      title: '알림',
+      body: '알림이 정상적으로 작동합니다.',
+      payload: 'section:character',
+    );
   }
 
   Future<void> saveNotificationSettings(NotificationSettings settings) async {
@@ -860,8 +1013,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
           ? notifyItems.first.title
           : '${_newNoticeTitle(notifyItems.first)} 외 ${notifyItems.length - 1}건을 확인해주세요.';
 
-      await LocalNotificationService.instance.showNotification(
-        id: 1003,
+      await showOverlayAlert(
         title: title,
         body: body,
         payload: 'section:notices',
@@ -920,8 +1072,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
       return;
     }
 
-    await LocalNotificationService.instance.showNotification(
-      id: 1001,
+    await showOverlayAlert(
       title: '오늘 접속 기록이 없어요',
       body: '${_characterNames(missingCharacters)} 접속 후 일일 숙제를 확인해주세요.',
       payload: 'section:scheduler',
@@ -960,8 +1111,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
       return;
     }
 
-    await LocalNotificationService.instance.showNotification(
-      id: 1002,
+    await showOverlayAlert(
       title: '이번 주 숙제가 남아 있어요',
       body: '${_characterNames(incompleteCharacters)} 목요일 전에 주간 콘텐츠를 확인해주세요.',
       payload: 'section:scheduler',
@@ -1014,6 +1164,14 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
   @override
   Widget build(BuildContext context) {
+    final alert = overlayAlert;
+    if (alert != null) {
+      return _OverlayAlertWindow(
+        alert: alert,
+        onConfirm: () => unawaited(closeOverlayAlert()),
+      );
+    }
+
     return Scaffold(
       body: Row(
         children: [
