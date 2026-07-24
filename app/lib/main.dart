@@ -18,6 +18,12 @@ import 'scheduler_cache.dart';
 import 'sunday_event_cache.dart';
 
 const appCurrentVersion = '0.1.0';
+const _mapleProcessNames = {
+  'maplestory.exe',
+  'maplestoryclient.exe',
+  'nexonplug.exe',
+  'nexonlauncher.exe',
+};
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -434,8 +440,11 @@ class _MapleAppShellState extends State<_MapleAppShell>
       NotificationSettingsStore();
 
   Timer? notificationTimer;
+  Timer? launcherMonitorTimer;
   var isCheckingScheduledNotifications = false;
   var isCheckingNoticeNotifications = false;
+  var isCheckingLauncherProcess = false;
+  var hasActiveLauncherSession = false;
   var notificationSettings = NotificationSettings.defaults;
   var currentSection = AppSection.character;
   var isLoading = false;
@@ -474,7 +483,12 @@ class _MapleAppShellState extends State<_MapleAppShell>
       const Duration(minutes: 1),
       (_) => unawaited(checkScheduledNotifications()),
     );
+    launcherMonitorTimer = Timer.periodic(
+      const Duration(seconds: 10),
+      (_) => unawaited(checkLauncherProcess()),
+    );
     unawaited(checkScheduledNotifications());
+    unawaited(checkLauncherProcess());
   }
 
   Future<void> initializeNotifications() async {
@@ -504,6 +518,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   @override
   void dispose() {
     notificationTimer?.cancel();
+    launcherMonitorTimer?.cancel();
     windowManager.removeListener(this);
     trayManager.removeListener(this);
     super.dispose();
@@ -552,11 +567,74 @@ class _MapleAppShellState extends State<_MapleAppShell>
     exit(0);
   }
 
+  Future<void> checkLauncherProcess() async {
+    if (!Platform.isWindows || isCheckingLauncherProcess) {
+      return;
+    }
+
+    isCheckingLauncherProcess = true;
+    try {
+      final launcherRunning = await _isMapleLauncherRunning();
+      if (launcherRunning) {
+        hasActiveLauncherSession = true;
+      } else if (hasActiveLauncherSession) {
+        hasActiveLauncherSession = false;
+      }
+    } finally {
+      isCheckingLauncherProcess = false;
+    }
+  }
+
+  Future<bool> _isMapleLauncherRunning() async {
+    try {
+      final result = await Process.run(
+        'tasklist',
+        const ['/fo', 'csv', '/nh'],
+        runInShell: true,
+      );
+      if (result.exitCode != 0) {
+        return false;
+      }
+
+      final output = result.stdout.toString().toLowerCase();
+      return _mapleProcessNames.any(output.contains);
+    } on ProcessException {
+      return false;
+    }
+  }
+
+  Future<bool> _showSystemNotificationIfLauncherActive({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    if (!hasActiveLauncherSession) {
+      return false;
+    }
+
+    await LocalNotificationService.instance.showNotification(
+      id: DateTime.now().millisecondsSinceEpoch.remainder(2147483647),
+      title: title,
+      body: body,
+      payload: payload,
+    );
+    return true;
+  }
+
   Future<void> showOverlayAlert({
     required String title,
     required String body,
     String? payload,
   }) async {
+    await checkLauncherProcess();
+    if (await _showSystemNotificationIfLauncherActive(
+      title: title,
+      body: body,
+      payload: payload,
+    )) {
+      return;
+    }
+
     final alertArguments = jsonEncode({
       'type': 'alert',
       'title': title,
