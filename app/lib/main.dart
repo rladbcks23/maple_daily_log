@@ -3887,12 +3887,19 @@ int _readPartyTimeUnit(String value, int fallback, int min, int max) {
   return parsed;
 }
 
-List<String> _frequentPartyMembers(List<PartySchedule> schedules) {
+List<String> _frequentPartyMembers(
+  List<PartySchedule> schedules,
+  List<NexonCharacterSummary> ownCharacters,
+) {
+  final ownCharacterNames = ownCharacters
+      .map((character) => character.characterName.trim())
+      .where((name) => name.isNotEmpty)
+      .toSet();
   final counts = <String, int>{};
   for (final schedule in schedules) {
     for (final member in schedule.members) {
       final trimmed = member.trim();
-      if (trimmed.isEmpty) {
+      if (trimmed.isEmpty || ownCharacterNames.contains(trimmed)) {
         continue;
       }
       counts[trimmed] = (counts[trimmed] ?? 0) + 1;
@@ -4024,7 +4031,7 @@ class _PartySchedulePanel extends StatelessWidget {
       text: schedule?.members.join(', ') ??
           characters.map((item) => item.characterName).take(1).join(', '),
     );
-    final frequentMembers = _frequentPartyMembers(schedules);
+    final frequentMembers = _frequentPartyMembers(schedules, characters);
     var showMemberSuggestions = false;
     var selectedBoss =
         _partyBossDifficultyOptions.containsKey(schedule?.bossName)
