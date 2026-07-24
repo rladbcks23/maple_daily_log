@@ -1,7 +1,8 @@
 # 메이플 숙제알리미 Server
 
 DRF + SQLite 기반 API 서버다.
-서버는 Nexon OpenAPI 호출, 선택 캐릭터 저장, 공지 목록 비교, 알림 판단 결과 생성을 담당한다.
+서버는 Nexon OpenAPI 호출, 공통 공지/이벤트 목록 비교, 썬데이 메이플 정보 저장, 알림 판단 결과 생성을 담당한다.
+선택 캐릭터, 캐릭터 목록, 스케줄러처럼 PC마다 달라지는 데이터는 앱 로컬 캐시에서 관리한다.
 
 ## 네가 채워야 하는 값
 
@@ -37,15 +38,6 @@ python manage.py runserver
 
 - `GET /health`
 
-선택 캐릭터:
-
-- `GET /api/selected-characters/`
-- `POST /api/selected-characters/`
-- `GET /api/selected-characters/{id}/`
-- `PATCH /api/selected-characters/{id}/`
-- `DELETE /api/selected-characters/{id}/`
-- `POST /api/selected-characters/{id}/refresh/`
-
 Nexon API 프록시:
 
 - `GET /api/nexon/characters`
@@ -56,8 +48,10 @@ Nexon API 프록시:
 공지:
 
 - `GET /api/notices/current`
+- `GET /api/notices/latest-sunday`
 - `POST /api/notices/check-new`
 - `GET /api/notice-snapshots/`
+- `GET /api/sunday-events/`
 
 알림 판단:
 
