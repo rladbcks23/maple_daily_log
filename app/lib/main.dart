@@ -67,7 +67,9 @@ Future<void> _configureAlertWindow() async {
     titleBarStyle: TitleBarStyle.hidden,
     windowButtonVisibility: false,
   );
-  windowManager.waitUntilReadyToShow(windowOptions, () async {
+  await windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.setAsFrameless();
+    await windowManager.setResizable(false);
     await windowManager.show();
     await windowManager.focus();
   });
