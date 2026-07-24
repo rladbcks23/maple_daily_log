@@ -1137,34 +1137,50 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
     isCheckingNoticeNotifications = true;
     try {
-      final newItems = await apiClient.checkNewNotices();
-      final notifyItems = <NoticeItemSummary>[];
-      for (final item in newItems) {
-        if (!await notificationHistory.hasSent(item.notificationKey)) {
-          notifyItems.add(item);
-        }
+      var currentItems = noticeItems;
+      if (currentItems.isEmpty) {
+        currentItems = await apiClient.fetchCurrentNotices();
       }
 
-      if (notifyItems.isEmpty) {
+      final previousSnapshot = await notificationHistory.loadNoticeSnapshot();
+      final currentSnapshot = {
+        for (final item in currentItems)
+          item.notificationKey: {
+            'title': item.title,
+            'type': item.displayType,
+          },
+      };
+
+      if (previousSnapshot.isEmpty) {
+        await notificationHistory.saveNoticeSnapshot(currentSnapshot);
         return;
       }
 
-      final title = notifyItems.length == 1
-          ? _newNoticeTitle(notifyItems.first)
-          : '새 공지와 이벤트가 올라왔어요';
-      final body = notifyItems.length == 1
-          ? notifyItems.first.title
-          : '${_newNoticeTitle(notifyItems.first)} 외 ${notifyItems.length - 1}건을 확인해주세요.';
+      final newItems = currentItems
+          .where((item) => !previousSnapshot.containsKey(item.notificationKey))
+          .toList();
+      final endedEvents = previousSnapshot.entries
+          .where((entry) =>
+              entry.value['type'] == 'event' &&
+              !currentSnapshot.containsKey(entry.key))
+          .map((entry) => entry.value['title'] ?? '')
+          .where((title) => title.isNotEmpty)
+          .toList();
+
+      await notificationHistory.saveNoticeSnapshot(currentSnapshot);
+
+      if (newItems.isEmpty && endedEvents.isEmpty) {
+        return;
+      }
+
+      final title = _noticeChangeTitle(newItems, endedEvents);
+      final body = _noticeChangeBody(newItems, endedEvents);
 
       await showOverlayAlert(
         title: title,
         body: body,
         payload: 'section:notices',
       );
-
-      for (final item in notifyItems) {
-        await notificationHistory.markSent(item.notificationKey);
-      }
     } on ApiException {
       // 공지 알림 확인 실패는 앱 사용을 막지 않는다.
     } finally {
@@ -1288,6 +1304,70 @@ class _MapleAppShellState extends State<_MapleAppShell>
       'maintenance' => '새 점검 공지가 올라왔어요',
       _ => '새 공지가 올라왔어요',
     };
+  }
+
+  String _noticeChangeTitle(
+    List<NoticeItemSummary> newItems,
+    List<String> endedEvents,
+  ) {
+    final newEvents = newItems.where((item) => item.displayType == 'event');
+    if (newEvents.isNotEmpty && endedEvents.isNotEmpty) {
+      return '이벤트 변경사항이 있어요';
+    }
+    if (newEvents.isNotEmpty) {
+      return '새 이벤트가 올라왔어요';
+    }
+    if (endedEvents.isNotEmpty) {
+      return '이벤트가 종료됐어요';
+    }
+    return newItems.length == 1
+        ? _newNoticeTitle(newItems.first)
+        : '새 공지가 올라왔어요';
+  }
+
+  String _noticeChangeBody(
+    List<NoticeItemSummary> newItems,
+    List<String> endedEvents,
+  ) {
+    final lines = <String>[];
+    final newEvents = newItems.where((item) => item.displayType == 'event');
+    final newNotices = newItems.where((item) => item.displayType != 'event');
+
+    _appendNoticeChangeLines(
+      lines,
+      header: '새 이벤트',
+      titles: newEvents.map((item) => item.title).toList(),
+    );
+    _appendNoticeChangeLines(
+      lines,
+      header: '종료된 이벤트',
+      titles: endedEvents,
+    );
+    _appendNoticeChangeLines(
+      lines,
+      header: '새 공지',
+      titles: newNotices.map((item) => item.title).toList(),
+    );
+
+    return lines.join('\n');
+  }
+
+  void _appendNoticeChangeLines(
+    List<String> lines, {
+    required String header,
+    required List<String> titles,
+  }) {
+    if (titles.isEmpty) {
+      return;
+    }
+
+    lines.add('$header:');
+    for (final title in titles.take(3)) {
+      lines.add('- $title');
+    }
+    if (titles.length > 3) {
+      lines.add('- 외 ${titles.length - 3}건');
+    }
   }
 
   void selectSection(AppSection section) {

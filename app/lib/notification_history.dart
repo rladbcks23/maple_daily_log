@@ -29,6 +29,39 @@ class NotificationHistory {
     await file.writeAsString(jsonEncode(history));
   }
 
+  Future<Map<String, Map<String, String>>> loadNoticeSnapshot() async {
+    final history = await _load();
+    final notices = history['noticeSnapshot'];
+    if (notices is! Map) {
+      return const {};
+    }
+
+    return notices.map((key, value) {
+      if (value is Map) {
+        return MapEntry(
+          key.toString(),
+          value.map((innerKey, innerValue) {
+            return MapEntry(innerKey.toString(), innerValue.toString());
+          }),
+        );
+      }
+
+      return MapEntry(
+        key.toString(),
+        {'title': value.toString(), 'type': 'notice'},
+      );
+    });
+  }
+
+  Future<void> saveNoticeSnapshot(
+    Map<String, Map<String, String>> snapshot,
+  ) async {
+    final history = await _load();
+    history['noticeSnapshot'] = snapshot;
+    final file = await _historyFile;
+    await file.writeAsString(jsonEncode(history));
+  }
+
   Future<Map<String, dynamic>> _load() async {
     try {
       final file = await _historyFile;
