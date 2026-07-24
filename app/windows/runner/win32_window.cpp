@@ -144,6 +144,15 @@ bool Win32Window::Create(const std::wstring& title,
     return false;
   }
 
+  HINSTANCE instance = GetModuleHandle(nullptr);
+  HICON app_icon = LoadIcon(instance, MAKEINTRESOURCE(IDI_APP_ICON));
+  if (app_icon) {
+    SendMessage(window, WM_SETICON, ICON_BIG,
+                reinterpret_cast<LPARAM>(app_icon));
+    SendMessage(window, WM_SETICON, ICON_SMALL,
+                reinterpret_cast<LPARAM>(app_icon));
+  }
+
   UpdateTheme(window);
 
   return OnCreate();
