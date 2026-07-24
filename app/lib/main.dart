@@ -14,6 +14,7 @@ import 'character_profile_cache.dart';
 import 'local_notification_service.dart';
 import 'notification_history.dart';
 import 'notification_settings.dart';
+import 'party_schedule_store.dart';
 import 'scheduler_cache.dart';
 import 'sunday_event_cache.dart';
 
@@ -409,6 +410,7 @@ enum AppSection {
   dashboard('대시보드', Icons.dashboard_outlined),
   character('캐릭터 선택', Icons.person_add_alt_1_rounded),
   scheduler('스케쥴러', Icons.event_note_rounded),
+  party('파티 일정', Icons.groups_2_outlined),
   events('진행중인 이벤트', Icons.celebration_rounded),
   notices('공지사항', Icons.campaign_rounded),
   sunday('이번주 썬데이', Icons.wb_sunny_rounded);
@@ -436,6 +438,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   final SchedulerCache schedulerCache = SchedulerCache();
   final SundayEventCache sundayEventCache = SundayEventCache();
   final NotificationHistory notificationHistory = NotificationHistory();
+  final PartyScheduleStore partyScheduleStore = PartyScheduleStore();
   final NotificationSettingsStore notificationSettingsStore =
       NotificationSettingsStore();
 
@@ -460,6 +463,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   SchedulerSnapshot? schedulerSnapshot;
   Map<String, SchedulerSnapshot> dashboardSnapshots = const {};
   List<NoticeItemSummary> noticeItems = const [];
+  List<PartySchedule> partySchedules = const [];
   NoticeItemSummary? sundayEvent;
   _OverlayAlertData? overlayAlert;
   WindowController? alertWindowController;
@@ -705,14 +709,17 @@ class _MapleAppShellState extends State<_MapleAppShell>
       characterProfileCache.ensure(),
       schedulerCache.ensure(),
       sundayEventCache.ensure(),
+      partyScheduleStore.ensure(),
       notificationSettingsStore.ensure(),
     ]);
     final loadedNotificationSettings = await notificationSettingsStore.load();
+    final loadedPartySchedules = await partyScheduleStore.load();
     if (!mounted) {
       return;
     }
     setState(() {
       notificationSettings = loadedNotificationSettings;
+      partySchedules = loadedPartySchedules;
     });
     unawaited(checkNewNoticeNotifications());
     await loadCachedCharacters();
@@ -1160,6 +1167,49 @@ class _MapleAppShellState extends State<_MapleAppShell>
     });
   }
 
+  Future<void> savePartySchedule(PartySchedule schedule) async {
+    final nextSchedules = [
+      for (final item in partySchedules)
+        if (item.id == schedule.id) schedule else item,
+      if (!partySchedules.any((item) => item.id == schedule.id)) schedule,
+    ]..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+
+    await partyScheduleStore.save(nextSchedules);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      partySchedules = nextSchedules;
+    });
+  }
+
+  Future<void> deletePartySchedule(PartySchedule schedule) async {
+    final nextSchedules =
+        partySchedules.where((item) => item.id != schedule.id).toList();
+    await partyScheduleStore.save(nextSchedules);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      partySchedules = nextSchedules;
+    });
+  }
+
+  Future<void> togglePartyCleared(PartySchedule schedule) async {
+    await savePartySchedule(
+      schedule.copyWith(
+        cleared: !schedule.cleared,
+        alertEnabled: schedule.cleared ? schedule.alertEnabled : false,
+      ),
+    );
+  }
+
+  Future<void> togglePartyAlert(PartySchedule schedule) async {
+    await savePartySchedule(
+      schedule.copyWith(alertEnabled: !schedule.alertEnabled),
+    );
+  }
+
   void handleNotificationTap(String? payload) {
     if (!mounted) {
       return;
@@ -1180,17 +1230,23 @@ class _MapleAppShellState extends State<_MapleAppShell>
         setState(() {
           currentSection = AppSection.notices;
         });
+      case 'section:party':
+        setState(() {
+          currentSection = AppSection.party;
+        });
     }
   }
 
   Future<void> checkScheduledNotifications() async {
     if (!notificationSettings.enabled ||
         isCheckingScheduledNotifications ||
-        selectedCharacters.isEmpty) {
+        (selectedCharacters.isEmpty && partySchedules.isEmpty)) {
       return;
     }
 
     final now = DateTime.now();
+    await _checkPartyScheduleNotifications(now);
+
     if (now.hour != notificationSettings.reminderHour ||
         now.minute != notificationSettings.reminderMinute) {
       return;
@@ -1269,12 +1325,16 @@ class _MapleAppShellState extends State<_MapleAppShell>
   Future<void> runScheduledNotificationChecks(DateTime now) async {
     if (!notificationSettings.enabled ||
         isCheckingScheduledNotifications ||
-        selectedCharacters.isEmpty) {
+        (selectedCharacters.isEmpty && partySchedules.isEmpty)) {
       return;
     }
 
     isCheckingScheduledNotifications = true;
     try {
+      await _checkPartyScheduleNotifications(now);
+      if (selectedCharacters.isEmpty) {
+        return;
+      }
       if (notificationSettings.dailyEnabled) {
         await _checkDailyLoginNotification(now);
       }
@@ -1284,6 +1344,32 @@ class _MapleAppShellState extends State<_MapleAppShell>
       }
     } finally {
       isCheckingScheduledNotifications = false;
+    }
+  }
+
+  Future<void> _checkPartyScheduleNotifications(DateTime now) async {
+    for (final schedule in partySchedules) {
+      if (!schedule.alertEnabled ||
+          schedule.cleared ||
+          schedule.scheduledAt.isAfter(now)) {
+        continue;
+      }
+
+      final ruleKey =
+          'party-schedule-${schedule.id}-${schedule.scheduledAt.toIso8601String()}';
+      if (await notificationHistory.hasSent(ruleKey)) {
+        continue;
+      }
+
+      final memberText =
+          schedule.members.isEmpty ? '등록된 파티원 없음' : schedule.members.join(', ');
+      await showOverlayAlert(
+        title: '파티 일정 시간이 됐어요',
+        body:
+            '${schedule.difficulty.toUpperCase()} ${schedule.bossName}\n$memberText\n${_dateTimeText(schedule.scheduledAt)}',
+        payload: 'section:party',
+      );
+      await notificationHistory.markSent(ruleKey);
     }
   }
 
@@ -1451,6 +1537,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   void selectSection(AppSection section) {
     if (section != AppSection.dashboard &&
         section != AppSection.character &&
+        section != AppSection.party &&
         selectedCharacter == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('캐릭터를 먼저 선택해주세요.')),
@@ -1482,6 +1569,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
                   currentSection: currentSection,
                   selectedCharacter: selectedCharacter,
                   selectedCharacters: selectedCharacters,
+                  partySchedules: partySchedules,
                   schedulerSnapshot: schedulerSnapshot,
                   dashboardSnapshots: dashboardSnapshots,
                   noticeItems: noticeItems,
@@ -1504,6 +1592,10 @@ class _MapleAppShellState extends State<_MapleAppShell>
                   onOpenCharacterScheduler: openCharacterScheduler,
                   onDeleteCharacter: deleteCharacter,
                   onMoveCharacter: moveCharacter,
+                  onSavePartySchedule: savePartySchedule,
+                  onDeletePartySchedule: deletePartySchedule,
+                  onTogglePartyCleared: togglePartyCleared,
+                  onTogglePartyAlert: togglePartyAlert,
                 ),
               ),
             ],
@@ -1577,7 +1669,7 @@ class _AppSidebar extends StatelessWidget {
                   _SidebarNavItem(
                     section: section,
                     selected: currentSection == section,
-                    enabled: hasCharacter,
+                    enabled: hasCharacter || section == AppSection.party,
                     onPressed: () => onSelectSection(section),
                   ),
               const Spacer(),
@@ -1787,6 +1879,7 @@ class _MainPanel extends StatelessWidget {
     required this.currentSection,
     required this.selectedCharacter,
     required this.selectedCharacters,
+    required this.partySchedules,
     required this.schedulerSnapshot,
     required this.dashboardSnapshots,
     required this.noticeItems,
@@ -1809,11 +1902,16 @@ class _MainPanel extends StatelessWidget {
     required this.onOpenCharacterScheduler,
     required this.onDeleteCharacter,
     required this.onMoveCharacter,
+    required this.onSavePartySchedule,
+    required this.onDeletePartySchedule,
+    required this.onTogglePartyCleared,
+    required this.onTogglePartyAlert,
   });
 
   final AppSection currentSection;
   final NexonCharacterSummary? selectedCharacter;
   final List<NexonCharacterSummary> selectedCharacters;
+  final List<PartySchedule> partySchedules;
   final SchedulerSnapshot? schedulerSnapshot;
   final Map<String, SchedulerSnapshot> dashboardSnapshots;
   final List<NoticeItemSummary> noticeItems;
@@ -1838,6 +1936,10 @@ class _MainPanel extends StatelessWidget {
   final ValueChanged<NexonCharacterSummary> onDeleteCharacter;
   final void Function(NexonCharacterSummary character, int offset)
       onMoveCharacter;
+  final Future<void> Function(PartySchedule schedule) onSavePartySchedule;
+  final Future<void> Function(PartySchedule schedule) onDeletePartySchedule;
+  final Future<void> Function(PartySchedule schedule) onTogglePartyCleared;
+  final Future<void> Function(PartySchedule schedule) onTogglePartyAlert;
 
   @override
   Widget build(BuildContext context) {
@@ -1900,6 +2002,14 @@ class _MainPanel extends StatelessWidget {
                     onSelectCharacter: onSelectCharacter,
                     onDeleteCharacter: onDeleteCharacter,
                     onMoveCharacter: onMoveCharacter,
+                  ),
+                AppSection.party => _PartySchedulePanel(
+                    schedules: partySchedules,
+                    characters: selectedCharacters,
+                    onSave: onSavePartySchedule,
+                    onDelete: onDeletePartySchedule,
+                    onToggleCleared: onTogglePartyCleared,
+                    onToggleAlert: onTogglePartyAlert,
                   ),
                 _ => _LockedFeaturePanel(
                     section: currentSection,
@@ -3707,6 +3817,471 @@ bool _isGuildSuroItem(SchedulerItemSummary item) {
   return item.title.replaceAll(' ', '').contains('지하수로');
 }
 
+String _dateTimeText(DateTime dateTime) {
+  final month = dateTime.month.toString().padLeft(2, '0');
+  final day = dateTime.day.toString().padLeft(2, '0');
+  final hour = dateTime.hour.toString().padLeft(2, '0');
+  final minute = dateTime.minute.toString().padLeft(2, '0');
+  return '${dateTime.year}-$month-$day $hour:$minute';
+}
+
+class _PartySchedulePanel extends StatelessWidget {
+  const _PartySchedulePanel({
+    required this.schedules,
+    required this.characters,
+    required this.onSave,
+    required this.onDelete,
+    required this.onToggleCleared,
+    required this.onToggleAlert,
+  });
+
+  final List<PartySchedule> schedules;
+  final List<NexonCharacterSummary> characters;
+  final Future<void> Function(PartySchedule schedule) onSave;
+  final Future<void> Function(PartySchedule schedule) onDelete;
+  final Future<void> Function(PartySchedule schedule) onToggleCleared;
+  final Future<void> Function(PartySchedule schedule) onToggleAlert;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                '고정 파티 보스 일정을 등록하고 시간에 맞춰 알림을 받아요.',
+                style: TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            _PrimaryActionButton(
+              icon: Icons.add_rounded,
+              label: '일정 추가',
+              onPressed: () => _openPartyDialog(context),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Expanded(
+          child: schedules.isEmpty
+              ? const _DashboardEmptyState(
+                  message: '등록된 파티 일정이 없습니다.\n일정 추가 버튼으로 주간 보스 파티를 등록해보세요.',
+                )
+              : ListView.separated(
+                  itemCount: schedules.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final schedule = schedules[index];
+                    return _PartyScheduleCard(
+                      schedule: schedule,
+                      onEdit: () => _openPartyDialog(context, schedule),
+                      onDelete: () => onDelete(schedule),
+                      onToggleCleared: () => onToggleCleared(schedule),
+                      onToggleAlert: () => onToggleAlert(schedule),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openPartyDialog(
+    BuildContext context, [
+    PartySchedule? schedule,
+  ]) async {
+    final memberController = TextEditingController(
+      text: schedule?.members.join(', ') ??
+          characters.map((item) => item.characterName).take(1).join(', '),
+    );
+    final bossController =
+        TextEditingController(text: schedule?.bossName ?? '');
+    final difficultyController =
+        TextEditingController(text: schedule?.difficulty ?? 'hard');
+    var selectedDateTime =
+        schedule?.scheduledAt ?? DateTime.now().add(const Duration(hours: 1));
+
+    final result = await showDialog<PartySchedule>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return Dialog(
+              insetPadding: const EdgeInsets.all(28),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        schedule == null ? '파티 일정 추가' : '파티 일정 수정',
+                        style: const TextStyle(
+                          color: AppColors.text,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      TextField(
+                        controller: memberController,
+                        decoration: const InputDecoration(
+                          labelText: '파티원',
+                          hintText: '말못함채금임, 유렌괜찬',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: bossController,
+                        decoration: const InputDecoration(
+                          labelText: '처치할 보스',
+                          hintText: '검은 마법사',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: difficultyController,
+                        decoration: const InputDecoration(
+                          labelText: '난이도',
+                          hintText: 'normal / hard / chaos / extreme',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final pickedDate = await showDatePicker(
+                            context: dialogContext,
+                            initialDate: selectedDateTime,
+                            firstDate: DateTime.now()
+                                .subtract(const Duration(days: 365)),
+                            lastDate:
+                                DateTime.now().add(const Duration(days: 3650)),
+                          );
+                          if (pickedDate == null || !dialogContext.mounted) {
+                            return;
+                          }
+                          final pickedTime = await showTimePicker(
+                            context: dialogContext,
+                            initialTime:
+                                TimeOfDay.fromDateTime(selectedDateTime),
+                          );
+                          if (pickedTime == null) {
+                            return;
+                          }
+                          setDialogState(() {
+                            selectedDateTime = DateTime(
+                              pickedDate.year,
+                              pickedDate.month,
+                              pickedDate.day,
+                              pickedTime.hour,
+                              pickedTime.minute,
+                            );
+                          });
+                        },
+                        icon: const Icon(Icons.event_rounded),
+                        label: Text(_dateTimeText(selectedDateTime)),
+                      ),
+                      const SizedBox(height: 22),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dialogContext),
+                            child: const Text('취소'),
+                          ),
+                          const SizedBox(width: 10),
+                          FilledButton(
+                            onPressed: () {
+                              final bossName = bossController.text.trim();
+                              if (bossName.isEmpty) {
+                                return;
+                              }
+                              final members = memberController.text
+                                  .split(',')
+                                  .map((item) => item.trim())
+                                  .where((item) => item.isNotEmpty)
+                                  .toList();
+                              Navigator.pop(
+                                dialogContext,
+                                PartySchedule(
+                                  id: schedule?.id ??
+                                      DateTime.now()
+                                          .microsecondsSinceEpoch
+                                          .toString(),
+                                  members: members,
+                                  bossName: bossName,
+                                  difficulty:
+                                      difficultyController.text.trim().isEmpty
+                                          ? 'hard'
+                                          : difficultyController.text.trim(),
+                                  scheduledAt: selectedDateTime,
+                                  alertEnabled: schedule?.alertEnabled ?? true,
+                                  cleared: schedule?.cleared ?? false,
+                                ),
+                              );
+                            },
+                            child: const Text('저장'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    memberController.dispose();
+    bossController.dispose();
+    difficultyController.dispose();
+
+    if (result != null) {
+      await onSave(result);
+    }
+  }
+}
+
+class _PartyScheduleCard extends StatelessWidget {
+  const _PartyScheduleCard({
+    required this.schedule,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onToggleCleared,
+    required this.onToggleAlert,
+  });
+
+  final PartySchedule schedule;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final VoidCallback onToggleCleared;
+  final VoidCallback onToggleAlert;
+
+  @override
+  Widget build(BuildContext context) {
+    final memberText =
+        schedule.members.isEmpty ? '파티원 없음' : schedule.members.join(' · ');
+    final overdue =
+        !schedule.cleared && schedule.scheduledAt.isBefore(DateTime.now());
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: BoxDecoration(
+        color: schedule.cleared ? AppColors.completionTag : AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: overdue ? AppColors.navAccent : AppColors.border,
+        ),
+      ),
+      child: Wrap(
+        spacing: 18,
+        runSpacing: 12,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          SizedBox(
+            width: 250,
+            child: _PartyCardInfo(
+              icon: Icons.groups_2_rounded,
+              label: '파티원',
+              value: memberText,
+            ),
+          ),
+          SizedBox(
+            width: 230,
+            child: Row(
+              children: [
+                _BossDifficultyBadge(difficulty: schedule.difficulty),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    schedule.bossName,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(
+            width: 175,
+            child: _PartyCardInfo(
+              icon: Icons.schedule_rounded,
+              label: '일정',
+              value: _dateTimeText(schedule.scheduledAt),
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '알림',
+                style: TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              Switch(
+                value: schedule.alertEnabled,
+                onChanged: (_) => onToggleAlert(),
+                activeThumbColor: AppColors.navAccent,
+              ),
+            ],
+          ),
+          _SmallIconButton(
+            icon: Icons.edit_rounded,
+            tooltip: '수정',
+            onPressed: onEdit,
+          ),
+          _SmallIconButton(
+            icon: Icons.delete_outline_rounded,
+            tooltip: '삭제',
+            onPressed: onDelete,
+          ),
+          OutlinedButton.icon(
+            onPressed: onToggleCleared,
+            icon: Icon(
+              schedule.cleared
+                  ? Icons.restart_alt_rounded
+                  : Icons.check_rounded,
+              size: 18,
+            ),
+            label: Text(schedule.cleared ? '처치 취소' : '처치 처리'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor:
+                  schedule.cleared ? AppColors.muted : AppColors.navAccent,
+              side: BorderSide(
+                color:
+                    schedule.cleared ? AppColors.border : AppColors.navBorder,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PartyCardInfo extends StatelessWidget {
+  const _PartyCardInfo({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: AppColors.navAccent, size: 18),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PrimaryActionButton extends StatelessWidget {
+  const _PrimaryActionButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.navAccent,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+    );
+  }
+}
+
+class _SmallIconButton extends StatelessWidget {
+  const _SmallIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(icon),
+        color: AppColors.text,
+        style: IconButton.styleFrom(
+          side: const BorderSide(color: AppColors.border),
+          padding: const EdgeInsets.all(10),
+        ),
+      ),
+    );
+  }
+}
+
 class _CharacterSelectPanel extends StatelessWidget {
   const _CharacterSelectPanel({
     required this.selectedCharacter,
@@ -3863,6 +4438,7 @@ class _LockedFeaturePanel extends StatelessWidget {
         AppSection.sunday => _SundayOverviewPanel(event: sundayEvent),
         AppSection.dashboard ||
         AppSection.character ||
+        AppSection.party ||
         AppSection.scheduler =>
           const SizedBox.shrink(),
       };
