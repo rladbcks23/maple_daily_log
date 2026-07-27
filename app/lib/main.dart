@@ -1412,7 +1412,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
           : '파티 일정 ${dueSchedules.length}개 시간이 됐어요',
       body: dueSchedules
           .map((item) => _partyScheduleNotificationText(item.schedule))
-          .join('\n\n'),
+          .join('\n'),
       payload: 'section:party',
     );
 
@@ -1424,10 +1424,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   String _partyScheduleNotificationText(PartySchedule schedule) {
     final memberText =
         schedule.members.isEmpty ? '등록된 파티원 없음' : schedule.members.join(', ');
-    final scheduleText = _partyScheduleText(schedule);
-    return '${schedule.difficulty.toUpperCase()} ${schedule.bossName}\n'
-        '$memberText\n'
-        '$scheduleText';
+    return '${schedule.difficulty.toUpperCase()} ${schedule.bossName} - $memberText';
   }
 
   Future<void> _checkDailyLoginNotification(DateTime now) async {
