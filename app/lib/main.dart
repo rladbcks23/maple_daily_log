@@ -94,6 +94,19 @@ bool _isAlertWindow(WindowController controller) {
   return arguments['type'] == 'alert';
 }
 
+int _windowSortKey(WindowController controller) {
+  return int.tryParse(controller.windowId) ?? 0x7fffffff;
+}
+
+Future<WindowController?> _primaryAlertWindow() async {
+  final controllers = await WindowController.getAll();
+  final alertWindows = controllers
+      .where((controller) => _isAlertWindow(controller))
+      .toList()
+    ..sort((a, b) => _windowSortKey(a).compareTo(_windowSortKey(b)));
+  return alertWindows.isEmpty ? null : alertWindows.first;
+}
+
 Future<void> _hideDuplicateAlertWindows(WindowController primaryWindow) async {
   final controllers = await WindowController.getAll();
   for (final controller in controllers) {
@@ -128,6 +141,13 @@ Future<void> _configureAlertWindow(
     titleBarStyle: TitleBarStyle.normal,
   );
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
+    final primaryWindow = await _primaryAlertWindow();
+    if (primaryWindow != null &&
+        primaryWindow.windowId != windowController.windowId) {
+      await windowManager.hide();
+      return;
+    }
+
     await _hideDuplicateAlertWindows(windowController);
     await windowManager.setAlwaysOnTop(true);
     await windowManager.show();
@@ -798,19 +818,11 @@ class _MapleAppShellState extends State<_MapleAppShell>
   }
 
   Future<WindowController?> _findReusableAlertWindow() async {
-    final controllers = await WindowController.getAll();
-    final alertWindows = <WindowController>[];
-    for (final controller in controllers) {
-      if (_isAlertWindow(controller)) {
-        alertWindows.add(controller);
-      }
-    }
-
-    if (alertWindows.isEmpty) {
+    final primaryAlertWindow = await _primaryAlertWindow();
+    if (primaryAlertWindow == null) {
       return null;
     }
 
-    final primaryAlertWindow = alertWindows.first;
     await _hideDuplicateAlertWindows(primaryAlertWindow);
     return primaryAlertWindow;
   }
