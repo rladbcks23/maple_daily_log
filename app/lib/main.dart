@@ -738,6 +738,31 @@ class _MapleAppShellState extends State<_MapleAppShell>
     }
   }
 
+  Future<WindowController?> _findReusableAlertWindow() async {
+    final controllers = await WindowController.getAll();
+    final alertWindows = <WindowController>[];
+    for (final controller in controllers) {
+      final arguments = _decodeWindowArguments(controller.arguments);
+      if (arguments['type'] == 'alert') {
+        alertWindows.add(controller);
+      }
+    }
+
+    if (alertWindows.isEmpty) {
+      return null;
+    }
+
+    final primaryAlertWindow = alertWindows.first;
+    for (final duplicateAlertWindow in alertWindows.skip(1)) {
+      try {
+        await duplicateAlertWindow.hide();
+      } catch (_) {
+        // A stale duplicate window should not block the reusable alert window.
+      }
+    }
+    return primaryAlertWindow;
+  }
+
   Future<void> _showOverlayAlertNow(_OverlayAlertData alert) async {
     await checkLauncherProcess();
     if (await _showSystemNotificationIfLauncherActive(
@@ -755,8 +780,10 @@ class _MapleAppShellState extends State<_MapleAppShell>
     });
 
     try {
-      final existingAlertWindow = alertWindowController;
+      final existingAlertWindow =
+          alertWindowController ?? await _findReusableAlertWindow();
       if (existingAlertWindow != null) {
+        alertWindowController = existingAlertWindow;
         await existingAlertWindow.invokeMethod('showAlert', alertArguments);
         return;
       }
