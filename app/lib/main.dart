@@ -534,6 +534,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   NoticeItemSummary? sundayEvent;
   _OverlayAlertData? overlayAlert;
   WindowController? alertWindowController;
+  Future<WindowController?>? alertWindowCreation;
   final pendingOverlayAlerts = <_OverlayAlertData>[];
   final pendingPartyScheduleRuleKeys = <String>{};
   var wasHiddenBeforeOverlay = false;
@@ -760,15 +761,28 @@ class _MapleAppShellState extends State<_MapleAppShell>
         return;
       }
 
-      alertWindowController = await WindowController.create(
+      final creatingAlertWindow = alertWindowCreation;
+      if (creatingAlertWindow != null) {
+        final createdWindow = await creatingAlertWindow;
+        if (createdWindow != null) {
+          await createdWindow.invokeMethod('showAlert', alertArguments);
+          return;
+        }
+      }
+
+      final creation = WindowController.create(
         WindowConfiguration(
           arguments: alertArguments,
           hiddenAtLaunch: true,
         ),
       );
+      alertWindowCreation = creation;
+      alertWindowController = await creation;
+      alertWindowCreation = null;
       return;
     } catch (_) {
       alertWindowController = null;
+      alertWindowCreation = null;
       // Fall back to the in-app overlay if the native alert window fails.
     }
 
