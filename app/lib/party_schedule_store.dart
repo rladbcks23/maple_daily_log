@@ -7,6 +7,7 @@ class PartySchedule {
     required this.members,
     required this.bossName,
     required this.difficulty,
+    required this.repeatType,
     required this.weekday,
     required this.hour,
     required this.minute,
@@ -17,12 +18,28 @@ class PartySchedule {
   final List<String> members;
   final String bossName;
   final String difficulty;
+  final String repeatType;
   final int weekday;
   final int hour;
   final int minute;
   final bool cleared;
 
+  bool get isMonthly => repeatType == 'monthly';
+
   DateTime nextScheduleFrom(DateTime now) {
+    if (isMonthly) {
+      var next = currentMonthScheduleFrom(now);
+      if (!next.isAfter(now)) {
+        next = _firstWeekdayOfMonth(
+          DateTime(now.year, now.month + 1),
+          weekday,
+          hour,
+          minute,
+        );
+      }
+      return next;
+    }
+
     final daysUntil = (weekday - now.weekday) % DateTime.daysPerWeek;
     var next = DateTime(now.year, now.month, now.day, hour, minute)
         .add(Duration(days: daysUntil));
@@ -30,6 +47,19 @@ class PartySchedule {
       next = next.add(const Duration(days: DateTime.daysPerWeek));
     }
     return next;
+  }
+
+  DateTime currentScheduleFrom(DateTime now) {
+    return isMonthly ? currentMonthScheduleFrom(now) : currentWeekScheduleFrom(now);
+  }
+
+  DateTime currentMonthScheduleFrom(DateTime now) {
+    return _firstWeekdayOfMonth(
+      DateTime(now.year, now.month),
+      weekday,
+      hour,
+      minute,
+    );
   }
 
   DateTime currentWeekScheduleFrom(DateTime now) {
@@ -45,6 +75,7 @@ class PartySchedule {
     List<String>? members,
     String? bossName,
     String? difficulty,
+    String? repeatType,
     int? weekday,
     int? hour,
     int? minute,
@@ -55,6 +86,7 @@ class PartySchedule {
       members: members ?? this.members,
       bossName: bossName ?? this.bossName,
       difficulty: difficulty ?? this.difficulty,
+      repeatType: repeatType ?? this.repeatType,
       weekday: weekday ?? this.weekday,
       hour: hour ?? this.hour,
       minute: minute ?? this.minute,
@@ -67,6 +99,7 @@ class PartySchedule {
         'members': members,
         'bossName': bossName,
         'difficulty': difficulty,
+        'repeatType': repeatType,
         'weekday': weekday,
         'hour': hour,
         'minute': minute,
@@ -80,6 +113,7 @@ class PartySchedule {
       members: _readStringList(json['members']),
       bossName: _readString(json['bossName']),
       difficulty: _readString(json['difficulty']),
+      repeatType: _readRepeatType(json['repeatType']),
       weekday:
           _readInt(json['weekday'], legacySchedule?.weekday ?? 2).clamp(1, 7),
       hour: _readInt(json['hour'], legacySchedule?.hour ?? 21).clamp(0, 23),
@@ -109,6 +143,22 @@ class PartySchedule {
     }
     return int.tryParse(value?.toString() ?? '') ?? fallback;
   }
+
+  static String _readRepeatType(Object? value) {
+    final text = value?.toString().trim().toLowerCase();
+    return text == 'monthly' ? 'monthly' : 'weekly';
+  }
+}
+
+DateTime _firstWeekdayOfMonth(
+  DateTime month,
+  int weekday,
+  int hour,
+  int minute,
+) {
+  final firstDay = DateTime(month.year, month.month);
+  final daysUntil = (weekday - firstDay.weekday) % DateTime.daysPerWeek;
+  return firstDay.add(Duration(days: daysUntil, hours: hour, minutes: minute));
 }
 
 class PartyScheduleStore {
@@ -170,6 +220,10 @@ class PartyScheduleStore {
 }
 
 int _comparePartySchedule(PartySchedule a, PartySchedule b) {
+  final repeatCompare = a.repeatType.compareTo(b.repeatType);
+  if (repeatCompare != 0) {
+    return repeatCompare;
+  }
   final weekdayCompare = a.weekday.compareTo(b.weekday);
   if (weekdayCompare != 0) {
     return weekdayCompare;

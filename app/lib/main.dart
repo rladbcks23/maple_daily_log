@@ -1342,13 +1342,16 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
   Future<void> _checkPartyScheduleNotifications(DateTime now) async {
     for (final schedule in partySchedules) {
-      final targetTime = schedule.currentWeekScheduleFrom(now);
-      if (schedule.cleared || targetTime.isAfter(now)) {
+      final targetTime = schedule.currentScheduleFrom(now);
+      final elapsed = now.difference(targetTime);
+      if (schedule.cleared ||
+          targetTime.isAfter(now) ||
+          elapsed > const Duration(minutes: 30)) {
         continue;
       }
 
       final ruleKey =
-          'party-schedule-${schedule.id}-${_dateKey(targetTime)}-${schedule.hour}-${schedule.minute}';
+          'party-schedule-${schedule.id}-${schedule.repeatType}-${_dateKey(targetTime)}-${schedule.hour}-${schedule.minute}';
       if (await notificationHistory.hasSent(ruleKey)) {
         continue;
       }
@@ -3832,6 +3835,10 @@ const _partyBossDifficultyOptions = <String, List<String>>{
 };
 
 int _comparePartySchedules(PartySchedule a, PartySchedule b) {
+  final repeatCompare = a.repeatType.compareTo(b.repeatType);
+  if (repeatCompare != 0) {
+    return repeatCompare;
+  }
   final weekdayCompare = a.weekday.compareTo(b.weekday);
   if (weekdayCompare != 0) {
     return weekdayCompare;
@@ -3876,7 +3883,18 @@ String _partyWeekdayShortLabel(int weekday) {
 String _partyScheduleText(PartySchedule schedule) {
   final hour = schedule.hour.toString().padLeft(2, '0');
   final minute = schedule.minute.toString().padLeft(2, '0');
+  if (schedule.isMonthly) {
+    return '매월 첫 번째 ${_partyWeekdayLabel(schedule.weekday)} $hour:$minute';
+  }
   return '매주 ${_partyWeekdayLabel(schedule.weekday)} $hour:$minute';
+}
+
+String _defaultPartyRepeatType(String bossName) {
+  return bossName == '검은 마법사' ? 'monthly' : 'weekly';
+}
+
+String _partyRepeatTypeLabel(String repeatType) {
+  return repeatType == 'monthly' ? '월간' : '주간';
 }
 
 int _readPartyTimeUnit(String value, int fallback, int min, int max) {
@@ -4037,6 +4055,8 @@ class _PartySchedulePanel extends StatelessWidget {
         _partyBossDifficultyOptions.containsKey(schedule?.bossName)
             ? schedule!.bossName
             : _partyBossDifficultyOptions.keys.first;
+    var selectedRepeatType =
+        schedule?.repeatType ?? _defaultPartyRepeatType(selectedBoss);
     var difficultyOptions = _partyBossDifficultyOptions[selectedBoss]!;
     var selectedDifficulty = difficultyOptions.contains(schedule?.difficulty)
         ? schedule!.difficulty
@@ -4151,6 +4171,8 @@ class _PartySchedulePanel extends StatelessWidget {
                           }
                           setDialogState(() {
                             selectedBoss = value;
+                            selectedRepeatType =
+                                _defaultPartyRepeatType(selectedBoss);
                             difficultyOptions =
                                 _partyBossDifficultyOptions[selectedBoss]!;
                             selectedDifficulty =
@@ -4182,6 +4204,33 @@ class _PartySchedulePanel extends StatelessWidget {
                           }
                           setDialogState(() {
                             selectedDifficulty = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedRepeatType,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: '반복 주기',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'weekly',
+                            child: Text('주간'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'monthly',
+                            child: Text('월간'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+                          setDialogState(() {
+                            selectedRepeatType = value;
                           });
                         },
                       ),
@@ -4315,6 +4364,7 @@ class _PartySchedulePanel extends StatelessWidget {
                                   members: members,
                                   bossName: selectedBoss,
                                   difficulty: selectedDifficulty,
+                                  repeatType: selectedRepeatType,
                                   weekday: selectedWeekday,
                                   hour: hour,
                                   minute: minute,
@@ -4365,7 +4415,7 @@ class _PartyScheduleCard extends StatelessWidget {
         schedule.members.isEmpty ? '파티원 없음' : schedule.members.join(' · ');
     final now = DateTime.now();
     final overdue = !schedule.cleared &&
-        schedule.currentWeekScheduleFrom(now).isBefore(now);
+        schedule.currentScheduleFrom(now).isBefore(now);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -4413,7 +4463,7 @@ class _PartyScheduleCard extends StatelessWidget {
             width: 175,
             child: _PartyCardInfo(
               icon: Icons.schedule_rounded,
-              label: '일정',
+              label: _partyRepeatTypeLabel(schedule.repeatType),
               value: _partyScheduleText(schedule),
             ),
           ),
