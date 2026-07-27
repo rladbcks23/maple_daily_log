@@ -3956,6 +3956,105 @@ void _appendPartyMember(TextEditingController controller, String member) {
       TextSelection.collapsed(offset: controller.text.length);
 }
 
+Future<int?> _pickMonthlyPartyDay(BuildContext context, int selectedDay) {
+  return showDialog<int>(
+    context: context,
+    builder: (context) {
+      var draftDay = selectedDay.clamp(1, 31);
+      return StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            insetPadding: const EdgeInsets.all(28),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Padding(
+                padding: const EdgeInsets.all(22),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      '월간 날짜 선택',
+                      style: TextStyle(
+                        color: AppColors.text,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    GridView.builder(
+                      shrinkWrap: true,
+                      itemCount: 31,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 7,
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 8,
+                        childAspectRatio: 1.25,
+                      ),
+                      itemBuilder: (context, index) {
+                        final day = index + 1;
+                        final selected = draftDay == day;
+                        return OutlinedButton(
+                          onPressed: () {
+                            setDialogState(() {
+                              draftDay = day;
+                            });
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            backgroundColor: selected
+                                ? AppColors.navAccent.withValues(alpha: 0.15)
+                                : AppColors.surface,
+                            foregroundColor:
+                                selected ? AppColors.navAccent : AppColors.text,
+                            side: BorderSide(
+                              color: selected
+                                  ? AppColors.navBorder
+                                  : AppColors.border,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: Text(
+                            '$day',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('취소'),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(context, draftDay),
+                          child: const Text('선택'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
 class _PartySchedulePanel extends StatelessWidget {
   const _PartySchedulePanel({
     required this.schedules,
@@ -4244,37 +4343,37 @@ class _PartySchedulePanel extends StatelessWidget {
                             ),
                             const SizedBox(height: 10),
                             if (_isMonthlyPartyBoss(selectedBoss))
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  for (var day = 1; day <= 31; day += 1)
-                                    ChoiceChip(
-                                      label: Text('$day일'),
-                                      selected: selectedMonthDay == day,
-                                      showCheckmark: false,
-                                      onSelected: (_) {
-                                        setDialogState(() {
-                                          selectedMonthDay = day;
-                                        });
-                                      },
-                                      selectedColor:
-                                          AppColors.navAccent.withValues(
-                                        alpha: 0.15,
-                                      ),
-                                      side: BorderSide(
-                                        color: selectedMonthDay == day
-                                            ? AppColors.navBorder
-                                            : AppColors.border,
-                                      ),
-                                      labelStyle: TextStyle(
-                                        color: selectedMonthDay == day
-                                            ? AppColors.navAccent
-                                            : AppColors.text,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                ],
+                              OutlinedButton.icon(
+                                onPressed: () async {
+                                  final pickedDay = await _pickMonthlyPartyDay(
+                                    dialogContext,
+                                    selectedMonthDay,
+                                  );
+                                  if (pickedDay == null) {
+                                    return;
+                                  }
+                                  setDialogState(() {
+                                    selectedMonthDay = pickedDay;
+                                  });
+                                },
+                                icon: const Icon(
+                                  Icons.calendar_month_rounded,
+                                  size: 18,
+                                ),
+                                label: Text('매월 $selectedMonthDay일'),
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size.fromHeight(46),
+                                  foregroundColor: AppColors.navAccent,
+                                  side: const BorderSide(
+                                    color: AppColors.navBorder,
+                                  ),
+                                  textStyle: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
                               )
                             else
                               Wrap(
