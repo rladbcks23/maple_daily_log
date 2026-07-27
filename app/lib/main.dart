@@ -514,9 +514,9 @@ class _OverlayAlertWindow extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
                       _TodayMuteSwitch(onChanged: onTodayMuteChanged),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
                         height: 48,
@@ -584,32 +584,50 @@ class _TodayMuteSwitchState extends State<_TodayMuteSwitch> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.completionTag,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Text(
-              '오늘 알림 끄기',
-              style: TextStyle(
-                color: AppColors.text,
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
+    return Align(
+      alignment: Alignment.center,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: saving ? null : () => unawaited(_setMuted(!muted)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '오늘 알림 끄기',
+                style: TextStyle(
+                  color: muted ? AppColors.navAccent : AppColors.muted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-            ),
+              const SizedBox(width: 10),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                width: 38,
+                height: 22,
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: muted ? AppColors.navAccent : const Color(0xFFF2EDE7),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: muted ? AppColors.navAccent : AppColors.border,
+                  ),
+                ),
+                alignment: muted ? Alignment.centerRight : Alignment.centerLeft,
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: muted ? Colors.white : AppColors.muted,
+                  ),
+                ),
+              ),
+            ],
           ),
-          Switch(
-            value: muted,
-            onChanged: saving ? null : (value) => unawaited(_setMuted(value)),
-            activeThumbColor: AppColors.navAccent,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-        ],
+        ),
       ),
     );
   }
