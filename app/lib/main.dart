@@ -248,6 +248,7 @@ class _MapleAlertWindowAppState extends State<_MapleAlertWindowApp>
       ),
       home: _OverlayAlertWindow(
         alert: alert,
+        onTodayMuteChanged: NotificationHistory().setMutedToday,
         onConfirm: () => unawaited(windowManager.hide()),
       ),
     );
@@ -424,7 +425,7 @@ Size _alertWindowSize(_OverlayAlertData alert) {
       .split('\n')
       .fold<int>(0, (maxLength, line) => math.max(maxLength, line.length));
   final width = longestLine > 42 || alert.body.length > 90 ? 480.0 : 408.0;
-  final height = (284 + bodyHeight).clamp(320.0, 860.0).toDouble();
+  final height = (332 + bodyHeight).clamp(368.0, 860.0).toDouble();
   return Size(width, height);
 }
 
@@ -442,10 +443,12 @@ Future<void> _resizeAlertWindow(_OverlayAlertData alert) async {
 class _OverlayAlertWindow extends StatelessWidget {
   const _OverlayAlertWindow({
     required this.alert,
+    required this.onTodayMuteChanged,
     required this.onConfirm,
   });
 
   final _OverlayAlertData alert;
+  final Future<void> Function(bool muted) onTodayMuteChanged;
   final VoidCallback onConfirm;
 
   @override
@@ -511,6 +514,8 @@ class _OverlayAlertWindow extends StatelessWidget {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 14),
+                      _TodayMuteSwitch(onChanged: onTodayMuteChanged),
                       const SizedBox(height: 18),
                       SizedBox(
                         width: double.infinity,
@@ -538,6 +543,73 @@ class _OverlayAlertWindow extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _TodayMuteSwitch extends StatefulWidget {
+  const _TodayMuteSwitch({required this.onChanged});
+
+  final Future<void> Function(bool muted) onChanged;
+
+  @override
+  State<_TodayMuteSwitch> createState() => _TodayMuteSwitchState();
+}
+
+class _TodayMuteSwitchState extends State<_TodayMuteSwitch> {
+  var muted = false;
+  var saving = false;
+
+  Future<void> _setMuted(bool value) async {
+    if (saving) {
+      return;
+    }
+
+    setState(() {
+      muted = value;
+      saving = true;
+    });
+
+    try {
+      await widget.onChanged(value);
+    } finally {
+      if (mounted) {
+        setState(() {
+          saving = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.completionTag,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              '오늘 알림 끄기',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          Switch(
+            value: muted,
+            onChanged: saving ? null : (value) => unawaited(_setMuted(value)),
+            activeThumbColor: AppColors.navAccent,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ],
       ),
     );
   }
@@ -794,6 +866,10 @@ class _MapleAppShellState extends State<_MapleAppShell>
     required String body,
     String? payload,
   }) async {
+    if (await notificationHistory.isMutedToday()) {
+      return;
+    }
+
     pendingOverlayAlerts.add(
       _OverlayAlertData(
         title: title,
@@ -842,6 +918,10 @@ class _MapleAppShellState extends State<_MapleAppShell>
   }
 
   Future<void> _showOverlayAlertNow(_OverlayAlertData alert) async {
+    if (await notificationHistory.isMutedToday()) {
+      return;
+    }
+
     await checkLauncherProcess();
     if (await _showSystemNotificationIfLauncherActive(
       title: alert.title,
@@ -1854,6 +1934,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
           Positioned.fill(
             child: _OverlayAlertWindow(
               alert: alert,
+              onTodayMuteChanged: notificationHistory.setMutedToday,
               onConfirm: () => unawaited(closeOverlayAlert()),
             ),
           ),

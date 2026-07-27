@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 class NotificationHistory {
+  static const _mutedDateKey = 'mutedNotificationDate';
+
   Future<File> get _historyFile async {
     final appDataDirectory = Platform.environment['LOCALAPPDATA'] ??
         Platform.environment['APPDATA'] ??
@@ -62,6 +64,23 @@ class NotificationHistory {
     await file.writeAsString(jsonEncode(history));
   }
 
+  Future<bool> isMutedToday([DateTime? now]) async {
+    final history = await _load();
+    return history[_mutedDateKey] == _dateKey(now ?? DateTime.now());
+  }
+
+  Future<void> setMutedToday(bool muted, [DateTime? now]) async {
+    final history = await _load();
+    if (muted) {
+      history[_mutedDateKey] = _dateKey(now ?? DateTime.now());
+    } else {
+      history.remove(_mutedDateKey);
+    }
+
+    final file = await _historyFile;
+    await file.writeAsString(jsonEncode(history));
+  }
+
   Future<Map<String, dynamic>> _load() async {
     try {
       final file = await _historyFile;
@@ -78,5 +97,11 @@ class NotificationHistory {
       return {};
     }
     return {};
+  }
+
+  String _dateKey(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
   }
 }
