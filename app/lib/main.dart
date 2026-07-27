@@ -294,6 +294,26 @@ class _OverlayAlertData {
   final String? payload;
 }
 
+_OverlayAlertData _mergeOverlayAlerts(List<_OverlayAlertData> alerts) {
+  if (alerts.length == 1) {
+    return alerts.first;
+  }
+
+  final titleSet = alerts.map((alert) => alert.title).toSet();
+  final payloadSet = alerts.map((alert) => alert.payload).toSet();
+  final body = alerts
+      .map((alert) => alert.body.trim())
+      .where((body) => body.isNotEmpty)
+      .join('\n');
+
+  return _OverlayAlertData(
+    title:
+        titleSet.length == 1 ? alerts.first.title : '알림 ${alerts.length}개가 있어요',
+    body: body,
+    payload: payloadSet.length == 1 ? alerts.first.payload : null,
+  );
+}
+
 int _estimatedAlertBodyLines(String body) {
   if (body.trim().isEmpty) {
     return 1;
@@ -480,9 +500,11 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
   Timer? notificationTimer;
   Timer? launcherMonitorTimer;
+  Timer? overlayAlertBatchTimer;
   var isCheckingScheduledNotifications = false;
   var isCheckingNoticeNotifications = false;
   var isCheckingLauncherProcess = false;
+  var isFlushingOverlayAlerts = false;
   var hasActiveLauncherSession = false;
   var notificationSettings = NotificationSettings.defaults;
   var currentSection = AppSection.character;
@@ -503,6 +525,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   NoticeItemSummary? sundayEvent;
   _OverlayAlertData? overlayAlert;
   WindowController? alertWindowController;
+  final pendingOverlayAlerts = <_OverlayAlertData>[];
   var wasHiddenBeforeOverlay = false;
 
   @override
@@ -559,6 +582,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   void dispose() {
     notificationTimer?.cancel();
     launcherMonitorTimer?.cancel();
+    overlayAlertBatchTimer?.cancel();
     windowManager.removeListener(this);
     trayManager.removeListener(this);
     super.dispose();
@@ -666,19 +690,57 @@ class _MapleAppShellState extends State<_MapleAppShell>
     required String body,
     String? payload,
   }) async {
+    pendingOverlayAlerts.add(
+      _OverlayAlertData(
+        title: title,
+        body: body,
+        payload: payload,
+      ),
+    );
+
+    overlayAlertBatchTimer ??= Timer(const Duration(milliseconds: 250), () {
+      overlayAlertBatchTimer = null;
+      unawaited(_flushOverlayAlerts());
+    });
+  }
+
+  Future<void> _flushOverlayAlerts() async {
+    if (isFlushingOverlayAlerts) {
+      return;
+    }
+
+    isFlushingOverlayAlerts = true;
+    try {
+      while (pendingOverlayAlerts.isNotEmpty) {
+        final alerts = List<_OverlayAlertData>.of(pendingOverlayAlerts);
+        pendingOverlayAlerts.clear();
+        await _showOverlayAlertNow(_mergeOverlayAlerts(alerts));
+      }
+    } finally {
+      isFlushingOverlayAlerts = false;
+      if (pendingOverlayAlerts.isNotEmpty && overlayAlertBatchTimer == null) {
+        overlayAlertBatchTimer = Timer(const Duration(milliseconds: 250), () {
+          overlayAlertBatchTimer = null;
+          unawaited(_flushOverlayAlerts());
+        });
+      }
+    }
+  }
+
+  Future<void> _showOverlayAlertNow(_OverlayAlertData alert) async {
     await checkLauncherProcess();
     if (await _showSystemNotificationIfLauncherActive(
-      title: title,
-      body: body,
-      payload: payload,
+      title: alert.title,
+      body: alert.body,
+      payload: alert.payload,
     )) {
       return;
     }
 
     final alertArguments = jsonEncode({
       'type': 'alert',
-      'title': title,
-      'body': body,
+      'title': alert.title,
+      'body': alert.body,
     });
 
     try {
@@ -712,11 +774,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     }
 
     setState(() {
-      overlayAlert = _OverlayAlertData(
-        title: title,
-        body: body,
-        payload: payload,
-      );
+      overlayAlert = alert;
     });
   }
 
