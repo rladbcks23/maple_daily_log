@@ -76,6 +76,7 @@ Future<void> _configureAlertWindow(_OverlayAlertData alert) async {
     titleBarStyle: TitleBarStyle.normal,
   );
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.setAlwaysOnTop(true);
     await windowManager.show();
     await windowManager.focus();
   });
@@ -125,6 +126,7 @@ class _MapleAlertWindowAppState extends State<_MapleAlertWindowApp>
         );
       });
       await _resizeAlertWindow(alert);
+      await windowManager.setAlwaysOnTop(true);
       await windowManager.show();
       await windowManager.focus();
       return true;
