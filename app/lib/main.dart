@@ -32,14 +32,15 @@ Future<void> main(List<String> args) async {
   final windowController = await WindowController.fromCurrentEngine();
   final windowArguments = _decodeWindowArguments(windowController.arguments);
   if (windowArguments['type'] == 'alert') {
-    await _configureAlertWindow();
+    final alert = _OverlayAlertData(
+      title: windowArguments['title']?.toString() ?? '알림',
+      body: windowArguments['body']?.toString() ?? '',
+    );
+    await _configureAlertWindow(alert);
     runApp(
       _MapleAlertWindowApp(
         windowController: windowController,
-        alert: _OverlayAlertData(
-          title: windowArguments['title']?.toString() ?? '알림',
-          body: windowArguments['body']?.toString() ?? '',
-        ),
+        alert: alert,
       ),
     );
     return;
@@ -65,9 +66,9 @@ Map<String, dynamic> _decodeWindowArguments(String rawArguments) {
   return const {};
 }
 
-Future<void> _configureAlertWindow() async {
-  const windowOptions = WindowOptions(
-    size: Size(408, 306),
+Future<void> _configureAlertWindow(_OverlayAlertData alert) async {
+  final windowOptions = WindowOptions(
+    size: _alertWindowSize(alert),
     center: true,
     backgroundColor: AppColors.surface,
     skipTaskbar: false,
@@ -123,6 +124,7 @@ class _MapleAlertWindowAppState extends State<_MapleAlertWindowApp>
           body: decoded['body']?.toString() ?? '',
         );
       });
+      await _resizeAlertWindow(alert);
       await windowManager.show();
       await windowManager.focus();
       return true;
@@ -292,6 +294,32 @@ class _OverlayAlertData {
   final String? payload;
 }
 
+int _estimatedAlertBodyLines(String body) {
+  if (body.trim().isEmpty) {
+    return 1;
+  }
+  return body
+      .split('\n')
+      .map((line) => math.max(1, (line.trim().length / 24).ceil()))
+      .fold(0, (sum, lineCount) => sum + lineCount)
+      .clamp(1, 14);
+}
+
+Size _alertWindowSize(_OverlayAlertData alert) {
+  final lines = _estimatedAlertBodyLines(alert.body);
+  final longestLine = alert.body
+      .split('\n')
+      .fold<int>(0, (maxLength, line) => math.max(maxLength, line.length));
+  final width = longestLine > 42 || alert.body.length > 90 ? 480.0 : 408.0;
+  final height = (252 + (lines * 22)).clamp(306.0, 560.0).toDouble();
+  return Size(width, height);
+}
+
+Future<void> _resizeAlertWindow(_OverlayAlertData alert) async {
+  await windowManager.setSize(_alertWindowSize(alert));
+  await windowManager.center();
+}
+
 class _OverlayAlertWindow extends StatelessWidget {
   const _OverlayAlertWindow({
     required this.alert,
@@ -303,12 +331,15 @@ class _OverlayAlertWindow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = _alertWindowSize(alert);
+    final bodyLines = _estimatedAlertBodyLines(alert.body);
+    final bodyMaxHeight = math.min(250.0, math.max(74.0, bodyLines * 22.0));
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: Center(
         child: Container(
-          width: 400,
-          height: 276,
+          width: size.width - 8,
+          height: size.height - 30,
           padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
           child: Column(
             children: [
@@ -342,12 +373,11 @@ class _OverlayAlertWindow extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              Expanded(
-                child: Center(
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: bodyMaxHeight),
+                child: SingleChildScrollView(
                   child: Text(
                     alert.body,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: AppColors.muted,
