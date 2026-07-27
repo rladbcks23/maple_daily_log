@@ -331,7 +331,7 @@ Size _alertWindowSize(_OverlayAlertData alert) {
       .split('\n')
       .fold<int>(0, (maxLength, line) => math.max(maxLength, line.length));
   final width = longestLine > 42 || alert.body.length > 90 ? 480.0 : 408.0;
-  final height = (252 + bodyHeight).clamp(320.0, 820.0).toDouble();
+  final height = (284 + bodyHeight).clamp(320.0, 860.0).toDouble();
   return Size(width, height);
 }
 
@@ -363,9 +363,9 @@ class _OverlayAlertWindow extends StatelessWidget {
       body: Center(
         child: Container(
           width: size.width - 8,
-          height: size.height - 26,
           padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 width: 56,
