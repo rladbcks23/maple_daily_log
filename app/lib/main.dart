@@ -36,7 +36,7 @@ Future<void> main(List<String> args) async {
       title: windowArguments['title']?.toString() ?? '알림',
       body: windowArguments['body']?.toString() ?? '',
     );
-    await _configureAlertWindow(alert);
+    await _configureAlertWindow(alert, windowController);
     runApp(
       _MapleAlertWindowApp(
         windowController: windowController,
@@ -66,7 +66,36 @@ Map<String, dynamic> _decodeWindowArguments(String rawArguments) {
   return const {};
 }
 
-Future<void> _configureAlertWindow(_OverlayAlertData alert) async {
+bool _isAlertWindow(WindowController controller) {
+  final arguments = _decodeWindowArguments(controller.arguments);
+  return arguments['type'] == 'alert';
+}
+
+Future<void> _hideDuplicateAlertWindows(WindowController primaryWindow) async {
+  final controllers = await WindowController.getAll();
+  for (final controller in controllers) {
+    if (controller.windowId == primaryWindow.windowId ||
+        !_isAlertWindow(controller)) {
+      continue;
+    }
+
+    try {
+      await controller.invokeMethod('hideAlert');
+    } catch (_) {
+      // Older alert windows may not know this method.
+    }
+    try {
+      await controller.hide();
+    } catch (_) {
+      // Stale duplicate windows should not block the active alert window.
+    }
+  }
+}
+
+Future<void> _configureAlertWindow(
+  _OverlayAlertData alert,
+  WindowController windowController,
+) async {
   final windowOptions = WindowOptions(
     size: _alertWindowSize(alert),
     center: true,
@@ -76,6 +105,7 @@ Future<void> _configureAlertWindow(_OverlayAlertData alert) async {
     titleBarStyle: TitleBarStyle.normal,
   );
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await _hideDuplicateAlertWindows(windowController);
     await windowManager.setAlwaysOnTop(true);
     await windowManager.show();
     await windowManager.focus();
@@ -105,6 +135,11 @@ class _MapleAlertWindowAppState extends State<_MapleAlertWindowApp>
     windowManager.setPreventClose(true);
     windowManager.addListener(this);
     widget.windowController.setWindowMethodHandler((call) async {
+      if (call.method == 'hideAlert') {
+        await windowManager.hide();
+        return true;
+      }
+
       if (call.method != 'showAlert') {
         return null;
       }
@@ -126,6 +161,7 @@ class _MapleAlertWindowAppState extends State<_MapleAlertWindowApp>
         );
       });
       await _resizeAlertWindow(alert);
+      await _hideDuplicateAlertWindows(widget.windowController);
       await windowManager.setAlwaysOnTop(true);
       await windowManager.show();
       await windowManager.focus();
@@ -742,8 +778,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     final controllers = await WindowController.getAll();
     final alertWindows = <WindowController>[];
     for (final controller in controllers) {
-      final arguments = _decodeWindowArguments(controller.arguments);
-      if (arguments['type'] == 'alert') {
+      if (_isAlertWindow(controller)) {
         alertWindows.add(controller);
       }
     }
@@ -753,13 +788,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     }
 
     final primaryAlertWindow = alertWindows.first;
-    for (final duplicateAlertWindow in alertWindows.skip(1)) {
-      try {
-        await duplicateAlertWindow.hide();
-      } catch (_) {
-        // A stale duplicate window should not block the reusable alert window.
-      }
-    }
+    await _hideDuplicateAlertWindows(primaryAlertWindow);
     return primaryAlertWindow;
   }
 
