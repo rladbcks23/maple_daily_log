@@ -4609,7 +4609,7 @@ class _PartyScheduleCard extends StatelessWidget {
                   : Icons.check_rounded,
               size: 18,
             ),
-            label: Text(schedule.cleared ? '처치 취소' : '이미 처치함'),
+            label: Text(schedule.cleared ? '처치 완료' : '아직 처치전'),
             style: OutlinedButton.styleFrom(
               foregroundColor:
                   schedule.cleared ? AppColors.muted : AppColors.navAccent,
