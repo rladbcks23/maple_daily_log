@@ -360,81 +360,90 @@ class _OverlayAlertWindow extends StatelessWidget {
     final bodyMaxHeight = _alertBodyHeight(alert.body);
     return Scaffold(
       backgroundColor: AppColors.surface,
-      body: Center(
-        child: Container(
-          width: size.width - 8,
-          padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFFFE9DD),
-                ),
-                alignment: Alignment.center,
-                child: const Text(
-                  '!',
-                  style: TextStyle(
-                    color: AppColors.navAccent,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Center(
+                child: Container(
+                  width: size.width - 8,
+                  padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFFFFE9DD),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          '!',
+                          style: TextStyle(
+                            color: AppColors.navAccent,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        alert.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppColors.text,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: bodyMaxHeight,
+                        child: Center(
+                          child: Text(
+                            alert.body,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 14,
+                              height: 1.45,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: FilledButton(
+                          onPressed: onConfirm,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.navAccent,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          child: const Text('확인'),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
-              Text(
-                alert.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.text,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: bodyMaxHeight,
-                child: Center(
-                  child: Text(
-                    alert.body,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 14,
-                      height: 1.45,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: FilledButton(
-                  onPressed: onConfirm,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.navAccent,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  child: const Text('확인'),
-                ),
-              ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
