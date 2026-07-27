@@ -9,6 +9,7 @@ class PartySchedule {
     required this.difficulty,
     required this.repeatType,
     required this.weekday,
+    required this.monthDay,
     required this.hour,
     required this.minute,
     required this.cleared,
@@ -20,6 +21,7 @@ class PartySchedule {
   final String difficulty;
   final String repeatType;
   final int weekday;
+  final int monthDay;
   final int hour;
   final int minute;
   final bool cleared;
@@ -30,9 +32,9 @@ class PartySchedule {
     if (isMonthly) {
       var next = currentMonthScheduleFrom(now);
       if (!next.isAfter(now)) {
-        next = _firstWeekdayOfMonth(
+        next = _dayOfMonth(
           DateTime(now.year, now.month + 1),
-          weekday,
+          monthDay,
           hour,
           minute,
         );
@@ -50,13 +52,15 @@ class PartySchedule {
   }
 
   DateTime currentScheduleFrom(DateTime now) {
-    return isMonthly ? currentMonthScheduleFrom(now) : currentWeekScheduleFrom(now);
+    return isMonthly
+        ? currentMonthScheduleFrom(now)
+        : currentWeekScheduleFrom(now);
   }
 
   DateTime currentMonthScheduleFrom(DateTime now) {
-    return _firstWeekdayOfMonth(
+    return _dayOfMonth(
       DateTime(now.year, now.month),
-      weekday,
+      monthDay,
       hour,
       minute,
     );
@@ -77,6 +81,7 @@ class PartySchedule {
     String? difficulty,
     String? repeatType,
     int? weekday,
+    int? monthDay,
     int? hour,
     int? minute,
     bool? cleared,
@@ -88,6 +93,7 @@ class PartySchedule {
       difficulty: difficulty ?? this.difficulty,
       repeatType: repeatType ?? this.repeatType,
       weekday: weekday ?? this.weekday,
+      monthDay: monthDay ?? this.monthDay,
       hour: hour ?? this.hour,
       minute: minute ?? this.minute,
       cleared: cleared ?? this.cleared,
@@ -101,6 +107,7 @@ class PartySchedule {
         'difficulty': difficulty,
         'repeatType': repeatType,
         'weekday': weekday,
+        'monthDay': monthDay,
         'hour': hour,
         'minute': minute,
         'cleared': cleared,
@@ -108,14 +115,17 @@ class PartySchedule {
 
   factory PartySchedule.fromJson(Map<String, dynamic> json) {
     final legacySchedule = DateTime.tryParse(_readString(json['scheduledAt']));
+    final bossName = _readString(json['bossName']);
     return PartySchedule(
       id: _readString(json['id']),
       members: _readStringList(json['members']),
-      bossName: _readString(json['bossName']),
+      bossName: bossName,
       difficulty: _readString(json['difficulty']),
-      repeatType: _readRepeatType(json['repeatType']),
+      repeatType: _readRepeatType(bossName, json['repeatType']),
       weekday:
           _readInt(json['weekday'], legacySchedule?.weekday ?? 2).clamp(1, 7),
+      monthDay:
+          _readInt(json['monthDay'], legacySchedule?.day ?? 1).clamp(1, 31),
       hour: _readInt(json['hour'], legacySchedule?.hour ?? 21).clamp(0, 23),
       minute:
           _readInt(json['minute'], legacySchedule?.minute ?? 0).clamp(0, 59),
@@ -144,21 +154,22 @@ class PartySchedule {
     return int.tryParse(value?.toString() ?? '') ?? fallback;
   }
 
-  static String _readRepeatType(Object? value) {
-    final text = value?.toString().trim().toLowerCase();
-    return text == 'monthly' ? 'monthly' : 'weekly';
+  static String _readRepeatType(String bossName, Object? value) {
+    if (bossName == '검은 마법사') {
+      return 'monthly';
+    }
+    return 'weekly';
   }
 }
 
-DateTime _firstWeekdayOfMonth(
+DateTime _dayOfMonth(
   DateTime month,
-  int weekday,
+  int day,
   int hour,
   int minute,
 ) {
-  final firstDay = DateTime(month.year, month.month);
-  final daysUntil = (weekday - firstDay.weekday) % DateTime.daysPerWeek;
-  return firstDay.add(Duration(days: daysUntil, hours: hour, minutes: minute));
+  final lastDay = DateTime(month.year, month.month + 1, 0).day;
+  return DateTime(month.year, month.month, day.clamp(1, lastDay), hour, minute);
 }
 
 class PartyScheduleStore {
@@ -227,6 +238,10 @@ int _comparePartySchedule(PartySchedule a, PartySchedule b) {
   final weekdayCompare = a.weekday.compareTo(b.weekday);
   if (weekdayCompare != 0) {
     return weekdayCompare;
+  }
+  final monthDayCompare = a.monthDay.compareTo(b.monthDay);
+  if (monthDayCompare != 0) {
+    return monthDayCompare;
   }
   final hourCompare = a.hour.compareTo(b.hour);
   if (hourCompare != 0) {

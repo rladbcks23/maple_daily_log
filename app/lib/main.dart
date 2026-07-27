@@ -3843,6 +3843,10 @@ int _comparePartySchedules(PartySchedule a, PartySchedule b) {
   if (weekdayCompare != 0) {
     return weekdayCompare;
   }
+  final monthDayCompare = a.monthDay.compareTo(b.monthDay);
+  if (monthDayCompare != 0) {
+    return monthDayCompare;
+  }
   final hourCompare = a.hour.compareTo(b.hour);
   if (hourCompare != 0) {
     return hourCompare;
@@ -3884,7 +3888,7 @@ String _partyScheduleText(PartySchedule schedule) {
   final hour = schedule.hour.toString().padLeft(2, '0');
   final minute = schedule.minute.toString().padLeft(2, '0');
   if (schedule.isMonthly) {
-    return '매월 첫 번째 ${_partyWeekdayLabel(schedule.weekday)} $hour:$minute';
+    return '매월 ${schedule.monthDay}일 $hour:$minute';
   }
   return '매주 ${_partyWeekdayLabel(schedule.weekday)} $hour:$minute';
 }
@@ -3895,6 +3899,10 @@ String _defaultPartyRepeatType(String bossName) {
 
 String _partyRepeatTypeLabel(String repeatType) {
   return repeatType == 'monthly' ? '월간' : '주간';
+}
+
+bool _isMonthlyPartyBoss(String bossName) {
+  return bossName == '검은 마법사';
 }
 
 int _readPartyTimeUnit(String value, int fallback, int min, int max) {
@@ -4055,13 +4063,13 @@ class _PartySchedulePanel extends StatelessWidget {
         _partyBossDifficultyOptions.containsKey(schedule?.bossName)
             ? schedule!.bossName
             : _partyBossDifficultyOptions.keys.first;
-    var selectedRepeatType =
-        schedule?.repeatType ?? _defaultPartyRepeatType(selectedBoss);
+    var selectedRepeatType = _defaultPartyRepeatType(selectedBoss);
     var difficultyOptions = _partyBossDifficultyOptions[selectedBoss]!;
     var selectedDifficulty = difficultyOptions.contains(schedule?.difficulty)
         ? schedule!.difficulty
         : difficultyOptions.last;
     var selectedWeekday = schedule?.weekday ?? DateTime.tuesday;
+    var selectedMonthDay = schedule?.monthDay ?? DateTime.now().day;
     final hourController = TextEditingController(
       text: (schedule?.hour ?? 21).toString().padLeft(2, '0'),
     );
@@ -4207,33 +4215,6 @@ class _PartySchedulePanel extends StatelessWidget {
                           });
                         },
                       ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedRepeatType,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: '반복 주기',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'weekly',
-                            child: Text('주간'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'monthly',
-                            child: Text('월간'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value == null) {
-                            return;
-                          }
-                          setDialogState(() {
-                            selectedRepeatType = value;
-                          });
-                        },
-                      ),
                       const SizedBox(height: 14),
                       Container(
                         padding: const EdgeInsets.all(16),
@@ -4253,48 +4234,91 @@ class _PartySchedulePanel extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                for (final weekday in const [
-                                  DateTime.monday,
-                                  DateTime.tuesday,
-                                  DateTime.wednesday,
-                                  DateTime.thursday,
-                                  DateTime.friday,
-                                  DateTime.saturday,
-                                  DateTime.sunday,
-                                ])
-                                  ChoiceChip(
-                                    label: Text(
-                                      _partyWeekdayShortLabel(weekday),
-                                    ),
-                                    selected: selectedWeekday == weekday,
-                                    showCheckmark: false,
-                                    onSelected: (_) {
-                                      setDialogState(() {
-                                        selectedWeekday = weekday;
-                                      });
-                                    },
-                                    selectedColor:
-                                        AppColors.navAccent.withValues(
-                                      alpha: 0.15,
-                                    ),
-                                    side: BorderSide(
-                                      color: selectedWeekday == weekday
-                                          ? AppColors.navBorder
-                                          : AppColors.border,
-                                    ),
-                                    labelStyle: TextStyle(
-                                      color: selectedWeekday == weekday
-                                          ? AppColors.navAccent
-                                          : AppColors.text,
-                                      fontWeight: FontWeight.w900,
-                                    ),
-                                  ),
-                              ],
+                            Text(
+                              '반복 주기: ${_partyRepeatTypeLabel(selectedRepeatType)}',
+                              style: const TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
+                            const SizedBox(height: 10),
+                            if (_isMonthlyPartyBoss(selectedBoss))
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  for (var day = 1; day <= 31; day += 1)
+                                    ChoiceChip(
+                                      label: Text('$day일'),
+                                      selected: selectedMonthDay == day,
+                                      showCheckmark: false,
+                                      onSelected: (_) {
+                                        setDialogState(() {
+                                          selectedMonthDay = day;
+                                        });
+                                      },
+                                      selectedColor:
+                                          AppColors.navAccent.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      side: BorderSide(
+                                        color: selectedMonthDay == day
+                                            ? AppColors.navBorder
+                                            : AppColors.border,
+                                      ),
+                                      labelStyle: TextStyle(
+                                        color: selectedMonthDay == day
+                                            ? AppColors.navAccent
+                                            : AppColors.text,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                ],
+                              )
+                            else
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  for (final weekday in const [
+                                    DateTime.monday,
+                                    DateTime.tuesday,
+                                    DateTime.wednesday,
+                                    DateTime.thursday,
+                                    DateTime.friday,
+                                    DateTime.saturday,
+                                    DateTime.sunday,
+                                  ])
+                                    ChoiceChip(
+                                      label: Text(
+                                        _partyWeekdayShortLabel(weekday),
+                                      ),
+                                      selected: selectedWeekday == weekday,
+                                      showCheckmark: false,
+                                      onSelected: (_) {
+                                        setDialogState(() {
+                                          selectedWeekday = weekday;
+                                        });
+                                      },
+                                      selectedColor:
+                                          AppColors.navAccent.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      side: BorderSide(
+                                        color: selectedWeekday == weekday
+                                            ? AppColors.navBorder
+                                            : AppColors.border,
+                                      ),
+                                      labelStyle: TextStyle(
+                                        color: selectedWeekday == weekday
+                                            ? AppColors.navAccent
+                                            : AppColors.text,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                ],
+                              ),
                             const SizedBox(height: 14),
                             Row(
                               children: [
@@ -4366,6 +4390,7 @@ class _PartySchedulePanel extends StatelessWidget {
                                   difficulty: selectedDifficulty,
                                   repeatType: selectedRepeatType,
                                   weekday: selectedWeekday,
+                                  monthDay: selectedMonthDay,
                                   hour: hour,
                                   minute: minute,
                                   cleared: schedule?.cleared ?? false,
@@ -4414,8 +4439,8 @@ class _PartyScheduleCard extends StatelessWidget {
     final memberText =
         schedule.members.isEmpty ? '파티원 없음' : schedule.members.join(' · ');
     final now = DateTime.now();
-    final overdue = !schedule.cleared &&
-        schedule.currentScheduleFrom(now).isBefore(now);
+    final overdue =
+        !schedule.cleared && schedule.currentScheduleFrom(now).isBefore(now);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
