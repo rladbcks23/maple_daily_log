@@ -3987,10 +3987,10 @@ int _partyHourTo24Hour(int displayHour, bool isPm) {
   return isPm ? normalizedHour + 12 : normalizedHour;
 }
 
-int _readPartyTimeUnit(String value, int fallback, int min, int max) {
+int? _parsePartyTimeUnit(String value, int min, int max) {
   final parsed = int.tryParse(value.trim());
   if (parsed == null || parsed < min || parsed > max) {
-    return fallback;
+    return null;
   }
   return parsed;
 }
@@ -4560,6 +4560,11 @@ class _PartySchedulePanel extends StatelessWidget {
                                       counterText: '',
                                       border: OutlineInputBorder(),
                                     ),
+                                    onChanged: (_) {
+                                      setDialogState(() {
+                                        validationMessage = null;
+                                      });
+                                    },
                                   ),
                                 ),
                                 const SizedBox(width: 10),
@@ -4567,11 +4572,18 @@ class _PartySchedulePanel extends StatelessWidget {
                                   child: TextField(
                                     controller: minuteController,
                                     keyboardType: TextInputType.number,
+                                    maxLength: 2,
                                     decoration: const InputDecoration(
                                       labelText: '분',
                                       hintText: '00',
+                                      counterText: '',
                                       border: OutlineInputBorder(),
                                     ),
+                                    onChanged: (_) {
+                                      setDialogState(() {
+                                        validationMessage = null;
+                                      });
+                                    },
                                   ),
                                 ),
                               ],
@@ -4606,22 +4618,32 @@ class _PartySchedulePanel extends StatelessWidget {
                                   .map((item) => item.trim())
                                   .where((item) => item.isNotEmpty)
                                   .toList();
-                              final displayHour = _readPartyTimeUnit(
+                              final displayHour = _parsePartyTimeUnit(
                                 hourController.text,
-                                _partyDisplayHour(schedule?.hour ?? 21),
                                 1,
                                 12,
                               );
+                              if (displayHour == null) {
+                                setDialogState(() {
+                                  validationMessage = '시간은 1부터 12 사이로 입력해주세요.';
+                                });
+                                return;
+                              }
                               final hour = _partyHourTo24Hour(
                                 displayHour,
                                 selectedIsPm,
                               );
-                              final minute = _readPartyTimeUnit(
+                              final minute = _parsePartyTimeUnit(
                                 minuteController.text,
-                                schedule?.minute ?? 0,
                                 0,
                                 59,
                               );
+                              if (minute == null) {
+                                setDialogState(() {
+                                  validationMessage = '분은 0부터 59 사이로 입력해주세요.';
+                                });
+                                return;
+                              }
                               if (_hasDuplicatePartyBoss(
                                 schedules,
                                 selectedBoss,
