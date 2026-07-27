@@ -3980,6 +3980,16 @@ bool _hasDuplicatePartyBoss(
   );
 }
 
+int _partyDisplayHour(int hour) {
+  final displayHour = hour % 12;
+  return displayHour == 0 ? 12 : displayHour;
+}
+
+int _partyHourTo24Hour(int displayHour, bool isPm) {
+  final normalizedHour = displayHour % 12;
+  return isPm ? normalizedHour + 12 : normalizedHour;
+}
+
 int _readPartyTimeUnit(String value, int fallback, int min, int max) {
   final parsed = int.tryParse(value.trim());
   if (parsed == null || parsed < min || parsed > max) {
@@ -4244,9 +4254,10 @@ class _PartySchedulePanel extends StatelessWidget {
         : difficultyOptions.last;
     var selectedWeekday = schedule?.weekday ?? DateTime.tuesday;
     var selectedMonthDay = schedule?.monthDay ?? DateTime.now().day;
+    var selectedIsPm = (schedule?.hour ?? 21) >= 12;
     String? validationMessage;
     final hourController = TextEditingController(
-      text: (schedule?.hour ?? 21).toString().padLeft(2, '0'),
+      text: _partyDisplayHour(schedule?.hour ?? 21).toString(),
     );
     final minuteController = TextEditingController(
       text: (schedule?.minute ?? 0).toString().padLeft(2, '0'),
@@ -4498,13 +4509,58 @@ class _PartySchedulePanel extends StatelessWidget {
                             const SizedBox(height: 14),
                             Row(
                               children: [
+                                SegmentedButton<bool>(
+                                  segments: const [
+                                    ButtonSegment(
+                                      value: false,
+                                      label: Text('오전'),
+                                    ),
+                                    ButtonSegment(
+                                      value: true,
+                                      label: Text('오후'),
+                                    ),
+                                  ],
+                                  selected: {selectedIsPm},
+                                  showSelectedIcon: false,
+                                  style: ButtonStyle(
+                                    foregroundColor:
+                                        WidgetStateProperty.resolveWith<Color>(
+                                            (states) {
+                                      return states.contains(
+                                        WidgetState.selected,
+                                      )
+                                          ? Colors.white
+                                          : AppColors.text;
+                                    }),
+                                    backgroundColor:
+                                        WidgetStateProperty.resolveWith<Color>(
+                                            (states) {
+                                      return states.contains(
+                                        WidgetState.selected,
+                                      )
+                                          ? AppColors.navAccent
+                                          : AppColors.surface;
+                                    }),
+                                    side: const WidgetStatePropertyAll(
+                                      BorderSide(color: AppColors.navBorder),
+                                    ),
+                                  ),
+                                  onSelectionChanged: (selection) {
+                                    setDialogState(() {
+                                      selectedIsPm = selection.first;
+                                    });
+                                  },
+                                ),
+                                const SizedBox(width: 10),
                                 Expanded(
                                   child: TextField(
                                     controller: hourController,
                                     keyboardType: TextInputType.number,
+                                    maxLength: 2,
                                     decoration: const InputDecoration(
                                       labelText: '시',
-                                      hintText: '21',
+                                      hintText: '9',
+                                      counterText: '',
                                       border: OutlineInputBorder(),
                                     ),
                                   ),
@@ -4553,11 +4609,15 @@ class _PartySchedulePanel extends StatelessWidget {
                                   .map((item) => item.trim())
                                   .where((item) => item.isNotEmpty)
                                   .toList();
-                              final hour = _readPartyTimeUnit(
+                              final displayHour = _readPartyTimeUnit(
                                 hourController.text,
-                                schedule?.hour ?? 21,
-                                0,
-                                23,
+                                _partyDisplayHour(schedule?.hour ?? 21),
+                                1,
+                                12,
+                              );
+                              final hour = _partyHourTo24Hour(
+                                displayHour,
+                                selectedIsPm,
                               );
                               final minute = _readPartyTimeUnit(
                                 minuteController.text,
