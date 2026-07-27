@@ -19,6 +19,7 @@ import 'scheduler_cache.dart';
 import 'sunday_event_cache.dart';
 
 const appCurrentVersion = '0.1.0';
+const _mainWindowSize = Size(1280, 860);
 const _mapleProcessNames = {
   'maplestory.exe',
   'maplestoryclient.exe',
@@ -128,12 +129,22 @@ Future<void> _hideDuplicateAlertWindows(WindowController primaryWindow) async {
   }
 }
 
+Future<void> _lockCurrentWindowSize(Size size) async {
+  await windowManager.setSize(size);
+  await windowManager.setMinimumSize(size);
+  await windowManager.setMaximumSize(size);
+  await windowManager.setResizable(false);
+}
+
 Future<void> _configureAlertWindow(
   _OverlayAlertData alert,
   WindowController windowController,
 ) async {
+  final alertSize = _alertWindowSize(alert);
   final windowOptions = WindowOptions(
-    size: _alertWindowSize(alert),
+    size: alertSize,
+    minimumSize: alertSize,
+    maximumSize: alertSize,
     center: true,
     backgroundColor: AppColors.surface,
     skipTaskbar: false,
@@ -148,6 +159,7 @@ Future<void> _configureAlertWindow(
       return;
     }
 
+    await _lockCurrentWindowSize(alertSize);
     await _hideDuplicateAlertWindows(windowController);
     await windowManager.setAlwaysOnTop(true);
     await windowManager.show();
@@ -422,7 +434,8 @@ double _alertBodyHeight(String body) {
 }
 
 Future<void> _resizeAlertWindow(_OverlayAlertData alert) async {
-  await windowManager.setSize(_alertWindowSize(alert));
+  final size = _alertWindowSize(alert);
+  await _lockCurrentWindowSize(size);
   await windowManager.center();
 }
 
@@ -654,6 +667,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   Future<void> initializeDesktopControls() async {
     windowManager.addListener(this);
     trayManager.addListener(this);
+    await _lockCurrentWindowSize(_mainWindowSize);
     await windowManager.setPreventClose(true);
     await trayManager.setIcon('assets/images/app_icon.ico');
     await trayManager.setToolTip('메이플 숙제알리미');
