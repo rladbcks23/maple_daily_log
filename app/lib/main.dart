@@ -25,6 +25,11 @@ const _mapleProcessNames = {
   'nexonplug.exe',
   'nexonlauncher.exe',
 };
+const _singleInstancePort = 48721;
+
+// Keep a reference to the bound socket so the single-instance lock stays alive.
+// ignore: unused_element
+ServerSocket? _singleInstanceSocket;
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,7 +51,25 @@ Future<void> main(List<String> args) async {
     return;
   }
 
+  if (!await _ensureSingleMainInstance()) {
+    await windowManager.destroy();
+    return;
+  }
+
   runApp(const MapleTaskReminderApp());
+}
+
+Future<bool> _ensureSingleMainInstance() async {
+  try {
+    _singleInstanceSocket = await ServerSocket.bind(
+      InternetAddress.loopbackIPv4,
+      _singleInstancePort,
+      shared: false,
+    );
+    return true;
+  } on SocketException {
+    return false;
+  }
 }
 
 Map<String, dynamic> _decodeWindowArguments(String rawArguments) {
