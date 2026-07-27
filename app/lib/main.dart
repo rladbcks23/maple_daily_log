@@ -322,7 +322,7 @@ int _estimatedAlertBodyLines(String body) {
       .split('\n')
       .map((line) => math.max(1, (line.trim().length / 24).ceil()))
       .fold(0, (sum, lineCount) => sum + lineCount)
-      .clamp(1, 14);
+      .clamp(1, 28);
 }
 
 Size _alertWindowSize(_OverlayAlertData alert) {
@@ -331,13 +331,13 @@ Size _alertWindowSize(_OverlayAlertData alert) {
       .split('\n')
       .fold<int>(0, (maxLength, line) => math.max(maxLength, line.length));
   final width = longestLine > 42 || alert.body.length > 90 ? 480.0 : 408.0;
-  final height = (260 + bodyHeight).clamp(320.0, 590.0).toDouble();
+  final height = (252 + bodyHeight).clamp(320.0, 820.0).toDouble();
   return Size(width, height);
 }
 
 double _alertBodyHeight(String body) {
   final lines = _estimatedAlertBodyLines(body);
-  return math.min(330.0, math.max(66.0, lines * 22.0));
+  return math.min(560.0, math.max(58.0, lines * 23.0 + 8.0));
 }
 
 Future<void> _resizeAlertWindow(_OverlayAlertData alert) async {
@@ -397,19 +397,17 @@ class _OverlayAlertWindow extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              Flexible(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxHeight: bodyMaxHeight),
-                  child: SingleChildScrollView(
-                    child: Text(
-                      alert.body,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 14,
-                        height: 1.45,
-                        fontWeight: FontWeight.w700,
-                      ),
+              SizedBox(
+                height: bodyMaxHeight,
+                child: Center(
+                  child: Text(
+                    alert.body,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 14,
+                      height: 1.45,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
