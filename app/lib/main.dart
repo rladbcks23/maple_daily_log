@@ -1424,14 +1424,6 @@ class _MapleAppShellState extends State<_MapleAppShell>
     });
   }
 
-  Future<void> togglePartyCleared(PartySchedule schedule) async {
-    await savePartySchedule(
-      schedule.copyWith(
-        cleared: !schedule.cleared,
-      ),
-    );
-  }
-
   void handleNotificationTap(String? payload) {
     if (!mounted) {
       return;
@@ -1586,7 +1578,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     for (final schedule in partySchedules) {
       final targetTime = schedule.currentScheduleFrom(now);
       final elapsed = now.difference(targetTime);
-      if (schedule.cleared ||
+      if (_isPartyScheduleClearedBySnapshots(schedule, dashboardSnapshots) ||
           targetTime.isAfter(now) ||
           elapsed > const Duration(minutes: 30)) {
         continue;
@@ -1853,7 +1845,6 @@ class _MapleAppShellState extends State<_MapleAppShell>
                   onMoveCharacter: moveCharacter,
                   onSavePartySchedule: savePartySchedule,
                   onDeletePartySchedule: deletePartySchedule,
-                  onTogglePartyCleared: togglePartyCleared,
                 ),
               ),
             ],
@@ -2162,7 +2153,6 @@ class _MainPanel extends StatelessWidget {
     required this.onMoveCharacter,
     required this.onSavePartySchedule,
     required this.onDeletePartySchedule,
-    required this.onTogglePartyCleared,
   });
 
   final AppSection currentSection;
@@ -2195,7 +2185,6 @@ class _MainPanel extends StatelessWidget {
       onMoveCharacter;
   final Future<void> Function(PartySchedule schedule) onSavePartySchedule;
   final Future<void> Function(PartySchedule schedule) onDeletePartySchedule;
-  final Future<void> Function(PartySchedule schedule) onTogglePartyCleared;
 
   @override
   Widget build(BuildContext context) {
@@ -2262,9 +2251,9 @@ class _MainPanel extends StatelessWidget {
                 AppSection.party => _PartySchedulePanel(
                     schedules: partySchedules,
                     characters: selectedCharacters,
+                    dashboardSnapshots: dashboardSnapshots,
                     onSave: onSavePartySchedule,
                     onDelete: onDeletePartySchedule,
-                    onToggleCleared: onTogglePartyCleared,
                   ),
                 _ => _LockedFeaturePanel(
                     section: currentSection,
@@ -4182,6 +4171,35 @@ bool _hasDuplicatePartyBoss(
   );
 }
 
+bool _isPartyScheduleClearedBySnapshots(
+  PartySchedule schedule,
+  Map<String, SchedulerSnapshot> snapshots,
+) {
+  final bossName = _normalizePartyBossValue(schedule.bossName);
+  final difficulty = _normalizePartyBossValue(schedule.difficulty);
+  if (bossName.isEmpty || snapshots.isEmpty) {
+    return false;
+  }
+
+  for (final snapshot in snapshots.values) {
+    for (final item in snapshot.bossItems) {
+      if (!item.done) {
+        continue;
+      }
+      final itemBossName = _normalizePartyBossValue(item.title);
+      final itemDifficulty = _normalizePartyBossValue(item.difficulty);
+      if (itemBossName == bossName && itemDifficulty == difficulty) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+String _normalizePartyBossValue(String value) {
+  return value.replaceAll(RegExp(r'\s+'), '').trim().toLowerCase();
+}
+
 int _partyDisplayHour(int hour) {
   final displayHour = hour % 12;
   return displayHour == 0 ? 12 : displayHour;
@@ -4346,16 +4364,16 @@ class _PartySchedulePanel extends StatelessWidget {
   const _PartySchedulePanel({
     required this.schedules,
     required this.characters,
+    required this.dashboardSnapshots,
     required this.onSave,
     required this.onDelete,
-    required this.onToggleCleared,
   });
 
   final List<PartySchedule> schedules;
   final List<NexonCharacterSummary> characters;
+  final Map<String, SchedulerSnapshot> dashboardSnapshots;
   final Future<void> Function(PartySchedule schedule) onSave;
   final Future<void> Function(PartySchedule schedule) onDelete;
-  final Future<void> Function(PartySchedule schedule) onToggleCleared;
 
   @override
   Widget build(BuildContext context) {
@@ -4394,11 +4412,14 @@ class _PartySchedulePanel extends StatelessWidget {
                     final schedule = schedules[index];
                     return _PartyScheduleCard(
                       schedule: schedule,
+                      isCleared: _isPartyScheduleClearedBySnapshots(
+                        schedule,
+                        dashboardSnapshots,
+                      ),
                       onEdit: () => _openPartyDialog(context, schedule),
                       onDelete: () => unawaited(
                         _confirmDeleteSchedule(context, schedule),
                       ),
-                      onToggleCleared: () => onToggleCleared(schedule),
                     );
                   },
                 ),
@@ -4906,15 +4927,15 @@ class _PartySchedulePanel extends StatelessWidget {
 class _PartyScheduleCard extends StatelessWidget {
   const _PartyScheduleCard({
     required this.schedule,
+    required this.isCleared,
     required this.onEdit,
     required this.onDelete,
-    required this.onToggleCleared,
   });
 
   final PartySchedule schedule;
+  final bool isCleared;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
-  final VoidCallback onToggleCleared;
 
   @override
   Widget build(BuildContext context) {
@@ -4922,12 +4943,12 @@ class _PartyScheduleCard extends StatelessWidget {
         schedule.members.isEmpty ? '파티원 없음' : schedule.members.join(' · ');
     final now = DateTime.now();
     final overdue =
-        !schedule.cleared && schedule.currentScheduleFrom(now).isBefore(now);
+        !isCleared && schedule.currentScheduleFrom(now).isBefore(now);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
-        color: schedule.cleared ? AppColors.completionTag : AppColors.surface,
+        color: isCleared ? AppColors.completionTag : AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: overdue ? AppColors.navAccent : AppColors.border,
@@ -4939,7 +4960,7 @@ class _PartyScheduleCard extends StatelessWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           SizedBox(
-            width: 250,
+            width: 235,
             child: _PartyCardInfo(
               icon: Icons.groups_2_rounded,
               label: '파티원',
@@ -4947,7 +4968,7 @@ class _PartyScheduleCard extends StatelessWidget {
             ),
           ),
           SizedBox(
-            width: 230,
+            width: 220,
             child: Row(
               children: [
                 _BossDifficultyBadge(difficulty: schedule.difficulty),
@@ -4967,13 +4988,14 @@ class _PartyScheduleCard extends StatelessWidget {
             ),
           ),
           SizedBox(
-            width: 175,
+            width: 160,
             child: _PartyCardInfo(
               icon: Icons.schedule_rounded,
               label: _partyRepeatTypeLabel(schedule.repeatType),
               value: _partyScheduleText(schedule),
             ),
           ),
+          _PartyStatusChip(isCleared: isCleared),
           _SmallIconButton(
             icon: Icons.edit_rounded,
             tooltip: '수정',
@@ -4984,25 +5006,35 @@ class _PartyScheduleCard extends StatelessWidget {
             tooltip: '삭제',
             onPressed: onDelete,
           ),
-          OutlinedButton.icon(
-            onPressed: onToggleCleared,
-            icon: Icon(
-              schedule.cleared
-                  ? Icons.restart_alt_rounded
-                  : Icons.check_rounded,
-              size: 18,
-            ),
-            label: Text(schedule.cleared ? '처치 완료' : '아직 처치전'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor:
-                  schedule.cleared ? AppColors.muted : AppColors.navAccent,
-              side: BorderSide(
-                color:
-                    schedule.cleared ? AppColors.border : AppColors.navBorder,
-              ),
-            ),
-          ),
         ],
+      ),
+    );
+  }
+}
+
+class _PartyStatusChip extends StatelessWidget {
+  const _PartyStatusChip({required this.isCleared});
+
+  final bool isCleared;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: isCleared ? AppColors.completionTag : AppColors.surface,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: isCleared ? AppColors.border : AppColors.navBorder,
+        ),
+      ),
+      child: Text(
+        isCleared ? '완료' : '아직 처치 전',
+        style: TextStyle(
+          color: isCleared ? AppColors.muted : AppColors.navAccent,
+          fontSize: 13,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
