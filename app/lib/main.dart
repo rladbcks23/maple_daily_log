@@ -311,7 +311,7 @@ Size _alertWindowSize(_OverlayAlertData alert) {
       .split('\n')
       .fold<int>(0, (maxLength, line) => math.max(maxLength, line.length));
   final width = longestLine > 42 || alert.body.length > 90 ? 480.0 : 408.0;
-  final height = (252 + (lines * 22)).clamp(306.0, 560.0).toDouble();
+  final height = (316 + (lines * 24)).clamp(380.0, 680.0).toDouble();
   return Size(width, height);
 }
 
@@ -333,13 +333,13 @@ class _OverlayAlertWindow extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = _alertWindowSize(alert);
     final bodyLines = _estimatedAlertBodyLines(alert.body);
-    final bodyMaxHeight = math.min(250.0, math.max(74.0, bodyLines * 22.0));
+    final bodyMaxHeight = math.min(330.0, math.max(104.0, bodyLines * 24.0));
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: Center(
         child: Container(
           width: size.width - 8,
-          height: size.height - 30,
+          height: size.height - 26,
           padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
           child: Column(
             children: [
@@ -373,17 +373,19 @@ class _OverlayAlertWindow extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: bodyMaxHeight),
-                child: SingleChildScrollView(
-                  child: Text(
-                    alert.body,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 14,
-                      height: 1.45,
-                      fontWeight: FontWeight.w700,
+              Flexible(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: bodyMaxHeight),
+                  child: SingleChildScrollView(
+                    child: Text(
+                      alert.body,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 14,
+                        height: 1.45,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
