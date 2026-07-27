@@ -535,6 +535,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   _OverlayAlertData? overlayAlert;
   WindowController? alertWindowController;
   final pendingOverlayAlerts = <_OverlayAlertData>[];
+  final pendingPartyScheduleRuleKeys = <String>{};
   var wasHiddenBeforeOverlay = false;
 
   @override
@@ -1346,15 +1347,27 @@ class _MapleAppShellState extends State<_MapleAppShell>
       return;
     }
 
-    final now = DateTime.now();
-    await _checkPartyScheduleNotifications(now);
+    isCheckingScheduledNotifications = true;
+    try {
+      final now = DateTime.now();
+      await _checkPartyScheduleNotifications(now);
 
-    if (now.hour != notificationSettings.reminderHour ||
-        now.minute != notificationSettings.reminderMinute) {
-      return;
+      if (now.hour != notificationSettings.reminderHour ||
+          now.minute != notificationSettings.reminderMinute ||
+          selectedCharacters.isEmpty) {
+        return;
+      }
+
+      if (notificationSettings.dailyEnabled) {
+        await _checkDailyLoginNotification(now);
+      }
+      if (notificationSettings.weeklyEnabled &&
+          notificationSettings.weeklyWeekdays.contains(now.weekday)) {
+        await _checkWeeklyReminderNotification(now);
+      }
+    } finally {
+      isCheckingScheduledNotifications = false;
     }
-
-    await runScheduledNotificationChecks(now);
   }
 
   Future<void> checkStartupScheduledNotifications() async {
@@ -1462,7 +1475,8 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
       final ruleKey =
           'party-schedule-${schedule.id}-${schedule.repeatType}-${_dateKey(targetTime)}-${schedule.hour}-${schedule.minute}';
-      if (await notificationHistory.hasSent(ruleKey)) {
+      if (pendingPartyScheduleRuleKeys.contains(ruleKey) ||
+          await notificationHistory.hasSent(ruleKey)) {
         continue;
       }
 
@@ -1471,6 +1485,10 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
     if (dueSchedules.isEmpty) {
       return;
+    }
+
+    for (final item in dueSchedules) {
+      pendingPartyScheduleRuleKeys.add(item.ruleKey);
     }
 
     await showOverlayAlert(
@@ -1485,6 +1503,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
     for (final item in dueSchedules) {
       await notificationHistory.markSent(item.ruleKey);
+      pendingPartyScheduleRuleKeys.remove(item.ruleKey);
     }
   }
 
