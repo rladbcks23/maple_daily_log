@@ -1204,10 +1204,16 @@ class _MapleAppShellState extends State<_MapleAppShell>
   }
 
   Future<void> savePartySchedule(PartySchedule schedule) async {
-    final nextSchedules = [
+    final existingSchedules = [
       for (final item in partySchedules)
-        if (item.id == schedule.id) schedule else item,
-      if (!partySchedules.any((item) => item.id == schedule.id)) schedule,
+        if (item.id != schedule.id) item,
+    ];
+    if (_hasDuplicatePartyBoss(existingSchedules, schedule.bossName)) {
+      return;
+    }
+    final nextSchedules = [
+      ...existingSchedules,
+      schedule,
     ]..sort(_comparePartySchedules);
 
     await partyScheduleStore.save(nextSchedules);
@@ -3941,6 +3947,19 @@ bool _isMonthlyPartyBoss(String bossName) {
   return bossName == '검은 마법사';
 }
 
+bool _hasDuplicatePartyBoss(
+  List<PartySchedule> schedules,
+  String bossName, {
+  String? exceptId,
+}) {
+  final normalizedBossName = bossName.trim();
+  return schedules.any(
+    (schedule) =>
+        schedule.id != exceptId &&
+        schedule.bossName.trim() == normalizedBossName,
+  );
+}
+
 int _readPartyTimeUnit(String value, int fallback, int min, int max) {
   final parsed = int.tryParse(value.trim());
   if (parsed == null || parsed < min || parsed > max) {
@@ -4205,6 +4224,7 @@ class _PartySchedulePanel extends StatelessWidget {
         : difficultyOptions.last;
     var selectedWeekday = schedule?.weekday ?? DateTime.tuesday;
     var selectedMonthDay = schedule?.monthDay ?? DateTime.now().day;
+    String? validationMessage;
     final hourController = TextEditingController(
       text: (schedule?.hour ?? 21).toString().padLeft(2, '0'),
     );
@@ -4314,6 +4334,7 @@ class _PartySchedulePanel extends StatelessWidget {
                           }
                           setDialogState(() {
                             selectedBoss = value;
+                            validationMessage = null;
                             selectedRepeatType =
                                 _defaultPartyRepeatType(selectedBoss);
                             difficultyOptions =
@@ -4485,6 +4506,17 @@ class _PartySchedulePanel extends StatelessWidget {
                           ],
                         ),
                       ),
+                      if (validationMessage != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          validationMessage!,
+                          style: const TextStyle(
+                            color: AppColors.navAccent,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 22),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -4513,6 +4545,17 @@ class _PartySchedulePanel extends StatelessWidget {
                                 0,
                                 59,
                               );
+                              if (_hasDuplicatePartyBoss(
+                                schedules,
+                                selectedBoss,
+                                exceptId: schedule?.id,
+                              )) {
+                                setDialogState(() {
+                                  validationMessage =
+                                      '$selectedBoss 파티 일정은 이미 등록되어 있어요.';
+                                });
+                                return;
+                              }
                               Navigator.pop(
                                 dialogContext,
                                 PartySchedule(
