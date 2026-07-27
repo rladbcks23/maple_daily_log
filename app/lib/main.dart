@@ -1383,6 +1383,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   }
 
   Future<void> _checkPartyScheduleNotifications(DateTime now) async {
+    final dueSchedules = <({PartySchedule schedule, String ruleKey})>[];
     for (final schedule in partySchedules) {
       final targetTime = schedule.currentScheduleFrom(now);
       final elapsed = now.difference(targetTime);
@@ -1398,16 +1399,35 @@ class _MapleAppShellState extends State<_MapleAppShell>
         continue;
       }
 
-      final memberText =
-          schedule.members.isEmpty ? '등록된 파티원 없음' : schedule.members.join(', ');
-      await showOverlayAlert(
-        title: '파티 일정 시간이 됐어요',
-        body:
-            '${schedule.difficulty.toUpperCase()} ${schedule.bossName}\n$memberText\n${_partyScheduleText(schedule)}',
-        payload: 'section:party',
-      );
-      await notificationHistory.markSent(ruleKey);
+      dueSchedules.add((schedule: schedule, ruleKey: ruleKey));
     }
+
+    if (dueSchedules.isEmpty) {
+      return;
+    }
+
+    await showOverlayAlert(
+      title: dueSchedules.length == 1
+          ? '파티 일정 시간이 됐어요'
+          : '파티 일정 ${dueSchedules.length}개 시간이 됐어요',
+      body: dueSchedules
+          .map((item) => _partyScheduleNotificationText(item.schedule))
+          .join('\n\n'),
+      payload: 'section:party',
+    );
+
+    for (final item in dueSchedules) {
+      await notificationHistory.markSent(item.ruleKey);
+    }
+  }
+
+  String _partyScheduleNotificationText(PartySchedule schedule) {
+    final memberText =
+        schedule.members.isEmpty ? '등록된 파티원 없음' : schedule.members.join(', ');
+    final scheduleText = _partyScheduleText(schedule);
+    return '${schedule.difficulty.toUpperCase()} ${schedule.bossName}\n'
+        '$memberText\n'
+        '$scheduleText';
   }
 
   Future<void> _checkDailyLoginNotification(DateTime now) async {
