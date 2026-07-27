@@ -306,13 +306,18 @@ int _estimatedAlertBodyLines(String body) {
 }
 
 Size _alertWindowSize(_OverlayAlertData alert) {
-  final lines = _estimatedAlertBodyLines(alert.body);
+  final bodyHeight = _alertBodyHeight(alert.body);
   final longestLine = alert.body
       .split('\n')
       .fold<int>(0, (maxLength, line) => math.max(maxLength, line.length));
   final width = longestLine > 42 || alert.body.length > 90 ? 480.0 : 408.0;
-  final height = (316 + (lines * 24)).clamp(380.0, 680.0).toDouble();
+  final height = (260 + bodyHeight).clamp(320.0, 590.0).toDouble();
   return Size(width, height);
+}
+
+double _alertBodyHeight(String body) {
+  final lines = _estimatedAlertBodyLines(body);
+  return math.min(330.0, math.max(66.0, lines * 22.0));
 }
 
 Future<void> _resizeAlertWindow(_OverlayAlertData alert) async {
@@ -332,8 +337,7 @@ class _OverlayAlertWindow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = _alertWindowSize(alert);
-    final bodyLines = _estimatedAlertBodyLines(alert.body);
-    final bodyMaxHeight = math.min(330.0, math.max(104.0, bodyLines * 24.0));
+    final bodyMaxHeight = _alertBodyHeight(alert.body);
     return Scaffold(
       backgroundColor: AppColors.surface,
       body: Center(
