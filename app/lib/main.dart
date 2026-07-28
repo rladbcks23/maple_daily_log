@@ -454,6 +454,184 @@ class _StartupLoadingScreen extends StatelessWidget {
   }
 }
 
+class _NexonApiSetupScreen extends StatefulWidget {
+  const _NexonApiSetupScreen({
+    required this.onSave,
+  });
+
+  final Future<void> Function(String apiKey) onSave;
+
+  @override
+  State<_NexonApiSetupScreen> createState() => _NexonApiSetupScreenState();
+}
+
+class _NexonApiSetupScreenState extends State<_NexonApiSetupScreen> {
+  final apiKeyController = TextEditingController();
+  var showApiKey = false;
+  var saving = false;
+
+  @override
+  void dispose() {
+    apiKeyController.dispose();
+    super.dispose();
+  }
+
+  Future<void> submit() async {
+    final apiKey = apiKeyController.text.trim();
+    if (apiKey.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('넥슨 Open API 키를 입력해주세요.')),
+      );
+      return;
+    }
+
+    setState(() {
+      saving = true;
+    });
+    try {
+      await widget.onSave(apiKey);
+    } finally {
+      if (mounted) {
+        setState(() {
+          saving = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.asset(
+                    'assets/images/app_logo.png',
+                    width: 58,
+                    height: 58,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '메이플 숙제알리미',
+                  style: TextStyle(
+                    color: AppColors.text,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  '먼저 넥슨 Open API 키를 설정해주세요.',
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                Container(
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppColors.border),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        '캐릭터 조회와 스케줄러 확인에 사용할 API 키입니다.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 14,
+                          height: 1.45,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      TextField(
+                        controller: apiKeyController,
+                        enabled: !saving,
+                        obscureText: !showApiKey,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => unawaited(submit()),
+                        decoration: InputDecoration(
+                          labelText: '넥슨 Open API 키',
+                          border: const OutlineInputBorder(),
+                          focusedBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: AppColors.navAccent,
+                              width: 1.4,
+                            ),
+                          ),
+                          suffixIcon: IconButton(
+                            tooltip: showApiKey ? 'API 키 숨기기' : 'API 키 보기',
+                            onPressed: saving
+                                ? null
+                                : () => setState(() {
+                                      showApiKey = !showApiKey;
+                                    }),
+                            icon: Icon(
+                              showApiKey
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: saving ? null : submit,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.navAccent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          textStyle: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        child: saving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('시작하기'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _OverlayAlertData {
   const _OverlayAlertData({
     required this.title,
@@ -2121,6 +2299,21 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
   @override
   Widget build(BuildContext context) {
+    if (appConfig.nexonApiKey.trim().isEmpty) {
+      return _NexonApiSetupScreen(
+        onSave: (apiKey) async {
+          await saveAppConfig(appConfig.copyWith(nexonApiKey: apiKey));
+          if (!mounted) {
+            return;
+          }
+          setState(() {
+            currentSection = AppSection.character;
+            errorMessage = null;
+          });
+        },
+      );
+    }
+
     final alert = overlayAlert;
     return Stack(
       children: [
