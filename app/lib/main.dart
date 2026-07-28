@@ -1104,6 +1104,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     });
     unawaited(loadDashboardSnapshots());
     unawaited(loadScheduler(selected));
+    unawaited(refreshSelectedCharacterProfiles());
     unawaited(refreshRegisteredSchedulers(skipOcid: selected.ocid));
     unawaited(checkStartupScheduledNotifications());
   }
@@ -1129,6 +1130,59 @@ class _MapleAppShellState extends State<_MapleAppShell>
       }
     } catch (_) {
       // Keep the most recently cached character list when the API fails.
+    }
+  }
+
+  Future<void> refreshSelectedCharacterProfiles() async {
+    if (selectedCharacters.isEmpty) {
+      return;
+    }
+
+    try {
+      final refreshedCharacters = <NexonCharacterSummary>[];
+      const batchSize = 4;
+      for (var start = 0;
+          start < selectedCharacters.length;
+          start += batchSize) {
+        final end = start + batchSize > selectedCharacters.length
+            ? selectedCharacters.length
+            : start + batchSize;
+        final details = await Future.wait(
+          selectedCharacters
+              .sublist(start, end)
+              .map(apiClient.fetchCharacterBasic),
+        );
+        refreshedCharacters.addAll(details);
+      }
+      if (!mounted || refreshedCharacters.isEmpty) {
+        return;
+      }
+
+      await characterProfileCache.mergeAndSave(refreshedCharacters);
+
+      setState(() {
+        final refreshedByOcid = {
+          for (final character in refreshedCharacters)
+            character.ocid: character,
+        };
+        selectedCharacters = selectedCharacters
+            .map((character) => character.merge(
+                  refreshedByOcid[character.ocid] ?? character,
+                ))
+            .toList();
+        final current = selectedCharacter;
+        if (current != null) {
+          selectedCharacter = selectedCharacters.firstWhere(
+            (character) => _isSameCharacter(character, current),
+            orElse: () =>
+                current.merge(refreshedByOcid[current.ocid] ?? current),
+          );
+        }
+      });
+      persistCharacters();
+      unawaited(loadDashboardSnapshots());
+    } catch (_) {
+      // Cached character data remains usable when the basic info refresh fails.
     }
   }
 
