@@ -3008,28 +3008,82 @@ class _NotificationSettingsButton extends StatelessWidget {
     }
 
     try {
-      final result = await Process.run('explorer.exe', [trimmedUrl]);
-      if (result.exitCode == 0) {
-        return true;
-      }
+      final installer = await _downloadInstaller(trimmedUrl);
+      await _runDownloadedInstaller(installer);
+      await windowManager.destroy();
+      return true;
     } catch (_) {
-      // Try the command shell fallback below.
+      await Clipboard.setData(ClipboardData(text: trimmedUrl));
+      return false;
     }
+  }
 
+  Future<File> _downloadInstaller(String url) async {
+    final uri = Uri.parse(url);
+    final client = HttpClient();
     try {
-      final result = await Process.run(
-        'cmd.exe',
-        ['/c', 'start', '', trimmedUrl],
-      );
-      if (result.exitCode == 0) {
-        return true;
+      final request = await client.getUrl(uri);
+      final response = await request.close();
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw const FileSystemException('Update installer download failed.');
       }
-    } catch (_) {
-      // Copying the URL is the final fallback for blocked shell launches.
-    }
 
-    await Clipboard.setData(ClipboardData(text: trimmedUrl));
-    return false;
+      final contentType = response.headers.contentType?.mimeType ?? '';
+      if (contentType.toLowerCase().contains('text/html')) {
+        throw const FileSystemException(
+          'Update URL must point to an installer file.',
+        );
+      }
+
+      final fileName = _installerFileName(uri, response);
+      if (!fileName.toLowerCase().endsWith('.exe')) {
+        throw const FileSystemException(
+          'Update URL must point to a Windows installer exe.',
+        );
+      }
+
+      final directory = Directory(
+        '${Directory.systemTemp.path}${Platform.pathSeparator}'
+        'MapleTaskReminderUpdates',
+      );
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
+      }
+
+      final file = File('${directory.path}${Platform.pathSeparator}$fileName');
+      final sink = file.openWrite();
+      try {
+        await response.pipe(sink);
+      } finally {
+        await sink.close();
+      }
+      return file;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  String _installerFileName(Uri originalUri, HttpClientResponse response) {
+    final redirectUri = response.redirects.isEmpty
+        ? originalUri
+        : response.redirects.last.location;
+    final decodedName = Uri.decodeComponent(
+      redirectUri.pathSegments.isEmpty ? '' : redirectUri.pathSegments.last,
+    );
+    if (decodedName.toLowerCase().endsWith('.exe')) {
+      return decodedName;
+    }
+    return 'MapleTaskReminder-Setup.exe';
+  }
+
+  Future<void> _runDownloadedInstaller(File installer) async {
+    final command =
+        'Start-Sleep -Milliseconds 800; Start-Process -FilePath "${installer.path}"';
+    await Process.start(
+      'powershell.exe',
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command],
+      mode: ProcessStartMode.detached,
+    );
   }
 
   bool _isNewerVersion(String latestVersion, String currentVersion) {
