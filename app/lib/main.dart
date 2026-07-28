@@ -59,6 +59,7 @@ Future<void> main(List<String> args) async {
     return;
   }
 
+  await windowManager.setPreventClose(true);
   runApp(const MapleTaskReminderApp());
 }
 
@@ -1116,8 +1117,10 @@ class _MapleAppShellState extends State<_MapleAppShell>
     switch (menuItem.key) {
       case 'show_window':
         unawaited(showWindowFromTray());
+        break;
       case 'exit_app':
         unawaited(exitApplication());
+        break;
     }
   }
 
