@@ -2,7 +2,7 @@ name: maple_task_reminder
 description: MapleStory homework reminder desktop app.
 publish_to: "none"
 
-version: 0.1.12+13
+version: 0.1.13+14
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
