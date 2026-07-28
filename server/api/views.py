@@ -45,6 +45,13 @@ def nexon_client_from_request(request):
     return NexonClient(api_key=nexon_api_key_from_request(request))
 
 
+def nexon_user_client_from_request(request):
+    api_key = nexon_api_key_from_request(request)
+    if not api_key:
+        raise NexonApiError("Nexon API key is required")
+    return NexonClient(api_key=api_key)
+
+
 def cached_response(cache_key, timeout, force_refresh, fetch):
     if not force_refresh:
         cached_value = cache.get(cache_key)
@@ -77,7 +84,7 @@ class NexonCharactersView(APIView):
                 f"nexon:{nexon_cache_scope(request)}:character-list",
                 CHARACTER_LIST_CACHE_SECONDS,
                 request.query_params.get("refresh") == "1",
-                lambda: nexon_client_from_request(request).character_list(),
+                lambda: nexon_user_client_from_request(request).character_list(),
             )
             return Response(payload)
         except NexonApiError as exc:
@@ -90,7 +97,7 @@ class NexonOcidView(APIView):
         if not character_name:
             return Response({"detail": "character_name is required"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            return Response(nexon_client_from_request(request).ocid(character_name))
+            return Response(nexon_user_client_from_request(request).ocid(character_name))
         except NexonApiError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
 
@@ -104,7 +111,7 @@ class NexonBasicView(APIView):
                 cache_key,
                 CHARACTER_BASIC_CACHE_SECONDS,
                 request.query_params.get("refresh") == "1",
-                lambda: nexon_client_from_request(request).character_basic(ocid, date=date),
+                lambda: nexon_user_client_from_request(request).character_basic(ocid, date=date),
             )
             return Response(payload)
         except NexonApiError as exc:
@@ -120,7 +127,7 @@ class NexonSchedulerView(APIView):
                 cache_key,
                 SCHEDULER_CACHE_SECONDS,
                 request.query_params.get("refresh") == "1",
-                lambda: nexon_client_from_request(request).scheduler(ocid, date=date),
+                lambda: nexon_user_client_from_request(request).scheduler(ocid, date=date),
             )
             return Response(payload)
         except NexonApiError as exc:
