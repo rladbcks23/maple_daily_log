@@ -2852,8 +2852,21 @@ class _NotificationSettingsButton extends StatelessWidget {
                         Expanded(
                           child: FilledButton.icon(
                             onPressed: _canOpenUpdate(updateInfo)
-                                ? () =>
-                                    _openDownloadUrl(updateInfo!.downloadUrl)
+                                ? () async {
+                                    final opened = await _openDownloadUrl(
+                                      updateInfo!.downloadUrl,
+                                    );
+                                    if (!opened && dialogContext.mounted) {
+                                      ScaffoldMessenger.of(dialogContext)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            '다운로드 주소를 열지 못해서 클립보드에 복사했어요.',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
                                 : null,
                             icon: const Icon(Icons.download_rounded, size: 18),
                             label: const Text('업데이트'),
@@ -2952,15 +2965,38 @@ class _NotificationSettingsButton extends StatelessWidget {
         _isNewerVersion(info.version, appCurrentVersion);
   }
 
-  Future<void> _openDownloadUrl(String url) async {
-    if (url.isEmpty) {
-      return;
+  Future<bool> _openDownloadUrl(String url) async {
+    final trimmedUrl = url.trim();
+    final uri = Uri.tryParse(trimmedUrl);
+    if (trimmedUrl.isEmpty ||
+        uri == null ||
+        (uri.scheme != 'http' && uri.scheme != 'https')) {
+      return false;
     }
-    await Process.start(
-      'rundll32.exe',
-      ['url.dll,FileProtocolHandler', url],
-      mode: ProcessStartMode.detached,
-    );
+
+    try {
+      final result = await Process.run('explorer.exe', [trimmedUrl]);
+      if (result.exitCode == 0) {
+        return true;
+      }
+    } catch (_) {
+      // Try the command shell fallback below.
+    }
+
+    try {
+      final result = await Process.run(
+        'cmd.exe',
+        ['/c', 'start', '', trimmedUrl],
+      );
+      if (result.exitCode == 0) {
+        return true;
+      }
+    } catch (_) {
+      // Copying the URL is the final fallback for blocked shell launches.
+    }
+
+    await Clipboard.setData(ClipboardData(text: trimmedUrl));
+    return false;
   }
 
   bool _isNewerVersion(String latestVersion, String currentVersion) {
