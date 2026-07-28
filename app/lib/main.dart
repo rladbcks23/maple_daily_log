@@ -3423,26 +3423,42 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   }
 
   Future<void> _runDownloadedInstaller(File installer) async {
-    const installerArguments = [
-      '/VERYSILENT',
-      '/SUPPRESSMSGBOXES',
-      '/NORESTART',
-      '/CLOSEAPPLICATIONS',
-      '/RESTARTAPPLICATIONS',
-    ];
-    try {
-      await Process.start(
-        installer.path,
-        installerArguments,
-        mode: ProcessStartMode.detached,
-      );
-    } on ProcessException {
-      await Process.start(
-        'cmd.exe',
-        ['/c', 'start', '', installer.path, ...installerArguments],
-        mode: ProcessStartMode.detached,
-      );
+    final script = await _createUpdateScript(installer);
+    await Process.start(
+      'cmd.exe',
+      ['/c', 'start', '', '/min', script.path],
+      mode: ProcessStartMode.detached,
+    );
+  }
+
+  Future<File> _createUpdateScript(File installer) async {
+    final directory = Directory(
+      '${Directory.systemTemp.path}${Platform.pathSeparator}'
+      'MapleTaskReminderUpdates',
+    );
+    if (!await directory.exists()) {
+      await directory.create(recursive: true);
     }
+
+    final script = File(
+      '${directory.path}${Platform.pathSeparator}'
+      'run_update_${DateTime.now().millisecondsSinceEpoch}.cmd',
+    );
+    await script.writeAsString('''
+@echo off
+setlocal
+set "INSTALLER=${installer.path}"
+:wait_app
+tasklist /FI "PID eq $pid" 2>NUL | find "$pid" >NUL
+if not errorlevel 1 (
+  timeout /t 1 /nobreak >NUL
+  goto wait_app
+)
+"%INSTALLER%" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS /SP-
+start "" "%LOCALAPPDATA%\\Programs\\MapleTaskReminder\\maple_task_reminder.exe"
+del "%~f0"
+''');
+    return script;
   }
 
   bool _isNewerVersion(String latestVersion, String currentVersion) {
