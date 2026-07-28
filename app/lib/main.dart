@@ -33,6 +33,9 @@ const _singleInstancePort = 48721;
 // Keep a reference to the bound socket so the single-instance lock stays alive.
 // ignore: unused_element
 ServerSocket? _singleInstanceSocket;
+_DesktopLifecycleController? _desktopLifecycleController;
+var _isExitingMainApplication = false;
+var _isHidingMainWindowToTray = false;
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,8 +62,84 @@ Future<void> main(List<String> args) async {
     return;
   }
 
-  await windowManager.setPreventClose(true);
+  await _initializeDesktopLifecycleControls();
   runApp(const MapleTaskReminderApp());
+}
+
+Future<void> _initializeDesktopLifecycleControls() async {
+  _desktopLifecycleController ??= _DesktopLifecycleController();
+  await _lockCurrentWindowSize(_mainWindowSize);
+  await windowManager.setPreventClose(true);
+  windowManager.addListener(_desktopLifecycleController!);
+  trayManager.addListener(_desktopLifecycleController!);
+  await trayManager.setIcon('assets/images/app_icon.ico');
+  await trayManager.setToolTip('메이플 숙제알리미');
+  await trayManager.setContextMenu(
+    Menu(
+      items: [
+        MenuItem(key: 'show_window', label: '열기'),
+        MenuItem.separator(),
+        MenuItem(key: 'exit_app', label: '종료'),
+      ],
+    ),
+  );
+}
+
+Future<void> _hideMainWindowToTray() async {
+  if (_isExitingMainApplication || _isHidingMainWindowToTray) {
+    return;
+  }
+  _isHidingMainWindowToTray = true;
+  try {
+    await windowManager.setPreventClose(true);
+    await windowManager.setSkipTaskbar(true);
+    await windowManager.hide();
+  } finally {
+    _isHidingMainWindowToTray = false;
+  }
+}
+
+Future<void> _showMainWindowFromTray() async {
+  await windowManager.setSkipTaskbar(false);
+  await windowManager.show();
+  await windowManager.focus();
+}
+
+Future<void> _exitMainApplication() async {
+  _isExitingMainApplication = true;
+  await windowManager.setPreventClose(false);
+  await trayManager.destroy();
+  await windowManager.destroy();
+  exit(0);
+}
+
+class _DesktopLifecycleController with WindowListener, TrayListener {
+  @override
+  void onWindowClose() {
+    unawaited(_hideMainWindowToTray());
+  }
+
+  @override
+  void onTrayIconMouseDown() {
+    unawaited(_showMainWindowFromTray());
+  }
+
+  @override
+  void onTrayIconRightMouseDown() {
+    unawaited(trayManager.popUpContextMenu());
+  }
+
+  @override
+  void onTrayMenuItemClick(MenuItem menuItem) {
+    switch (menuItem.key) {
+      case 'show_window':
+        unawaited(_showMainWindowFromTray());
+        break;
+      case 'exit_app':
+        unawaited(_exitMainApplication());
+        break;
+    }
+  }
 }
 
 Future<bool> _ensureSingleMainInstance() async {
@@ -1070,8 +1149,6 @@ class _MapleAppShellState extends State<_MapleAppShell>
   }
 
   Future<void> initializeDesktopControls() async {
-    windowManager.addListener(this);
-    trayManager.addListener(this);
     await _lockCurrentWindowSize(_mainWindowSize);
     await windowManager.setPreventClose(true);
     await trayManager.setIcon('assets/images/app_icon.ico');
@@ -1092,8 +1169,6 @@ class _MapleAppShellState extends State<_MapleAppShell>
     notificationTimer?.cancel();
     launcherMonitorTimer?.cancel();
     overlayAlertBatchTimer?.cancel();
-    windowManager.removeListener(this);
-    trayManager.removeListener(this);
     super.dispose();
   }
 
@@ -1125,35 +1200,19 @@ class _MapleAppShellState extends State<_MapleAppShell>
   }
 
   Future<void> _handleWindowClose() async {
-    if (isHidingWindowToTray) {
-      return;
-    }
-    isHidingWindowToTray = true;
-    try {
-      await windowManager.setPreventClose(true);
-      await hideWindowToTray();
-    } finally {
-      isHidingWindowToTray = false;
-    }
+    await hideWindowToTray();
   }
 
   Future<void> hideWindowToTray() async {
-    await windowManager.setPreventClose(true);
-    await windowManager.setSkipTaskbar(true);
-    await windowManager.hide();
+    await _hideMainWindowToTray();
   }
 
   Future<void> showWindowFromTray() async {
-    await windowManager.setSkipTaskbar(false);
-    await windowManager.show();
-    await windowManager.focus();
+    await _showMainWindowFromTray();
   }
 
   Future<void> exitApplication() async {
-    await windowManager.setPreventClose(false);
-    await trayManager.destroy();
-    await windowManager.destroy();
-    exit(0);
+    await _exitMainApplication();
   }
 
   Future<void> checkLauncherProcess() async {

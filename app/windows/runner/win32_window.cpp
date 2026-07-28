@@ -189,10 +189,6 @@ Win32Window::MessageHandler(HWND hwnd,
                             WPARAM const wparam,
                             LPARAM const lparam) noexcept {
   switch (message) {
-    case WM_CLOSE:
-      ShowWindow(hwnd, SW_HIDE);
-      return 0;
-
     case WM_DESTROY:
       window_handle_ = nullptr;
       Destroy();
