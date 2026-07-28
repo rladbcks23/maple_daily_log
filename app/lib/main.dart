@@ -3506,10 +3506,12 @@ class _SettingsPanelState extends State<_SettingsPanel> {
       '${directory.path}${Platform.pathSeparator}'
       'run_update_${DateTime.now().millisecondsSinceEpoch}.cmd',
     );
+    final currentExecutable = Platform.resolvedExecutable;
     await script.writeAsString('''
 @echo off
 setlocal
 set "INSTALLER=${installer.path}"
+set "RUNNER=$currentExecutable"
 :wait_app
 tasklist /FI "PID eq $pid" 2>NUL | find "$pid" >NUL
 if not errorlevel 1 (
@@ -3517,7 +3519,11 @@ if not errorlevel 1 (
   goto wait_app
 )
 "%INSTALLER%" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS /SP-
-start "" "%LOCALAPPDATA%\\Programs\\MapleTaskReminder\\maple_task_reminder.exe"
+if exist "%RUNNER%" (
+  start "" "%RUNNER%"
+) else (
+  start "" "%LOCALAPPDATA%\\Programs\\MapleTaskReminder\\maple_task_reminder.exe"
+)
 del "%~f0"
 ''');
     return script;
