@@ -3178,8 +3178,9 @@ class _SettingsPanelState extends State<_SettingsPanel> {
       final installer = await _downloadInstaller(trimmedUrl);
       await _savePendingUpdateInfo(info);
       await _runDownloadedInstaller(installer);
+      await Future<void>.delayed(const Duration(milliseconds: 500));
       await windowManager.destroy();
-      return true;
+      exit(0);
     } catch (_) {
       await Clipboard.setData(ClipboardData(text: trimmedUrl));
       return false;
@@ -3245,13 +3246,19 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   }
 
   Future<void> _runDownloadedInstaller(File installer) async {
-    final command =
-        'Start-Sleep -Milliseconds 800; Start-Process -FilePath "${installer.path}"';
-    await Process.start(
-      'powershell.exe',
-      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command],
-      mode: ProcessStartMode.detached,
-    );
+    try {
+      await Process.start(
+        'explorer.exe',
+        [installer.path],
+        mode: ProcessStartMode.detached,
+      );
+    } on ProcessException {
+      await Process.start(
+        'cmd.exe',
+        ['/c', 'start', '', installer.path],
+        mode: ProcessStartMode.detached,
+      );
+    }
   }
 
   bool _isNewerVersion(String latestVersion, String currentVersion) {
