@@ -2689,333 +2689,319 @@ class _SettingsPanelState extends State<_SettingsPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.topLeft,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 640),
-        child: SingleChildScrollView(
-          child: Container(
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              border: Border.all(color: AppColors.border),
-              borderRadius: BorderRadius.circular(14),
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const _SettingsSectionTitle('알림'),
+            const SizedBox(height: 12),
+            const _SettingsSectionTitle('예약 알림 시간', small: true),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: saving ? null : _pickReminderTime,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.text,
+                side: const BorderSide(
+                  color: AppColors.navBorder,
+                  width: 1.2,
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                textStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              child:
+                  Text(_formatTime(draft.reminderHour, draft.reminderMinute)),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            const SizedBox(height: 14),
+            Row(
               children: [
-                const _SettingsSectionTitle('알림'),
-                const SizedBox(height: 12),
-                const _SettingsSectionTitle('예약 알림 시간', small: true),
-                const SizedBox(height: 8),
-                OutlinedButton(
-                  onPressed: saving ? null : _pickReminderTime,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.text,
-                    side: const BorderSide(
-                      color: AppColors.navBorder,
-                      width: 1.2,
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    textStyle: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  child: Text(
-                      _formatTime(draft.reminderHour, draft.reminderMinute)),
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: hourController,
-                        enabled: !saving,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: '시',
-                          border: OutlineInputBorder(),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: AppColors.navAccent),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: minuteController,
-                        enabled: !saving,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: '분',
-                          border: OutlineInputBorder(),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: AppColors.navAccent),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                _NotificationSettingSwitch(
-                  title: '알림 ON/OFF',
-                  subtitle: '전체 알림을 한 번에 켜거나 끕니다.',
-                  value: draft.enabled,
-                  saving: saving,
-                  onChanged: (value) => setState(() {
-                    draft = draft.copyWith(enabled: value);
-                  }),
-                ),
-                _NotificationSettingSwitch(
-                  title: '앱 시작 시 알림',
-                  subtitle: '컴퓨터를 켤 때 놓친 알림을 한 번 확인합니다.',
-                  value: draft.checkOnStartup,
-                  saving: saving || !draft.enabled,
-                  onChanged: (value) => setState(() {
-                    draft = draft.copyWith(checkOnStartup: value);
-                  }),
-                ),
-                _NotificationSettingSwitch(
-                  title: '일간 알림',
-                  subtitle: '오늘 접속 기록과 일일 콘텐츠를 확인합니다.',
-                  value: draft.dailyEnabled,
-                  saving: saving || !draft.enabled,
-                  onChanged: (value) => setState(() {
-                    draft = draft.copyWith(dailyEnabled: value);
-                  }),
-                ),
-                _NotificationSettingSwitch(
-                  title: '주간 알림',
-                  subtitle: '이번 주 완료되지 않은 주간 콘텐츠를 확인합니다.',
-                  value: draft.weeklyEnabled,
-                  saving: saving || !draft.enabled,
-                  onChanged: (value) => setState(() {
-                    draft = draft.copyWith(
-                      weeklyEnabled: value,
-                      weeklyWeekdays: value
-                          ? (draft.weeklyWeekdays.isEmpty
-                              ? NotificationSettings.defaults.weeklyWeekdays
-                              : draft.weeklyWeekdays)
-                          : const [],
-                    );
-                  }),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 2, bottom: 12),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final weekday in const [
-                        DateTime.monday,
-                        DateTime.tuesday,
-                        DateTime.wednesday,
-                        DateTime.thursday,
-                        DateTime.friday,
-                        DateTime.saturday,
-                        DateTime.sunday,
-                      ])
-                        FilterChip(
-                          label: Text(_weekdayLabel(weekday)),
-                          selected: draft.weeklyWeekdays.contains(weekday),
-                          showCheckmark: false,
-                          onSelected: saving || !draft.enabled
-                              ? null
-                              : (selected) {
-                                  final weekdays = draft.weeklyWeekdays.toSet();
-                                  if (selected) {
-                                    weekdays.add(weekday);
-                                  } else {
-                                    weekdays.remove(weekday);
-                                  }
-                                  final sortedWeekdays = weekdays.toList()
-                                    ..sort();
-                                  setState(() {
-                                    draft = draft.copyWith(
-                                      weeklyEnabled: sortedWeekdays.isNotEmpty,
-                                      weeklyWeekdays: sortedWeekdays,
-                                    );
-                                  });
-                                },
-                          selectedColor:
-                              AppColors.navAccent.withValues(alpha: 0.15),
-                          side: BorderSide(
-                            color: draft.weeklyWeekdays.contains(weekday)
-                                ? AppColors.navAccent
-                                : AppColors.border,
-                          ),
-                          labelStyle: TextStyle(
-                            color: draft.weeklyWeekdays.contains(weekday)
-                                ? AppColors.navAccent
-                                : AppColors.muted,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                _NotificationSettingSwitch(
-                  title: '월간 알림',
-                  subtitle: '월간 콘텐츠 알림 기준으로 사용합니다.',
-                  value: draft.monthlyEnabled,
-                  saving: saving || !draft.enabled,
-                  onChanged: (value) => setState(() {
-                    draft = draft.copyWith(monthlyEnabled: value);
-                  }),
-                ),
-                _NotificationSettingSwitch(
-                  title: '공지/이벤트 알림',
-                  subtitle: '새 공지, 이벤트, 캐시샵, 업데이트가 올라오면 알려줍니다.',
-                  value: draft.noticeEnabled,
-                  saving: saving || !draft.enabled,
-                  onChanged: (value) => setState(() {
-                    draft = draft.copyWith(noticeEnabled: value);
-                  }),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: saving ? null : widget.onTestNotification,
-                  icon: const Icon(Icons.notifications_outlined, size: 18),
-                  label: const Text('알림 테스트'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.text,
-                    side: const BorderSide(
-                      color: AppColors.navBorder,
-                      width: 1.2,
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    textStyle: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                const Divider(height: 1),
-                const SizedBox(height: 14),
-                const _SettingsSectionTitle('넥슨 API'),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: nexonApiKeyController,
-                  enabled: !saving,
-                  obscureText: !showNexonApiKey,
-                  decoration: InputDecoration(
-                    labelText: '넥슨 OpenAPI 키',
-                    hintText: 'Nexon OpenAPI 키를 입력해주세요.',
-                    helperText: '캐릭터 목록과 스케줄러 조회에 사용합니다.',
-                    helperMaxLines: 2,
-                    border: const OutlineInputBorder(),
-                    focusedBorder: const OutlineInputBorder(
-                      borderSide: BorderSide(color: AppColors.navAccent),
-                    ),
-                    suffixIcon: IconButton(
-                      tooltip: showNexonApiKey ? '숨기기' : '보기',
-                      onPressed: saving
-                          ? null
-                          : () => setState(() {
-                                showNexonApiKey = !showNexonApiKey;
-                              }),
-                      icon: Icon(
-                        showNexonApiKey
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
+                Expanded(
+                  child: TextField(
+                    controller: hourController,
+                    enabled: !saving,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: '시',
+                      border: OutlineInputBorder(),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: AppColors.navAccent),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 18),
-                const Divider(height: 1),
-                const SizedBox(height: 14),
-                const _SettingsSectionTitle('앱 업데이트'),
-                const SizedBox(height: 8),
-                Text(
-                  updateMessage ?? '현재 버전 $appCurrentVersion',
-                  style: const TextStyle(
-                    color: AppColors.muted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (updateInfo?.notes.isNotEmpty ?? false) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    updateInfo!.notes,
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 12,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: minuteController,
+                    enabled: !saving,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: '분',
+                      border: OutlineInputBorder(),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: AppColors.navAccent),
+                      ),
                     ),
                   ),
-                ],
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: saving || checkingUpdate
-                            ? null
-                            : _checkUpdateVersion,
-                        icon: checkingUpdate
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.sync_rounded, size: 18),
-                        label: const Text('버전 확인'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: _canOpenUpdate(updateInfo)
-                            ? () => _openUpdate(updateInfo!)
-                            : null,
-                        icon: const Icon(Icons.download_rounded, size: 18),
-                        label: const Text('업데이트'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.navAccent,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 22),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: saving ? null : _resetDraft,
-                      child: const Text('취소'),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton(
-                      onPressed: saving ? null : _save,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.navAccent,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: saving
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text('저장'),
-                    ),
-                  ],
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 14),
+            _NotificationSettingSwitch(
+              title: '알림 ON/OFF',
+              subtitle: '전체 알림을 한 번에 켜거나 끕니다.',
+              value: draft.enabled,
+              saving: saving,
+              onChanged: (value) => setState(() {
+                draft = draft.copyWith(enabled: value);
+              }),
+            ),
+            _NotificationSettingSwitch(
+              title: '앱 시작 시 알림',
+              subtitle: '컴퓨터를 켤 때 놓친 알림을 한 번 확인합니다.',
+              value: draft.checkOnStartup,
+              saving: saving || !draft.enabled,
+              onChanged: (value) => setState(() {
+                draft = draft.copyWith(checkOnStartup: value);
+              }),
+            ),
+            _NotificationSettingSwitch(
+              title: '일간 알림',
+              subtitle: '오늘 접속 기록과 일일 콘텐츠를 확인합니다.',
+              value: draft.dailyEnabled,
+              saving: saving || !draft.enabled,
+              onChanged: (value) => setState(() {
+                draft = draft.copyWith(dailyEnabled: value);
+              }),
+            ),
+            _NotificationSettingSwitch(
+              title: '주간 알림',
+              subtitle: '이번 주 완료되지 않은 주간 콘텐츠를 확인합니다.',
+              value: draft.weeklyEnabled,
+              saving: saving || !draft.enabled,
+              onChanged: (value) => setState(() {
+                draft = draft.copyWith(
+                  weeklyEnabled: value,
+                  weeklyWeekdays: value
+                      ? (draft.weeklyWeekdays.isEmpty
+                          ? NotificationSettings.defaults.weeklyWeekdays
+                          : draft.weeklyWeekdays)
+                      : const [],
+                );
+              }),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 2, bottom: 12),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final weekday in const [
+                    DateTime.monday,
+                    DateTime.tuesday,
+                    DateTime.wednesday,
+                    DateTime.thursday,
+                    DateTime.friday,
+                    DateTime.saturday,
+                    DateTime.sunday,
+                  ])
+                    FilterChip(
+                      label: Text(_weekdayLabel(weekday)),
+                      selected: draft.weeklyWeekdays.contains(weekday),
+                      showCheckmark: false,
+                      onSelected: saving || !draft.enabled
+                          ? null
+                          : (selected) {
+                              final weekdays = draft.weeklyWeekdays.toSet();
+                              if (selected) {
+                                weekdays.add(weekday);
+                              } else {
+                                weekdays.remove(weekday);
+                              }
+                              final sortedWeekdays = weekdays.toList()..sort();
+                              setState(() {
+                                draft = draft.copyWith(
+                                  weeklyEnabled: sortedWeekdays.isNotEmpty,
+                                  weeklyWeekdays: sortedWeekdays,
+                                );
+                              });
+                            },
+                      selectedColor:
+                          AppColors.navAccent.withValues(alpha: 0.15),
+                      side: BorderSide(
+                        color: draft.weeklyWeekdays.contains(weekday)
+                            ? AppColors.navAccent
+                            : AppColors.border,
+                      ),
+                      labelStyle: TextStyle(
+                        color: draft.weeklyWeekdays.contains(weekday)
+                            ? AppColors.navAccent
+                            : AppColors.muted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            _NotificationSettingSwitch(
+              title: '월간 알림',
+              subtitle: '월간 콘텐츠 알림 기준으로 사용합니다.',
+              value: draft.monthlyEnabled,
+              saving: saving || !draft.enabled,
+              onChanged: (value) => setState(() {
+                draft = draft.copyWith(monthlyEnabled: value);
+              }),
+            ),
+            _NotificationSettingSwitch(
+              title: '공지/이벤트 알림',
+              subtitle: '새 공지, 이벤트, 캐시샵, 업데이트가 올라오면 알려줍니다.',
+              value: draft.noticeEnabled,
+              saving: saving || !draft.enabled,
+              onChanged: (value) => setState(() {
+                draft = draft.copyWith(noticeEnabled: value);
+              }),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: saving ? null : widget.onTestNotification,
+              icon: const Icon(Icons.notifications_outlined, size: 18),
+              label: const Text('알림 테스트'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.text,
+                side: const BorderSide(
+                  color: AppColors.navBorder,
+                  width: 1.2,
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                textStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Divider(height: 1),
+            const SizedBox(height: 14),
+            const _SettingsSectionTitle('넥슨 API'),
+            const SizedBox(height: 8),
+            TextField(
+              controller: nexonApiKeyController,
+              enabled: !saving,
+              obscureText: !showNexonApiKey,
+              decoration: InputDecoration(
+                labelText: '넥슨 OpenAPI 키',
+                hintText: 'Nexon OpenAPI 키를 입력해주세요.',
+                helperText: '캐릭터 목록과 스케줄러 조회에 사용합니다.',
+                helperMaxLines: 2,
+                border: const OutlineInputBorder(),
+                focusedBorder: const OutlineInputBorder(
+                  borderSide: BorderSide(color: AppColors.navAccent),
+                ),
+                suffixIcon: IconButton(
+                  tooltip: showNexonApiKey ? '숨기기' : '보기',
+                  onPressed: saving
+                      ? null
+                      : () => setState(() {
+                            showNexonApiKey = !showNexonApiKey;
+                          }),
+                  icon: Icon(
+                    showNexonApiKey
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Divider(height: 1),
+            const SizedBox(height: 14),
+            const _SettingsSectionTitle('앱 업데이트'),
+            const SizedBox(height: 8),
+            Text(
+              updateMessage ?? '현재 버전 $appCurrentVersion',
+              style: const TextStyle(
+                color: AppColors.muted,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (updateInfo?.notes.isNotEmpty ?? false) ...[
+              const SizedBox(height: 6),
+              Text(
+                updateInfo!.notes,
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed:
+                        saving || checkingUpdate ? null : _checkUpdateVersion,
+                    icon: checkingUpdate
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.sync_rounded, size: 18),
+                    label: const Text('버전 확인'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _canOpenUpdate(updateInfo)
+                        ? () => _openUpdate(updateInfo!)
+                        : null,
+                    icon: const Icon(Icons.download_rounded, size: 18),
+                    label: const Text('업데이트'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.navAccent,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 22),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: saving ? null : _resetDraft,
+                  child: const Text('취소'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: saving ? null : _save,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.navAccent,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: saving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('저장'),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
