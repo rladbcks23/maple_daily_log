@@ -12,8 +12,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tool\build_windows_rel
 
 완료된 파일은 저장소의 `dist` 폴더에 생성됩니다.
 
-- `MapleTaskReminder-0.1.3-windows-x64.zip`: 압축을 풀고 바로 실행하는 휴대용 배포본
-- `MapleTaskReminder-Setup-0.1.3.exe`: Windows 설치 프로그램
+- `MapleTaskReminder-0.1.4-windows-x64.zip`: 압축을 풀고 바로 실행하는 휴대용 배포본
+- `MapleTaskReminder-Setup-0.1.4.exe`: Windows 설치 프로그램
 
 Inno Setup 6가 설치되어 있지 않으면 휴대용 ZIP만 생성됩니다.
 
