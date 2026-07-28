@@ -2546,6 +2546,7 @@ class _NotificationSettingsButton extends StatelessWidget {
     AppVersionInfo? updateInfo;
     String? updateMessage;
     var checkingUpdate = false;
+    var showNexonApiKey = false;
 
     await showDialog<void>(
       context: context,
@@ -2799,15 +2800,30 @@ class _NotificationSettingsButton extends StatelessWidget {
                     TextField(
                       controller: nexonApiKeyController,
                       enabled: !saving,
-                      obscureText: true,
-                      decoration: const InputDecoration(
+                      obscureText: !showNexonApiKey,
+                      decoration: InputDecoration(
                         labelText: '넥슨 OpenAPI 키',
                         hintText: 'Nexon OpenAPI 키를 입력해주세요.',
                         helperText: '캐릭터 목록과 스케줄러 조회에 사용합니다.',
                         helperMaxLines: 2,
-                        border: OutlineInputBorder(),
-                        focusedBorder: OutlineInputBorder(
+                        border: const OutlineInputBorder(),
+                        focusedBorder: const OutlineInputBorder(
                           borderSide: BorderSide(color: AppColors.navAccent),
+                        ),
+                        suffixIcon: IconButton(
+                          tooltip: showNexonApiKey ? '키 숨기기' : '키 보기',
+                          onPressed: saving
+                              ? null
+                              : () {
+                                  setDialogState(() {
+                                    showNexonApiKey = !showNexonApiKey;
+                                  });
+                                },
+                          icon: Icon(
+                            showNexonApiKey
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                          ),
                         ),
                       ),
                     ),
