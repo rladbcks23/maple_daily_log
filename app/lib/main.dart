@@ -289,6 +289,76 @@ class _StartupData {
   final bool hasLoadedNotices;
 }
 
+class _PendingUpdateInfo {
+  const _PendingUpdateInfo({
+    required this.version,
+    required this.notes,
+  });
+
+  final String version;
+  final String notes;
+
+  Map<String, dynamic> toJson() => {
+        'version': version,
+        'notes': notes,
+      };
+
+  factory _PendingUpdateInfo.fromJson(Map<String, dynamic> json) {
+    return _PendingUpdateInfo(
+      version: json['version']?.toString() ?? '',
+      notes: json['notes']?.toString() ?? '',
+    );
+  }
+}
+
+Future<Directory> _localAppDataDirectory() async {
+  final appDataDirectory = Platform.environment['LOCALAPPDATA'] ??
+      Platform.environment['APPDATA'] ??
+      Directory.systemTemp.path;
+  final directory = Directory(
+    '$appDataDirectory${Platform.pathSeparator}MapleTaskReminder',
+  );
+  if (!await directory.exists()) {
+    await directory.create(recursive: true);
+  }
+  return directory;
+}
+
+Future<File> _pendingUpdateInfoFile() async {
+  final directory = await _localAppDataDirectory();
+  return File(
+    '${directory.path}${Platform.pathSeparator}pending_update.json',
+  );
+}
+
+Future<void> _savePendingUpdateInfo(AppVersionInfo info) async {
+  final file = await _pendingUpdateInfoFile();
+  final pendingInfo = _PendingUpdateInfo(
+    version: info.version,
+    notes: info.notes,
+  );
+  await file.writeAsString(jsonEncode(pendingInfo.toJson()));
+}
+
+Future<_PendingUpdateInfo?> _takePendingUpdateInfo() async {
+  try {
+    final file = await _pendingUpdateInfoFile();
+    if (!await file.exists()) {
+      return null;
+    }
+    final decoded = jsonDecode(await file.readAsString());
+    await file.delete();
+    if (decoded is Map) {
+      return _PendingUpdateInfo.fromJson(Map<String, dynamic>.from(decoded));
+    }
+  } on FileSystemException {
+    return null;
+  } on FormatException {
+    return null;
+  }
+  return null;
+}
+
 class _StartupGate extends StatefulWidget {
   const _StartupGate();
 
@@ -779,6 +849,36 @@ class _MapleAppShellState extends State<_MapleAppShell>
     );
     unawaited(checkScheduledNotifications());
     unawaited(checkLauncherProcess());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(showPendingUpdateInfo());
+    });
+  }
+
+  Future<void> showPendingUpdateInfo() async {
+    final pendingInfo = await _takePendingUpdateInfo();
+    if (pendingInfo == null || !mounted) {
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('업데이트 완료 ${pendingInfo.version}'),
+          content: Text(
+            pendingInfo.notes.trim().isEmpty
+                ? '최신 버전으로 업데이트했습니다.'
+                : pendingInfo.notes.trim(),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('확인'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> initializeNotifications() async {
@@ -2911,7 +3011,7 @@ class _NotificationSettingsButton extends StatelessWidget {
                             onPressed: _canOpenUpdate(updateInfo)
                                 ? () async {
                                     final opened = await _openDownloadUrl(
-                                      updateInfo!.downloadUrl,
+                                      updateInfo!,
                                     );
                                     if (!opened && dialogContext.mounted) {
                                       ScaffoldMessenger.of(dialogContext)
@@ -3014,8 +3114,8 @@ class _NotificationSettingsButton extends StatelessWidget {
         _isNewerVersion(info.version, appCurrentVersion);
   }
 
-  Future<bool> _openDownloadUrl(String url) async {
-    final trimmedUrl = url.trim();
+  Future<bool> _openDownloadUrl(AppVersionInfo info) async {
+    final trimmedUrl = info.downloadUrl.trim();
     final uri = Uri.tryParse(trimmedUrl);
     if (trimmedUrl.isEmpty ||
         uri == null ||
@@ -3025,6 +3125,7 @@ class _NotificationSettingsButton extends StatelessWidget {
 
     try {
       final installer = await _downloadInstaller(trimmedUrl);
+      await _savePendingUpdateInfo(info);
       await _runDownloadedInstaller(installer);
       await windowManager.destroy();
       return true;
