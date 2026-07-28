@@ -794,6 +794,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   var isCheckingNoticeNotifications = false;
   var isCheckingLauncherProcess = false;
   var isFlushingOverlayAlerts = false;
+  var isHidingWindowToTray = false;
   var hasActiveLauncherSession = false;
   var appConfig = AppConfig.defaults;
   var notificationSettings = NotificationSettings.defaults;
@@ -942,8 +943,16 @@ class _MapleAppShellState extends State<_MapleAppShell>
   }
 
   Future<void> _handleWindowClose() async {
-    await windowManager.setPreventClose(true);
-    await hideWindowToTray();
+    if (isHidingWindowToTray) {
+      return;
+    }
+    isHidingWindowToTray = true;
+    try {
+      await windowManager.setPreventClose(true);
+      await hideWindowToTray();
+    } finally {
+      isHidingWindowToTray = false;
+    }
   }
 
   Future<void> hideWindowToTray() async {
