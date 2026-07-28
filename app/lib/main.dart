@@ -804,7 +804,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
   @override
   void onWindowClose() {
-    unawaited(hideWindowToTray());
+    unawaited(_handleWindowClose());
   }
 
   @override
@@ -827,7 +827,13 @@ class _MapleAppShellState extends State<_MapleAppShell>
     }
   }
 
+  Future<void> _handleWindowClose() async {
+    await windowManager.setPreventClose(true);
+    await hideWindowToTray();
+  }
+
   Future<void> hideWindowToTray() async {
+    await windowManager.setPreventClose(true);
     await windowManager.setSkipTaskbar(true);
     await windowManager.hide();
   }
@@ -2033,13 +2039,20 @@ class _AppSidebar extends StatelessWidget {
               ),
               for (final section in AppSection.values)
                 if (section != AppSection.dashboard &&
-                    section != AppSection.character)
+                    section != AppSection.character) ...[
                   _SidebarNavItem(
                     section: section,
                     selected: currentSection == section,
                     enabled: hasCharacter || section == AppSection.party,
                     onPressed: () => onSelectSection(section),
                   ),
+                  if (section == AppSection.party)
+                    const Padding(
+                      padding:
+                          EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+                      child: Divider(height: 1, color: AppColors.border),
+                    ),
+                ],
               const Spacer(),
             ],
           ),
@@ -2553,7 +2566,7 @@ class _NotificationSettingsButton extends StatelessWidget {
                     ),
                     _NotificationSettingSwitch(
                       title: '주간 알림',
-                      subtitle: '화/수에 주간 콘텐츠와 주간 보스를 확인합니다.',
+                      subtitle: '이번 주 완료되지 않은 주간 콘텐츠를 확인합니다.',
                       value: draft.weeklyEnabled,
                       saving: saving || !draft.enabled,
                       onChanged: (value) {
