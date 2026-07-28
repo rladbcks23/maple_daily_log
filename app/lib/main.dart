@@ -411,13 +411,18 @@ Future<File> _pendingUpdateInfoFile() async {
   );
 }
 
-Future<void> _savePendingUpdateInfo(AppVersionInfo info) async {
-  final file = await _pendingUpdateInfoFile();
+Future<File> _createPendingUpdateInfoCandidate(AppVersionInfo info) async {
+  final directory = await _localAppDataDirectory();
+  final file = File(
+    '${directory.path}${Platform.pathSeparator}'
+    'pending_update_${DateTime.now().millisecondsSinceEpoch}.json',
+  );
   final pendingInfo = _PendingUpdateInfo(
     version: info.version,
     notes: info.notes,
   );
   await file.writeAsString(jsonEncode(pendingInfo.toJson()));
+  return file;
 }
 
 Future<_PendingUpdateInfo?> _takePendingUpdateInfo() async {
@@ -1117,6 +1122,9 @@ class _MapleAppShellState extends State<_MapleAppShell>
   Future<void> showPendingUpdateInfo() async {
     final pendingInfo = await _takePendingUpdateInfo();
     if (pendingInfo == null || !mounted) {
+      return;
+    }
+    if (pendingInfo.version != appCurrentVersion) {
       return;
     }
 
@@ -3415,8 +3423,10 @@ class _SettingsPanelState extends State<_SettingsPanel> {
 
     try {
       final installer = await _downloadInstaller(trimmedUrl);
-      await _savePendingUpdateInfo(info);
-      await _runDownloadedInstaller(installer);
+      final pendingInfoCandidate = await _createPendingUpdateInfoCandidate(
+        info,
+      );
+      await _runDownloadedInstaller(installer, pendingInfoCandidate);
       await Future<void>.delayed(const Duration(milliseconds: 500));
       await windowManager.destroy();
       exit(0);
@@ -3484,16 +3494,30 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     return 'MapleTaskReminder-Setup.exe';
   }
 
-  Future<void> _runDownloadedInstaller(File installer) async {
-    final script = await _createUpdateScript(installer);
+  Future<void> _runDownloadedInstaller(
+    File installer,
+    File pendingInfoCandidate,
+  ) async {
+    final script = await _createUpdateScript(installer, pendingInfoCandidate);
     await Process.start(
-      'cmd.exe',
-      ['/c', 'start', '', '/min', script.path],
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-WindowStyle',
+        'Hidden',
+        '-File',
+        script.path,
+      ],
       mode: ProcessStartMode.detached,
     );
   }
 
-  Future<File> _createUpdateScript(File installer) async {
+  Future<File> _createUpdateScript(
+    File installer,
+    File pendingInfoCandidate,
+  ) async {
     final directory = Directory(
       '${Directory.systemTemp.path}${Platform.pathSeparator}'
       'MapleTaskReminderUpdates',
@@ -3504,29 +3528,63 @@ class _SettingsPanelState extends State<_SettingsPanel> {
 
     final script = File(
       '${directory.path}${Platform.pathSeparator}'
-      'run_update_${DateTime.now().millisecondsSinceEpoch}.cmd',
+      'run_update_${DateTime.now().millisecondsSinceEpoch}.ps1',
     );
     final currentExecutable = Platform.resolvedExecutable;
+    final pendingInfoFile = await _pendingUpdateInfoFile();
+    final logFile = File(
+      '${directory.path}${Platform.pathSeparator}'
+      'update_${DateTime.now().millisecondsSinceEpoch}.log',
+    );
     await script.writeAsString('''
-@echo off
-setlocal
-set "INSTALLER=${installer.path}"
-set "RUNNER=$currentExecutable"
-:wait_app
-tasklist /FI "PID eq $pid" 2>NUL | find "$pid" >NUL
-if not errorlevel 1 (
-  timeout /t 1 /nobreak >NUL
-  goto wait_app
+\$ErrorActionPreference = 'SilentlyContinue'
+\$installer = ${_powerShellString(installer.path)}
+\$runner = ${_powerShellString(currentExecutable)}
+\$fallbackRunner = Join-Path \$env:LOCALAPPDATA 'Programs\\MapleTaskReminder\\maple_task_reminder.exe'
+\$pendingSource = ${_powerShellString(pendingInfoCandidate.path)}
+\$pendingTarget = ${_powerShellString(pendingInfoFile.path)}
+\$logFile = ${_powerShellString(logFile.path)}
+\$pidToWait = $pid
+
+while (Get-Process -Id \$pidToWait -ErrorAction SilentlyContinue) {
+  Start-Sleep -Seconds 1
+}
+
+Get-Process -Name 'maple_task_reminder' -ErrorAction SilentlyContinue |
+  Stop-Process -Force
+
+\$arguments = @(
+  '/VERYSILENT',
+  '/SUPPRESSMSGBOXES',
+  '/NORESTART',
+  '/CLOSEAPPLICATIONS',
+  '/RESTARTAPPLICATIONS',
+  '/SP-',
+  "/LOG=`"\$logFile`""
 )
-"%INSTALLER%" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS /SP-
-if exist "%RUNNER%" (
-  start "" "%RUNNER%"
-) else (
-  start "" "%LOCALAPPDATA%\\Programs\\MapleTaskReminder\\maple_task_reminder.exe"
-)
-del "%~f0"
+\$installerProcess = Start-Process -FilePath \$installer -ArgumentList \$arguments -Wait -PassThru -WindowStyle Hidden
+
+if (\$installerProcess.ExitCode -eq 0) {
+  if (Test-Path \$pendingSource) {
+    Move-Item -LiteralPath \$pendingSource -Destination \$pendingTarget -Force
+  }
+} else {
+  Add-Content -LiteralPath \$logFile -Value ('Installer failed with exit code ' + \$installerProcess.ExitCode + '.')
+}
+
+if (Test-Path \$runner) {
+  Start-Process -FilePath \$runner
+} elseif (Test-Path \$fallbackRunner) {
+  Start-Process -FilePath \$fallbackRunner
+}
+
+Remove-Item -LiteralPath \$MyInvocation.MyCommand.Path -Force
 ''');
     return script;
+  }
+
+  String _powerShellString(String value) {
+    return "'${value.replaceAll("'", "''")}'";
   }
 
   bool _isNewerVersion(String latestVersion, String currentVersion) {
