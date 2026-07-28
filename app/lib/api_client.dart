@@ -2,14 +2,32 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+const defaultApiBaseUrl = 'https://maple-daily-log-e5su.onrender.com';
+
 class ApiClient {
   ApiClient({
     http.Client? httpClient,
-    this.baseUrl = 'https://maple-daily-log-e5su.onrender.com',
-  }) : _httpClient = httpClient ?? http.Client();
+    String? baseUrl,
+  })  : baseUrl = normalizeBaseUrl(baseUrl ?? defaultApiBaseUrl),
+        _httpClient = httpClient ?? http.Client();
 
   final http.Client _httpClient;
   final String baseUrl;
+
+  static String normalizeBaseUrl(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return defaultApiBaseUrl;
+    }
+    return trimmed.replaceFirst(RegExp(r'/+$'), '');
+  }
+
+  static bool isValidBaseUrl(String value) {
+    final uri = Uri.tryParse(normalizeBaseUrl(value));
+    return uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.isNotEmpty;
+  }
 
   Future<AppVersionInfo> fetchAppVersionInfo() async {
     final response =

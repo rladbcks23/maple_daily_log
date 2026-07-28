@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'app_config.dart';
 import 'api_client.dart';
 import 'character_cache.dart';
 import 'character_profile_cache.dart';
@@ -276,11 +277,13 @@ class MapleTaskReminderApp extends StatelessWidget {
 
 class _StartupData {
   const _StartupData({
+    required this.appConfig,
     required this.noticeItems,
     this.sundayEvent,
     required this.hasLoadedNotices,
   });
 
+  final AppConfig appConfig;
   final List<NoticeItemSummary> noticeItems;
   final NoticeItemSummary? sundayEvent;
   final bool hasLoadedNotices;
@@ -297,7 +300,9 @@ class _StartupGateState extends State<_StartupGate> {
   late final Future<_StartupData> _startupData = _loadStartupData();
 
   Future<_StartupData> _loadStartupData() async {
-    final apiClient = ApiClient();
+    final appConfigStore = AppConfigStore();
+    final appConfig = await appConfigStore.load();
+    final apiClient = ApiClient(baseUrl: appConfig.apiBaseUrl);
     final sundayCache = SundayEventCache();
     final cachedSundayEvent = await sundayCache.load();
 
@@ -309,12 +314,14 @@ class _StartupGateState extends State<_StartupGate> {
         await sundayCache.save(sundayEvent);
       }
       return _StartupData(
+        appConfig: appConfig,
         noticeItems: noticeItems,
         sundayEvent: sundayEvent ?? cachedSundayEvent,
         hasLoadedNotices: true,
       );
     } catch (_) {
       return _StartupData(
+        appConfig: appConfig,
         noticeItems: const [],
         sundayEvent: cachedSundayEvent,
         hasLoadedNotices: false,
@@ -699,7 +706,8 @@ class _MapleAppShell extends StatefulWidget {
 
 class _MapleAppShellState extends State<_MapleAppShell>
     with WindowListener, TrayListener {
-  final ApiClient apiClient = ApiClient();
+  late ApiClient apiClient;
+  final AppConfigStore appConfigStore = AppConfigStore();
   final CharacterCache characterCache = CharacterCache();
   final CharacterProfileCache characterProfileCache = CharacterProfileCache();
   final SchedulerCache schedulerCache = SchedulerCache();
@@ -717,6 +725,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   var isCheckingLauncherProcess = false;
   var isFlushingOverlayAlerts = false;
   var hasActiveLauncherSession = false;
+  var appConfig = AppConfig.defaults;
   var notificationSettings = NotificationSettings.defaults;
   var currentSection = AppSection.character;
   var isLoading = false;
@@ -744,6 +753,8 @@ class _MapleAppShellState extends State<_MapleAppShell>
   @override
   void initState() {
     super.initState();
+    appConfig = widget.startupData.appConfig;
+    apiClient = ApiClient(baseUrl: appConfig.apiBaseUrl);
     noticeItems = widget.startupData.noticeItems;
     sundayEvent = widget.startupData.sundayEvent;
     LocalNotificationService.instance.setOnNotificationTap(
@@ -1058,6 +1069,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
       sundayEventCache.ensure(),
       partyScheduleStore.ensure(),
       notificationSettingsStore.ensure(),
+      appConfigStore.ensure(),
     ]);
     final loadedNotificationSettings = await notificationSettingsStore.load();
     final loadedPartySchedules = await partyScheduleStore.load();
@@ -1514,6 +1526,17 @@ class _MapleAppShellState extends State<_MapleAppShell>
     });
   }
 
+  Future<void> saveAppConfig(AppConfig config) async {
+    await appConfigStore.save(config);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      appConfig = config;
+      apiClient = ApiClient(baseUrl: config.apiBaseUrl);
+    });
+  }
+
   Future<void> savePartySchedule(PartySchedule schedule) async {
     final existingSchedules = [
       for (final item in partySchedules)
@@ -1961,7 +1984,9 @@ class _MapleAppShellState extends State<_MapleAppShell>
                   onRefresh: refreshCurrentSection,
                   onTestNotification: showTestNotification,
                   notificationSettings: notificationSettings,
+                  appConfig: appConfig,
                   onNotificationSettingsChanged: saveNotificationSettings,
+                  onAppConfigChanged: saveAppConfig,
                   onSelectSection: selectSection,
                   onSelectCharacter: selectCharacter,
                   onOpenCharacterScheduler: openCharacterScheduler,
@@ -2277,7 +2302,9 @@ class _MainPanel extends StatelessWidget {
     required this.onRefresh,
     required this.onTestNotification,
     required this.notificationSettings,
+    required this.appConfig,
     required this.onNotificationSettingsChanged,
+    required this.onAppConfigChanged,
     required this.onSelectSection,
     required this.onSelectCharacter,
     required this.onOpenCharacterScheduler,
@@ -2307,8 +2334,10 @@ class _MainPanel extends StatelessWidget {
   final Future<void> Function() onRefresh;
   final Future<void> Function() onTestNotification;
   final NotificationSettings notificationSettings;
+  final AppConfig appConfig;
   final Future<void> Function(NotificationSettings settings)
       onNotificationSettingsChanged;
+  final Future<void> Function(AppConfig config) onAppConfigChanged;
   final ValueChanged<AppSection> onSelectSection;
   final ValueChanged<NexonCharacterSummary> onSelectCharacter;
   final ValueChanged<NexonCharacterSummary> onOpenCharacterScheduler;
@@ -2357,7 +2386,9 @@ class _MainPanel extends StatelessWidget {
                 const Spacer(),
                 _NotificationSettingsButton(
                   settings: notificationSettings,
+                  appConfig: appConfig,
                   onChanged: onNotificationSettingsChanged,
+                  onAppConfigChanged: onAppConfigChanged,
                   onTestNotification: onTestNotification,
                 ),
               ],
@@ -2411,12 +2442,16 @@ class _MainPanel extends StatelessWidget {
 class _NotificationSettingsButton extends StatelessWidget {
   const _NotificationSettingsButton({
     required this.settings,
+    required this.appConfig,
     required this.onChanged,
+    required this.onAppConfigChanged,
     required this.onTestNotification,
   });
 
   final NotificationSettings settings;
+  final AppConfig appConfig;
   final Future<void> Function(NotificationSettings settings) onChanged;
+  final Future<void> Function(AppConfig config) onAppConfigChanged;
   final Future<void> Function() onTestNotification;
 
   @override
@@ -2438,6 +2473,7 @@ class _NotificationSettingsButton extends StatelessWidget {
 
   Future<void> _openDialog(BuildContext context) async {
     var draft = settings;
+    var configDraft = appConfig;
     var saving = false;
     final hourController = TextEditingController(
       text: draft.reminderHour.toString().padLeft(2, '0'),
@@ -2445,9 +2481,11 @@ class _NotificationSettingsButton extends StatelessWidget {
     final minuteController = TextEditingController(
       text: draft.reminderMinute.toString().padLeft(2, '0'),
     );
-    final apiClient = ApiClient();
+    final apiBaseUrlController =
+        TextEditingController(text: configDraft.apiBaseUrl);
     AppVersionInfo? updateInfo;
     String? updateMessage;
+    String? apiMessage;
     var checkingUpdate = false;
 
     await showDialog<void>(
@@ -2691,6 +2729,39 @@ class _NotificationSettingsButton extends StatelessWidget {
                     const Divider(height: 1),
                     const SizedBox(height: 14),
                     const Text(
+                      'API 설정',
+                      style: TextStyle(
+                        color: AppColors.text,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: apiBaseUrlController,
+                      enabled: !saving,
+                      decoration: InputDecoration(
+                        labelText: '서버 API 주소',
+                        hintText: defaultApiBaseUrl,
+                        helperText: apiMessage ?? '외부 배포 서버 주소를 입력합니다.',
+                        helperMaxLines: 2,
+                        border: const OutlineInputBorder(),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(color: AppColors.navAccent),
+                        ),
+                      ),
+                      onChanged: (_) {
+                        if (apiMessage != null) {
+                          setDialogState(() {
+                            apiMessage = null;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 18),
+                    const Divider(height: 1),
+                    const SizedBox(height: 14),
+                    const Text(
                       '앱 업데이트',
                       style: TextStyle(
                         color: AppColors.text,
@@ -2730,8 +2801,21 @@ class _NotificationSettingsButton extends StatelessWidget {
                                       updateMessage = '최신 버전을 확인하고 있어요.';
                                     });
                                     try {
-                                      final info =
-                                          await apiClient.fetchAppVersionInfo();
+                                      final baseUrl =
+                                          ApiClient.normalizeBaseUrl(
+                                        apiBaseUrlController.text,
+                                      );
+                                      if (!ApiClient.isValidBaseUrl(baseUrl)) {
+                                        setDialogState(() {
+                                          apiMessage =
+                                              'http:// 또는 https:// 주소로 입력해주세요.';
+                                          updateMessage = 'API 주소를 먼저 확인해주세요.';
+                                        });
+                                        return;
+                                      }
+                                      final info = await ApiClient(
+                                        baseUrl: baseUrl,
+                                      ).fetchAppVersionInfo();
                                       final hasUpdate = _isNewerVersion(
                                         info.version,
                                         appCurrentVersion,
@@ -2805,14 +2889,26 @@ class _NotificationSettingsButton extends StatelessWidget {
                             );
                             return;
                           }
+                          final baseUrl = ApiClient.normalizeBaseUrl(
+                            apiBaseUrlController.text,
+                          );
+                          if (!ApiClient.isValidBaseUrl(baseUrl)) {
+                            setDialogState(() {
+                              apiMessage = 'http:// 또는 https:// 주소로 입력해주세요.';
+                            });
+                            return;
+                          }
                           setDialogState(() {
                             saving = true;
+                            configDraft =
+                                configDraft.copyWith(apiBaseUrl: baseUrl);
                             draft = draft.copyWith(
                               reminderHour: normalized.hour,
                               reminderMinute: normalized.minute,
                             );
                           });
                           await onChanged(draft);
+                          await onAppConfigChanged(configDraft);
                           if (dialogContext.mounted) {
                             Navigator.pop(dialogContext);
                           }
@@ -2840,6 +2936,7 @@ class _NotificationSettingsButton extends StatelessWidget {
     );
     hourController.dispose();
     minuteController.dispose();
+    apiBaseUrlController.dispose();
   }
 
   String _formatTime(TimeOfDay time) {
