@@ -8,11 +8,14 @@ class ApiClient {
   ApiClient({
     http.Client? httpClient,
     String? baseUrl,
+    String? nexonApiKey,
   })  : baseUrl = normalizeBaseUrl(baseUrl ?? defaultApiBaseUrl),
+        nexonApiKey = nexonApiKey?.trim() ?? '',
         _httpClient = httpClient ?? http.Client();
 
   final http.Client _httpClient;
   final String baseUrl;
+  final String nexonApiKey;
 
   static String normalizeBaseUrl(String value) {
     final trimmed = value.trim();
@@ -27,6 +30,13 @@ class ApiClient {
     return uri != null &&
         (uri.scheme == 'http' || uri.scheme == 'https') &&
         uri.host.isNotEmpty;
+  }
+
+  Map<String, String>? get _nexonHeaders {
+    if (nexonApiKey.isEmpty) {
+      return null;
+    }
+    return {'X-Nexon-Api-Key': nexonApiKey};
   }
 
   Future<AppVersionInfo> fetchAppVersionInfo() async {
@@ -46,8 +56,10 @@ class ApiClient {
   }
 
   Future<List<NexonCharacterSummary>> fetchNexonCharacters() async {
-    final response =
-        await _httpClient.get(Uri.parse('$baseUrl/api/nexon/characters'));
+    final response = await _httpClient.get(
+      Uri.parse('$baseUrl/api/nexon/characters'),
+      headers: _nexonHeaders,
+    );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException('캐릭터 목록을 불러오지 못했습니다. (${response.statusCode})');
@@ -69,6 +81,7 @@ class ApiClient {
     try {
       final response = await _httpClient.get(
         Uri.parse('$baseUrl/api/nexon/characters/${character.ocid}/basic'),
+        headers: _nexonHeaders,
       );
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -93,7 +106,7 @@ class ApiClient {
     final uri = Uri.parse('$baseUrl/api/nexon/scheduler/$ocid').replace(
       queryParameters: forceRefresh ? const {'refresh': '1'} : null,
     );
-    final response = await _httpClient.get(uri);
+    final response = await _httpClient.get(uri, headers: _nexonHeaders);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException('스케쥴러 정보를 불러오지 못했습니다. (${response.statusCode})');

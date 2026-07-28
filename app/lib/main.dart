@@ -754,7 +754,10 @@ class _MapleAppShellState extends State<_MapleAppShell>
   void initState() {
     super.initState();
     appConfig = widget.startupData.appConfig;
-    apiClient = ApiClient(baseUrl: appConfig.apiBaseUrl);
+    apiClient = ApiClient(
+      baseUrl: appConfig.apiBaseUrl,
+      nexonApiKey: appConfig.nexonApiKey,
+    );
     noticeItems = widget.startupData.noticeItems;
     sundayEvent = widget.startupData.sundayEvent;
     LocalNotificationService.instance.setOnNotificationTap(
@@ -1533,7 +1536,10 @@ class _MapleAppShellState extends State<_MapleAppShell>
     }
     setState(() {
       appConfig = config;
-      apiClient = ApiClient(baseUrl: config.apiBaseUrl);
+      apiClient = ApiClient(
+        baseUrl: config.apiBaseUrl,
+        nexonApiKey: config.nexonApiKey,
+      );
     });
   }
 
@@ -2481,11 +2487,10 @@ class _NotificationSettingsButton extends StatelessWidget {
     final minuteController = TextEditingController(
       text: draft.reminderMinute.toString().padLeft(2, '0'),
     );
-    final apiBaseUrlController =
-        TextEditingController(text: configDraft.apiBaseUrl);
+    final nexonApiKeyController =
+        TextEditingController(text: configDraft.nexonApiKey);
     AppVersionInfo? updateInfo;
     String? updateMessage;
-    String? apiMessage;
     var checkingUpdate = false;
 
     await showDialog<void>(
@@ -2729,7 +2734,7 @@ class _NotificationSettingsButton extends StatelessWidget {
                     const Divider(height: 1),
                     const SizedBox(height: 14),
                     const Text(
-                      'API 설정',
+                      '넥슨 API',
                       style: TextStyle(
                         color: AppColors.text,
                         fontSize: 14,
@@ -2738,25 +2743,19 @@ class _NotificationSettingsButton extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     TextField(
-                      controller: apiBaseUrlController,
+                      controller: nexonApiKeyController,
                       enabled: !saving,
-                      decoration: InputDecoration(
-                        labelText: '서버 API 주소',
-                        hintText: defaultApiBaseUrl,
-                        helperText: apiMessage ?? '외부 배포 서버 주소를 입력합니다.',
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: '넥슨 OpenAPI 키',
+                        hintText: 'Nexon OpenAPI 키를 입력해주세요.',
+                        helperText: '캐릭터 목록과 스케줄러 조회에 사용합니다.',
                         helperMaxLines: 2,
-                        border: const OutlineInputBorder(),
-                        focusedBorder: const OutlineInputBorder(
+                        border: OutlineInputBorder(),
+                        focusedBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: AppColors.navAccent),
                         ),
                       ),
-                      onChanged: (_) {
-                        if (apiMessage != null) {
-                          setDialogState(() {
-                            apiMessage = null;
-                          });
-                        }
-                      },
                     ),
                     const SizedBox(height: 18),
                     const Divider(height: 1),
@@ -2801,20 +2800,8 @@ class _NotificationSettingsButton extends StatelessWidget {
                                       updateMessage = '최신 버전을 확인하고 있어요.';
                                     });
                                     try {
-                                      final baseUrl =
-                                          ApiClient.normalizeBaseUrl(
-                                        apiBaseUrlController.text,
-                                      );
-                                      if (!ApiClient.isValidBaseUrl(baseUrl)) {
-                                        setDialogState(() {
-                                          apiMessage =
-                                              'http:// 또는 https:// 주소로 입력해주세요.';
-                                          updateMessage = 'API 주소를 먼저 확인해주세요.';
-                                        });
-                                        return;
-                                      }
                                       final info = await ApiClient(
-                                        baseUrl: baseUrl,
+                                        baseUrl: configDraft.apiBaseUrl,
                                       ).fetchAppVersionInfo();
                                       final hasUpdate = _isNewerVersion(
                                         info.version,
@@ -2902,19 +2889,11 @@ class _NotificationSettingsButton extends StatelessWidget {
                             );
                             return;
                           }
-                          final baseUrl = ApiClient.normalizeBaseUrl(
-                            apiBaseUrlController.text,
-                          );
-                          if (!ApiClient.isValidBaseUrl(baseUrl)) {
-                            setDialogState(() {
-                              apiMessage = 'http:// 또는 https:// 주소로 입력해주세요.';
-                            });
-                            return;
-                          }
                           setDialogState(() {
                             saving = true;
-                            configDraft =
-                                configDraft.copyWith(apiBaseUrl: baseUrl);
+                            configDraft = configDraft.copyWith(
+                              nexonApiKey: nexonApiKeyController.text.trim(),
+                            );
                             draft = draft.copyWith(
                               reminderHour: normalized.hour,
                               reminderMinute: normalized.minute,
@@ -2949,7 +2928,7 @@ class _NotificationSettingsButton extends StatelessWidget {
     );
     hourController.dispose();
     minuteController.dispose();
-    apiBaseUrlController.dispose();
+    nexonApiKeyController.dispose();
   }
 
   String _formatTime(TimeOfDay time) {

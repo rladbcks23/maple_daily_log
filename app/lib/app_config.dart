@@ -4,18 +4,32 @@ import 'dart:io';
 import 'api_client.dart';
 
 class AppConfig {
-  const AppConfig({required this.apiBaseUrl});
+  const AppConfig({
+    required this.apiBaseUrl,
+    required this.nexonApiKey,
+  });
 
-  static const defaults = AppConfig(apiBaseUrl: defaultApiBaseUrl);
+  static const defaults = AppConfig(
+    apiBaseUrl: defaultApiBaseUrl,
+    nexonApiKey: '',
+  );
 
   final String apiBaseUrl;
+  final String nexonApiKey;
 
-  AppConfig copyWith({String? apiBaseUrl}) {
-    return AppConfig(apiBaseUrl: apiBaseUrl ?? this.apiBaseUrl);
+  AppConfig copyWith({
+    String? apiBaseUrl,
+    String? nexonApiKey,
+  }) {
+    return AppConfig(
+      apiBaseUrl: apiBaseUrl ?? this.apiBaseUrl,
+      nexonApiKey: nexonApiKey ?? this.nexonApiKey,
+    );
   }
 
   Map<String, dynamic> toJson() => {
         'apiBaseUrl': apiBaseUrl,
+        'nexonApiKey': nexonApiKey,
       };
 
   factory AppConfig.fromJson(Map<String, dynamic> json) {
@@ -24,6 +38,7 @@ class AppConfig {
       apiBaseUrl: ApiClient.isValidBaseUrl(rawBaseUrl)
           ? ApiClient.normalizeBaseUrl(rawBaseUrl)
           : defaultApiBaseUrl,
+      nexonApiKey: json['nexonApiKey']?.toString().trim() ?? '',
     );
   }
 }
