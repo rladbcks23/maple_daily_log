@@ -72,7 +72,7 @@ Future<void> _initializeDesktopLifecycleControls() async {
   await windowManager.setPreventClose(true);
   windowManager.addListener(_desktopLifecycleController!);
   trayManager.addListener(_desktopLifecycleController!);
-  await trayManager.setIcon('assets/images/app_icon.ico');
+  await _setTrayIcon();
   await trayManager.setToolTip('메이플 숙제알리미');
   await trayManager.setContextMenu(
     Menu(
@@ -83,6 +83,25 @@ Future<void> _initializeDesktopLifecycleControls() async {
       ],
     ),
   );
+}
+
+Future<void> _setTrayIcon() async {
+  final executableDirectory = File(
+    Platform.resolvedExecutable,
+  ).parent.path;
+  final installedAssetIcon = File(
+    '$executableDirectory${Platform.pathSeparator}data'
+    '${Platform.pathSeparator}flutter_assets'
+    '${Platform.pathSeparator}assets'
+    '${Platform.pathSeparator}images'
+    '${Platform.pathSeparator}app_icon.ico',
+  );
+  if (await installedAssetIcon.exists()) {
+    await trayManager.setIcon(installedAssetIcon.path);
+    return;
+  }
+
+  await trayManager.setIcon('assets/images/app_icon.ico');
 }
 
 Future<void> _hideMainWindowToTray() async {
@@ -1159,7 +1178,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   Future<void> initializeDesktopControls() async {
     await _lockCurrentWindowSize(_mainWindowSize);
     await windowManager.setPreventClose(true);
-    await trayManager.setIcon('assets/images/app_icon.ico');
+    await _setTrayIcon();
     await trayManager.setToolTip('메이플 숙제알리미');
     await trayManager.setContextMenu(
       Menu(
