@@ -2888,8 +2888,6 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const _SettingsSectionTitle('알림'),
-            const SizedBox(height: 12),
             const _SettingsSectionTitle('예약 알림 시간', small: true),
             const SizedBox(height: 8),
             OutlinedButton(
@@ -3425,16 +3423,23 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   }
 
   Future<void> _runDownloadedInstaller(File installer) async {
+    const installerArguments = [
+      '/VERYSILENT',
+      '/SUPPRESSMSGBOXES',
+      '/NORESTART',
+      '/CLOSEAPPLICATIONS',
+      '/RESTARTAPPLICATIONS',
+    ];
     try {
       await Process.start(
-        'explorer.exe',
-        [installer.path],
+        installer.path,
+        installerArguments,
         mode: ProcessStartMode.detached,
       );
     } on ProcessException {
       await Process.start(
         'cmd.exe',
-        ['/c', 'start', '', installer.path],
+        ['/c', 'start', '', installer.path, ...installerArguments],
         mode: ProcessStartMode.detached,
       );
     }
