@@ -3549,12 +3549,16 @@ class _SettingsPanelState extends State<_SettingsPanel> {
       '${script.parent.path}${Platform.pathSeparator}'
       'run_update_${DateTime.now().millisecondsSinceEpoch}.cmd',
     );
-    await launcher.writeAsString('''
-@echo off
-title MapleTaskReminder Update
-echo MapleTaskReminder update started.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${script.path}"
-''');
+    final lines = [
+      '@echo off',
+      'title MapleTaskReminder Update',
+      'echo MapleTaskReminder update started.',
+      'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${script.path}"',
+    ];
+    await launcher.writeAsString(
+      lines.join('\r\n'),
+      encoding: systemEncoding,
+    );
     return launcher;
   }
 
