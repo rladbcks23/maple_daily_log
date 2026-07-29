@@ -4135,6 +4135,7 @@ class _DashboardPanel extends StatelessWidget {
                         child: _CharacterProgressCard(
                           character: character,
                           snapshot: snapshots[character.ocid],
+                          partySchedules: partySchedules,
                           onOpenScheduler: () =>
                               onOpenCharacterScheduler(character),
                         ),
@@ -4315,11 +4316,13 @@ class _CharacterProgressCard extends StatelessWidget {
   const _CharacterProgressCard({
     required this.character,
     required this.snapshot,
+    required this.partySchedules,
     required this.onOpenScheduler,
   });
 
   final NexonCharacterSummary character;
   final SchedulerSnapshot? snapshot;
+  final List<PartySchedule> partySchedules;
   final VoidCallback onOpenScheduler;
 
   @override
@@ -4349,6 +4352,11 @@ class _CharacterProgressCard extends StatelessWidget {
     final weeklyBossLimit = snapshot!.weeklyBossClearLimit ?? 12;
     final completedDaily =
         snapshot!.dailyItems.where((item) => item.done).length;
+    final rewardSummary = _buildWeeklyRewardSummary(
+      character: character,
+      snapshot: snapshot!,
+      partySchedules: partySchedules,
+    );
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -4356,22 +4364,48 @@ class _CharacterProgressCard extends StatelessWidget {
       child: _DashboardCharacterHeader(
         character: character,
         onTap: onOpenScheduler,
-        child: Row(
+        child: Column(
           children: [
-            Expanded(
-              child: _CharacterMetric(
-                icon: Icons.shield_outlined,
-                label: '주간 보스',
-                value: '$completedBosses / $weeklyBossLimit',
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: _CharacterMetric(
+                    icon: Icons.shield_outlined,
+                    label: '주간 보스',
+                    value: '$completedBosses / $weeklyBossLimit',
+                  ),
+                ),
+                Container(width: 1, height: 42, color: AppColors.border),
+                Expanded(
+                  child: _CharacterMetric(
+                    icon: Icons.today_outlined,
+                    label: '일일 콘텐츠',
+                    value: '$completedDaily / ${snapshot!.dailyItems.length}',
+                  ),
+                ),
+              ],
             ),
-            Container(width: 1, height: 42, color: AppColors.border),
-            Expanded(
-              child: _CharacterMetric(
-                icon: Icons.today_outlined,
-                label: '일일 콘텐츠',
-                value: '$completedDaily / ${snapshot!.dailyItems.length}',
-              ),
+            const SizedBox(height: 18),
+            Container(height: 1, color: AppColors.border),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: _CharacterMetric(
+                    icon: Icons.monetization_on_outlined,
+                    label: '주간 결정석',
+                    value: _formatMesos(rewardSummary.crystalMesos),
+                  ),
+                ),
+                Container(width: 1, height: 42, color: AppColors.border),
+                Expanded(
+                  child: _CharacterMetric(
+                    icon: Icons.auto_awesome_outlined,
+                    label: '솔 에르다',
+                    value: _formatSolErdaEnergy(rewardSummary.solErdaEnergy),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -4476,6 +4510,121 @@ class _CharacterMetric extends StatelessWidget {
       ],
     );
   }
+}
+
+class _WeeklyRewardSummary {
+  const _WeeklyRewardSummary({
+    required this.crystalMesos,
+    required this.solErdaEnergy,
+  });
+
+  final int crystalMesos;
+  final int solErdaEnergy;
+}
+
+class _BossRewardInfo {
+  const _BossRewardInfo({
+    required this.crystalMesos,
+    required this.solErdaEnergy,
+  });
+
+  final int crystalMesos;
+  final int solErdaEnergy;
+}
+
+_WeeklyRewardSummary _buildWeeklyRewardSummary({
+  required NexonCharacterSummary character,
+  required SchedulerSnapshot snapshot,
+  required List<PartySchedule> partySchedules,
+}) {
+  var crystalMesos = 0;
+  var solErdaEnergy = 0;
+
+  for (final item in snapshot.bossItems.where(_isDashboardWeeklyBoss)) {
+    final reward = _bossRewardFor(item);
+    if (reward == null) {
+      continue;
+    }
+    final shareSize = _partyShareSizeFor(
+      character: character,
+      bossItem: item,
+      partySchedules: partySchedules,
+    );
+    crystalMesos += reward.crystalMesos ~/ shareSize;
+    solErdaEnergy += reward.solErdaEnergy ~/ shareSize;
+  }
+
+  return _WeeklyRewardSummary(
+    crystalMesos: crystalMesos,
+    solErdaEnergy: solErdaEnergy,
+  );
+}
+
+_BossRewardInfo? _bossRewardFor(SchedulerItemSummary item) {
+  return _bossRewards[_bossRewardKey(item.title, item.difficulty)];
+}
+
+int _partyShareSizeFor({
+  required NexonCharacterSummary character,
+  required SchedulerItemSummary bossItem,
+  required List<PartySchedule> partySchedules,
+}) {
+  PartySchedule? fallback;
+  for (final schedule in partySchedules) {
+    if (_bossRewardKey(schedule.bossName, schedule.difficulty) !=
+        _bossRewardKey(bossItem.title, bossItem.difficulty)) {
+      continue;
+    }
+    fallback ??= schedule;
+    if (schedule.members.any((member) =>
+        _normalizePartyBossValue(member) ==
+        _normalizePartyBossValue(character.characterName))) {
+      return math.max(1, schedule.members.length);
+    }
+  }
+  return math.max(1, fallback?.members.length ?? 1);
+}
+
+String _bossRewardKey(String bossName, String difficulty) {
+  return '${_normalizePartyBossValue(bossName)}#${_normalizeDifficulty(difficulty)}';
+}
+
+String _normalizeDifficulty(String value) {
+  final normalized = _normalizePartyBossValue(value);
+  return switch (normalized) {
+    '이지' => 'easy',
+    '노멀' || '노말' => 'normal',
+    '하드' => 'hard',
+    '카오스' => 'chaos',
+    '익스트림' => 'extreme',
+    _ => normalized,
+  };
+}
+
+String _formatMesos(int mesos) {
+  if (mesos <= 0) {
+    return '-';
+  }
+  final eok = mesos ~/ 100000000;
+  final man = (mesos % 100000000) ~/ 10000;
+  if (eok > 0 && man > 0) {
+    return '$eok억 $man만';
+  }
+  if (eok > 0) {
+    return '$eok억';
+  }
+  if (man > 0) {
+    return '$man만';
+  }
+  return mesos.toString();
+}
+
+String _formatSolErdaEnergy(int energy) {
+  if (energy <= 0) {
+    return '-';
+  }
+  final solErda = energy / 1000;
+  return '$energy기운 (${solErda.toStringAsFixed(2)}개)';
 }
 
 class _MonsterParkWorldUsage {
@@ -4952,6 +5101,119 @@ const _partyBossDifficultyOptions = <String, List<String>>{
   '카링': ['easy', 'normal', 'hard', 'extreme'],
   '림보': ['normal', 'hard'],
   '발드릭스': ['normal', 'hard'],
+};
+
+final _bossRewards = <String, _BossRewardInfo>{
+  _bossRewardKey('자쿰', 'normal'):
+      const _BossRewardInfo(crystalMesos: 612500, solErdaEnergy: 0),
+  _bossRewardKey('자쿰', 'chaos'):
+      const _BossRewardInfo(crystalMesos: 8080000, solErdaEnergy: 0),
+  _bossRewardKey('매그너스', 'easy'):
+      const _BossRewardInfo(crystalMesos: 722000, solErdaEnergy: 0),
+  _bossRewardKey('매그너스', 'normal'):
+      const _BossRewardInfo(crystalMesos: 2592000, solErdaEnergy: 0),
+  _bossRewardKey('매그너스', 'hard'):
+      const _BossRewardInfo(crystalMesos: 8560000, solErdaEnergy: 0),
+  _bossRewardKey('힐라', 'normal'):
+      const _BossRewardInfo(crystalMesos: 800000, solErdaEnergy: 0),
+  _bossRewardKey('힐라', 'hard'):
+      const _BossRewardInfo(crystalMesos: 11250000, solErdaEnergy: 0),
+  _bossRewardKey('카웅', 'normal'):
+      const _BossRewardInfo(crystalMesos: 1250000, solErdaEnergy: 0),
+  _bossRewardKey('파풀라투스', 'easy'):
+      const _BossRewardInfo(crystalMesos: 684500, solErdaEnergy: 0),
+  _bossRewardKey('파풀라투스', 'normal'):
+      const _BossRewardInfo(crystalMesos: 2664500, solErdaEnergy: 0),
+  _bossRewardKey('파풀라투스', 'chaos'):
+      const _BossRewardInfo(crystalMesos: 13800000, solErdaEnergy: 0),
+  _bossRewardKey('피에르', 'normal'):
+      const _BossRewardInfo(crystalMesos: 968000, solErdaEnergy: 0),
+  _bossRewardKey('피에르', 'chaos'):
+      const _BossRewardInfo(crystalMesos: 8170000, solErdaEnergy: 0),
+  _bossRewardKey('반반', 'normal'):
+      const _BossRewardInfo(crystalMesos: 968000, solErdaEnergy: 0),
+  _bossRewardKey('반반', 'chaos'):
+      const _BossRewardInfo(crystalMesos: 8150000, solErdaEnergy: 0),
+  _bossRewardKey('블러디퀸', 'normal'):
+      const _BossRewardInfo(crystalMesos: 968000, solErdaEnergy: 0),
+  _bossRewardKey('블러디퀸', 'chaos'):
+      const _BossRewardInfo(crystalMesos: 8140000, solErdaEnergy: 0),
+  _bossRewardKey('벨룸', 'normal'):
+      const _BossRewardInfo(crystalMesos: 968000, solErdaEnergy: 0),
+  _bossRewardKey('벨룸', 'chaos'):
+      const _BossRewardInfo(crystalMesos: 9280000, solErdaEnergy: 0),
+  _bossRewardKey('스우', 'normal'):
+      const _BossRewardInfo(crystalMesos: 17600000, solErdaEnergy: 0),
+  _bossRewardKey('스우', 'hard'):
+      const _BossRewardInfo(crystalMesos: 54200000, solErdaEnergy: 40),
+  _bossRewardKey('스우', 'extreme'):
+      const _BossRewardInfo(crystalMesos: 604000000, solErdaEnergy: 400),
+  _bossRewardKey('데미안', 'normal'):
+      const _BossRewardInfo(crystalMesos: 18400000, solErdaEnergy: 0),
+  _bossRewardKey('데미안', 'hard'):
+      const _BossRewardInfo(crystalMesos: 51500000, solErdaEnergy: 40),
+  _bossRewardKey('가디언 엔젤 슬라임', 'normal'):
+      const _BossRewardInfo(crystalMesos: 26800000, solErdaEnergy: 0),
+  _bossRewardKey('가디언 엔젤 슬라임', 'chaos'):
+      const _BossRewardInfo(crystalMesos: 79100000, solErdaEnergy: 60),
+  _bossRewardKey('루시드', 'easy'):
+      const _BossRewardInfo(crystalMesos: 31400000, solErdaEnergy: 0),
+  _bossRewardKey('루시드', 'normal'):
+      const _BossRewardInfo(crystalMesos: 37500000, solErdaEnergy: 40),
+  _bossRewardKey('루시드', 'hard'):
+      const _BossRewardInfo(crystalMesos: 66200000, solErdaEnergy: 70),
+  _bossRewardKey('윌', 'easy'):
+      const _BossRewardInfo(crystalMesos: 34000000, solErdaEnergy: 0),
+  _bossRewardKey('윌', 'normal'):
+      const _BossRewardInfo(crystalMesos: 43300000, solErdaEnergy: 50),
+  _bossRewardKey('윌', 'hard'):
+      const _BossRewardInfo(crystalMesos: 80800000, solErdaEnergy: 80),
+  _bossRewardKey('더스크', 'normal'):
+      const _BossRewardInfo(crystalMesos: 46300000, solErdaEnergy: 45),
+  _bossRewardKey('더스크', 'chaos'):
+      const _BossRewardInfo(crystalMesos: 73500000, solErdaEnergy: 90),
+  _bossRewardKey('진 힐라', 'normal'):
+      const _BossRewardInfo(crystalMesos: 74900000, solErdaEnergy: 50),
+  _bossRewardKey('진 힐라', 'hard'):
+      const _BossRewardInfo(crystalMesos: 112000000, solErdaEnergy: 100),
+  _bossRewardKey('듄켈', 'normal'):
+      const _BossRewardInfo(crystalMesos: 50000000, solErdaEnergy: 50),
+  _bossRewardKey('듄켈', 'hard'):
+      const _BossRewardInfo(crystalMesos: 99400000, solErdaEnergy: 90),
+  _bossRewardKey('검은 마법사', 'hard'):
+      const _BossRewardInfo(crystalMesos: 700000000, solErdaEnergy: 250),
+  _bossRewardKey('검은 마법사', 'extreme'):
+      const _BossRewardInfo(crystalMesos: 9200000000, solErdaEnergy: 1000),
+  _bossRewardKey('선택받은 세렌', 'normal'):
+      const _BossRewardInfo(crystalMesos: 266000000, solErdaEnergy: 120),
+  _bossRewardKey('선택받은 세렌', 'hard'):
+      const _BossRewardInfo(crystalMesos: 396000000, solErdaEnergy: 220),
+  _bossRewardKey('선택받은 세렌', 'extreme'):
+      const _BossRewardInfo(crystalMesos: 3150000000, solErdaEnergy: 600),
+  _bossRewardKey('감시자 칼로스', 'easy'):
+      const _BossRewardInfo(crystalMesos: 311000000, solErdaEnergy: 140),
+  _bossRewardKey('감시자 칼로스', 'normal'):
+      const _BossRewardInfo(crystalMesos: 561000000, solErdaEnergy: 240),
+  _bossRewardKey('감시자 칼로스', 'chaos'):
+      const _BossRewardInfo(crystalMesos: 1340000000, solErdaEnergy: 420),
+  _bossRewardKey('감시자 칼로스', 'extreme'):
+      const _BossRewardInfo(crystalMesos: 4320000000, solErdaEnergy: 650),
+  _bossRewardKey('카링', 'easy'):
+      const _BossRewardInfo(crystalMesos: 419000000, solErdaEnergy: 160),
+  _bossRewardKey('카링', 'normal'):
+      const _BossRewardInfo(crystalMesos: 714000000, solErdaEnergy: 260),
+  _bossRewardKey('카링', 'hard'):
+      const _BossRewardInfo(crystalMesos: 1830000000, solErdaEnergy: 500),
+  _bossRewardKey('카링', 'extreme'):
+      const _BossRewardInfo(crystalMesos: 5670000000, solErdaEnergy: 800),
+  _bossRewardKey('림보', 'normal'):
+      const _BossRewardInfo(crystalMesos: 1080000000, solErdaEnergy: 420),
+  _bossRewardKey('림보', 'hard'):
+      const _BossRewardInfo(crystalMesos: 2510000000, solErdaEnergy: 750),
+  _bossRewardKey('발드릭스', 'normal'):
+      const _BossRewardInfo(crystalMesos: 1440000000, solErdaEnergy: 500),
+  _bossRewardKey('발드릭스', 'hard'):
+      const _BossRewardInfo(crystalMesos: 3240000000, solErdaEnergy: 900),
 };
 
 int _comparePartySchedules(PartySchedule a, PartySchedule b) {
