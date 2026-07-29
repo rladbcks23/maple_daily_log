@@ -5249,22 +5249,22 @@ final _bossRewards = <String, _BossRewardInfo>{
   _bossRewardKey('시즌 보스 메이린', 'normal'): const _BossRewardInfo(
     crystalMesos: 10000000,
     solErdaEnergy: 0,
-    solErdaBoxLabel: '하급 상자',
+    solErdaBoxLabel: '하급 솔 에르다 조각 상자',
   ),
   _bossRewardKey('시즌 보스 메이린', 'hard'): const _BossRewardInfo(
     crystalMesos: 10000000,
     solErdaEnergy: 0,
-    solErdaBoxLabel: '상급 상자',
+    solErdaBoxLabel: '상급 솔 에르다 조각 상자',
   ),
   _bossRewardKey('메이린', 'normal'): const _BossRewardInfo(
     crystalMesos: 10000000,
     solErdaEnergy: 0,
-    solErdaBoxLabel: '하급 상자',
+    solErdaBoxLabel: '하급 솔 에르다 조각 상자',
   ),
   _bossRewardKey('메이린', 'hard'): const _BossRewardInfo(
     crystalMesos: 10000000,
     solErdaEnergy: 0,
-    solErdaBoxLabel: '상급 상자',
+    solErdaBoxLabel: '상급 솔 에르다 조각 상자',
   ),
 };
 
