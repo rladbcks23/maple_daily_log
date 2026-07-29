@@ -1,5 +1,5 @@
 #define MyAppName "메이플 숙제알리미"
-#define MyAppVersion "0.1.16"
+#define MyAppVersion "0.1.17"
 #define MyAppPublisher "rladbcks23"
 #define MyAppExeName "maple_task_reminder.exe"
 
