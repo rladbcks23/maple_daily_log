@@ -5105,27 +5105,27 @@ const _partyBossDifficultyOptions = <String, List<String>>{
 
 final _bossRewards = <String, _BossRewardInfo>{
   _bossRewardKey('자쿰', 'normal'):
-      const _BossRewardInfo(crystalMesos: 612500, solErdaEnergy: 0),
+      const _BossRewardInfo(crystalMesos: 354800, solErdaEnergy: 0),
   _bossRewardKey('자쿰', 'chaos'):
       const _BossRewardInfo(crystalMesos: 8080000, solErdaEnergy: 0),
   _bossRewardKey('매그너스', 'easy'):
-      const _BossRewardInfo(crystalMesos: 722000, solErdaEnergy: 0),
+      const _BossRewardInfo(crystalMesos: 418300, solErdaEnergy: 0),
   _bossRewardKey('매그너스', 'normal'):
-      const _BossRewardInfo(crystalMesos: 2592000, solErdaEnergy: 0),
+      const _BossRewardInfo(crystalMesos: 1160000, solErdaEnergy: 0),
   _bossRewardKey('매그너스', 'hard'):
       const _BossRewardInfo(crystalMesos: 8560000, solErdaEnergy: 0),
   _bossRewardKey('힐라', 'normal'):
-      const _BossRewardInfo(crystalMesos: 800000, solErdaEnergy: 0),
+      const _BossRewardInfo(crystalMesos: 463500, solErdaEnergy: 0),
   _bossRewardKey('힐라', 'hard'):
-      const _BossRewardInfo(crystalMesos: 11250000, solErdaEnergy: 0),
+      const _BossRewardInfo(crystalMesos: 1280000, solErdaEnergy: 0),
   _bossRewardKey('카웅', 'normal'):
       const _BossRewardInfo(crystalMesos: 1250000, solErdaEnergy: 0),
   _bossRewardKey('파풀라투스', 'easy'):
-      const _BossRewardInfo(crystalMesos: 684500, solErdaEnergy: 0),
+      const _BossRewardInfo(crystalMesos: 396500, solErdaEnergy: 0),
   _bossRewardKey('파풀라투스', 'normal'):
-      const _BossRewardInfo(crystalMesos: 2664500, solErdaEnergy: 0),
+      const _BossRewardInfo(crystalMesos: 1200000, solErdaEnergy: 0),
   _bossRewardKey('파풀라투스', 'chaos'):
-      const _BossRewardInfo(crystalMesos: 13800000, solErdaEnergy: 0),
+      const _BossRewardInfo(crystalMesos: 13100000, solErdaEnergy: 0),
   _bossRewardKey('피에르', 'normal'):
       const _BossRewardInfo(crystalMesos: 968000, solErdaEnergy: 0),
   _bossRewardKey('피에르', 'chaos'):
@@ -5143,77 +5143,77 @@ final _bossRewards = <String, _BossRewardInfo>{
   _bossRewardKey('벨룸', 'chaos'):
       const _BossRewardInfo(crystalMesos: 9280000, solErdaEnergy: 0),
   _bossRewardKey('스우', 'normal'):
-      const _BossRewardInfo(crystalMesos: 17600000, solErdaEnergy: 0),
+      const _BossRewardInfo(crystalMesos: 16700000, solErdaEnergy: 0),
   _bossRewardKey('스우', 'hard'):
-      const _BossRewardInfo(crystalMesos: 54200000, solErdaEnergy: 40),
-  _bossRewardKey('스우', 'extreme'):
-      const _BossRewardInfo(crystalMesos: 604000000, solErdaEnergy: 400),
-  _bossRewardKey('데미안', 'normal'):
-      const _BossRewardInfo(crystalMesos: 18400000, solErdaEnergy: 0),
-  _bossRewardKey('데미안', 'hard'):
       const _BossRewardInfo(crystalMesos: 51500000, solErdaEnergy: 40),
+  _bossRewardKey('스우', 'extreme'):
+      const _BossRewardInfo(crystalMesos: 574000000, solErdaEnergy: 400),
+  _bossRewardKey('데미안', 'normal'):
+      const _BossRewardInfo(crystalMesos: 17500000, solErdaEnergy: 0),
+  _bossRewardKey('데미안', 'hard'):
+      const _BossRewardInfo(crystalMesos: 48900000, solErdaEnergy: 40),
   _bossRewardKey('가디언 엔젤 슬라임', 'normal'):
-      const _BossRewardInfo(crystalMesos: 26800000, solErdaEnergy: 0),
+      const _BossRewardInfo(crystalMesos: 25500000, solErdaEnergy: 0),
   _bossRewardKey('가디언 엔젤 슬라임', 'chaos'):
-      const _BossRewardInfo(crystalMesos: 79100000, solErdaEnergy: 60),
+      const _BossRewardInfo(crystalMesos: 75100000, solErdaEnergy: 60),
   _bossRewardKey('루시드', 'easy'):
-      const _BossRewardInfo(crystalMesos: 31400000, solErdaEnergy: 0),
+      const _BossRewardInfo(crystalMesos: 29800000, solErdaEnergy: 0),
   _bossRewardKey('루시드', 'normal'):
-      const _BossRewardInfo(crystalMesos: 37500000, solErdaEnergy: 40),
+      const _BossRewardInfo(crystalMesos: 35600000, solErdaEnergy: 40),
   _bossRewardKey('루시드', 'hard'):
-      const _BossRewardInfo(crystalMesos: 66200000, solErdaEnergy: 70),
+      const _BossRewardInfo(crystalMesos: 62900000, solErdaEnergy: 70),
   _bossRewardKey('윌', 'easy'):
-      const _BossRewardInfo(crystalMesos: 34000000, solErdaEnergy: 0),
+      const _BossRewardInfo(crystalMesos: 32300000, solErdaEnergy: 0),
   _bossRewardKey('윌', 'normal'):
-      const _BossRewardInfo(crystalMesos: 43300000, solErdaEnergy: 50),
+      const _BossRewardInfo(crystalMesos: 41100000, solErdaEnergy: 50),
   _bossRewardKey('윌', 'hard'):
-      const _BossRewardInfo(crystalMesos: 80800000, solErdaEnergy: 80),
+      const _BossRewardInfo(crystalMesos: 77100000, solErdaEnergy: 80),
   _bossRewardKey('더스크', 'normal'):
-      const _BossRewardInfo(crystalMesos: 46300000, solErdaEnergy: 45),
+      const _BossRewardInfo(crystalMesos: 44000000, solErdaEnergy: 45),
   _bossRewardKey('더스크', 'chaos'):
-      const _BossRewardInfo(crystalMesos: 73500000, solErdaEnergy: 90),
+      const _BossRewardInfo(crystalMesos: 69800000, solErdaEnergy: 90),
   _bossRewardKey('진 힐라', 'normal'):
-      const _BossRewardInfo(crystalMesos: 74900000, solErdaEnergy: 50),
+      const _BossRewardInfo(crystalMesos: 71200000, solErdaEnergy: 50),
   _bossRewardKey('진 힐라', 'hard'):
-      const _BossRewardInfo(crystalMesos: 112000000, solErdaEnergy: 100),
+      const _BossRewardInfo(crystalMesos: 106000000, solErdaEnergy: 100),
   _bossRewardKey('듄켈', 'normal'):
-      const _BossRewardInfo(crystalMesos: 50000000, solErdaEnergy: 50),
+      const _BossRewardInfo(crystalMesos: 47500000, solErdaEnergy: 50),
   _bossRewardKey('듄켈', 'hard'):
-      const _BossRewardInfo(crystalMesos: 99400000, solErdaEnergy: 90),
+      const _BossRewardInfo(crystalMesos: 94400000, solErdaEnergy: 90),
   _bossRewardKey('검은 마법사', 'hard'):
-      const _BossRewardInfo(crystalMesos: 700000000, solErdaEnergy: 250),
+      const _BossRewardInfo(crystalMesos: 665000000, solErdaEnergy: 250),
   _bossRewardKey('검은 마법사', 'extreme'):
-      const _BossRewardInfo(crystalMesos: 9200000000, solErdaEnergy: 1000),
+      const _BossRewardInfo(crystalMesos: 8740000000, solErdaEnergy: 1000),
   _bossRewardKey('선택받은 세렌', 'normal'):
-      const _BossRewardInfo(crystalMesos: 266000000, solErdaEnergy: 120),
+      const _BossRewardInfo(crystalMesos: 239000000, solErdaEnergy: 120),
   _bossRewardKey('선택받은 세렌', 'hard'):
-      const _BossRewardInfo(crystalMesos: 396000000, solErdaEnergy: 220),
+      const _BossRewardInfo(crystalMesos: 356000000, solErdaEnergy: 220),
   _bossRewardKey('선택받은 세렌', 'extreme'):
-      const _BossRewardInfo(crystalMesos: 3150000000, solErdaEnergy: 600),
+      const _BossRewardInfo(crystalMesos: 2835000000, solErdaEnergy: 600),
   _bossRewardKey('감시자 칼로스', 'easy'):
-      const _BossRewardInfo(crystalMesos: 311000000, solErdaEnergy: 140),
+      const _BossRewardInfo(crystalMesos: 280000000, solErdaEnergy: 140),
   _bossRewardKey('감시자 칼로스', 'normal'):
-      const _BossRewardInfo(crystalMesos: 561000000, solErdaEnergy: 240),
+      const _BossRewardInfo(crystalMesos: 505000000, solErdaEnergy: 240),
   _bossRewardKey('감시자 칼로스', 'chaos'):
-      const _BossRewardInfo(crystalMesos: 1340000000, solErdaEnergy: 420),
+      const _BossRewardInfo(crystalMesos: 1273000000, solErdaEnergy: 420),
   _bossRewardKey('감시자 칼로스', 'extreme'):
-      const _BossRewardInfo(crystalMesos: 4320000000, solErdaEnergy: 650),
+      const _BossRewardInfo(crystalMesos: 4104000000, solErdaEnergy: 650),
   _bossRewardKey('카링', 'easy'):
-      const _BossRewardInfo(crystalMesos: 419000000, solErdaEnergy: 160),
+      const _BossRewardInfo(crystalMesos: 377000000, solErdaEnergy: 160),
   _bossRewardKey('카링', 'normal'):
-      const _BossRewardInfo(crystalMesos: 714000000, solErdaEnergy: 260),
+      const _BossRewardInfo(crystalMesos: 678000000, solErdaEnergy: 260),
   _bossRewardKey('카링', 'hard'):
-      const _BossRewardInfo(crystalMesos: 1830000000, solErdaEnergy: 500),
+      const _BossRewardInfo(crystalMesos: 1739000000, solErdaEnergy: 500),
   _bossRewardKey('카링', 'extreme'):
-      const _BossRewardInfo(crystalMesos: 5670000000, solErdaEnergy: 800),
+      const _BossRewardInfo(crystalMesos: 5387000000, solErdaEnergy: 800),
   _bossRewardKey('림보', 'normal'):
-      const _BossRewardInfo(crystalMesos: 1080000000, solErdaEnergy: 420),
+      const _BossRewardInfo(crystalMesos: 1026000000, solErdaEnergy: 420),
   _bossRewardKey('림보', 'hard'):
-      const _BossRewardInfo(crystalMesos: 2510000000, solErdaEnergy: 750),
+      const _BossRewardInfo(crystalMesos: 2385000000, solErdaEnergy: 750),
   _bossRewardKey('발드릭스', 'normal'):
-      const _BossRewardInfo(crystalMesos: 1440000000, solErdaEnergy: 500),
+      const _BossRewardInfo(crystalMesos: 1368000000, solErdaEnergy: 500),
   _bossRewardKey('발드릭스', 'hard'):
-      const _BossRewardInfo(crystalMesos: 3240000000, solErdaEnergy: 900),
+      const _BossRewardInfo(crystalMesos: 3078000000, solErdaEnergy: 900),
 };
 
 int _comparePartySchedules(PartySchedule a, PartySchedule b) {
