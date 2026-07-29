@@ -4393,7 +4393,7 @@ class _CharacterProgressCard extends StatelessWidget {
                 Expanded(
                   child: _CharacterMetric(
                     icon: Icons.monetization_on_outlined,
-                    label: '주간 결정석',
+                    label: '주간 메소',
                     value: _formatMesos(rewardSummary.crystalMesos),
                   ),
                 ),
@@ -4402,7 +4402,7 @@ class _CharacterProgressCard extends StatelessWidget {
                   child: _CharacterMetric(
                     icon: Icons.auto_awesome_outlined,
                     label: '솔 에르다',
-                    value: _formatSolErdaEnergy(rewardSummary.solErdaEnergy),
+                    value: _formatSolErdaReward(rewardSummary),
                   ),
                 ),
               ],
@@ -4516,20 +4516,24 @@ class _WeeklyRewardSummary {
   const _WeeklyRewardSummary({
     required this.crystalMesos,
     required this.solErdaEnergy,
+    required this.solErdaBoxLabels,
   });
 
   final int crystalMesos;
   final int solErdaEnergy;
+  final List<String> solErdaBoxLabels;
 }
 
 class _BossRewardInfo {
   const _BossRewardInfo({
     required this.crystalMesos,
     required this.solErdaEnergy,
+    this.solErdaBoxLabel = '',
   });
 
   final int crystalMesos;
   final int solErdaEnergy;
+  final String solErdaBoxLabel;
 }
 
 _WeeklyRewardSummary _buildWeeklyRewardSummary({
@@ -4539,6 +4543,7 @@ _WeeklyRewardSummary _buildWeeklyRewardSummary({
 }) {
   var crystalMesos = 0;
   var solErdaEnergy = 0;
+  final solErdaBoxLabels = <String>{};
 
   for (final item in snapshot.bossItems.where(_isDashboardWeeklyBoss)) {
     final reward = _bossRewardFor(item);
@@ -4552,11 +4557,15 @@ _WeeklyRewardSummary _buildWeeklyRewardSummary({
     );
     crystalMesos += reward.crystalMesos ~/ shareSize;
     solErdaEnergy += reward.solErdaEnergy ~/ shareSize;
+    if (reward.solErdaBoxLabel.isNotEmpty) {
+      solErdaBoxLabels.add(reward.solErdaBoxLabel);
+    }
   }
 
   return _WeeklyRewardSummary(
     crystalMesos: crystalMesos,
     solErdaEnergy: solErdaEnergy,
+    solErdaBoxLabels: solErdaBoxLabels.toList(),
   );
 }
 
@@ -4569,6 +4578,10 @@ int _partyShareSizeFor({
   required SchedulerItemSummary bossItem,
   required List<PartySchedule> partySchedules,
 }) {
+  if (_isSeasonBossReward(bossItem.title)) {
+    return 1;
+  }
+
   PartySchedule? fallback;
   for (final schedule in partySchedules) {
     if (_bossRewardKey(schedule.bossName, schedule.difficulty) !=
@@ -4624,6 +4637,23 @@ String _formatSolErdaEnergy(int energy) {
     return '-';
   }
   return '$energy기운';
+}
+
+String _formatSolErdaReward(_WeeklyRewardSummary summary) {
+  final parts = <String>[];
+  if (summary.solErdaEnergy > 0) {
+    parts.add(_formatSolErdaEnergy(summary.solErdaEnergy));
+  }
+  parts.addAll(summary.solErdaBoxLabels);
+  if (parts.isEmpty) {
+    return '-';
+  }
+  return parts.join(' + ');
+}
+
+bool _isSeasonBossReward(String title) {
+  final normalized = _normalizePartyBossValue(title);
+  return normalized.contains('시즌보스') || normalized.contains('메이린');
 }
 
 class _MonsterParkWorldUsage {
@@ -5216,6 +5246,26 @@ final _bossRewards = <String, _BossRewardInfo>{
       const _BossRewardInfo(crystalMesos: 1368000000, solErdaEnergy: 500),
   _bossRewardKey('발드릭스', 'hard'):
       const _BossRewardInfo(crystalMesos: 3078000000, solErdaEnergy: 900),
+  _bossRewardKey('시즌 보스 메이린', 'normal'): const _BossRewardInfo(
+    crystalMesos: 10000000,
+    solErdaEnergy: 0,
+    solErdaBoxLabel: '하급 상자',
+  ),
+  _bossRewardKey('시즌 보스 메이린', 'hard'): const _BossRewardInfo(
+    crystalMesos: 10000000,
+    solErdaEnergy: 0,
+    solErdaBoxLabel: '상급 상자',
+  ),
+  _bossRewardKey('메이린', 'normal'): const _BossRewardInfo(
+    crystalMesos: 10000000,
+    solErdaEnergy: 0,
+    solErdaBoxLabel: '하급 상자',
+  ),
+  _bossRewardKey('메이린', 'hard'): const _BossRewardInfo(
+    crystalMesos: 10000000,
+    solErdaEnergy: 0,
+    solErdaBoxLabel: '상급 상자',
+  ),
 };
 
 int _comparePartySchedules(PartySchedule a, PartySchedule b) {
