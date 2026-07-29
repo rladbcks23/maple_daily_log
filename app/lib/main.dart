@@ -3619,7 +3619,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
 \$logFile = ${_powerShellString(logFile.path)}
 \$pidToWait = $pid
 
-\$waitLimit = (Get-Date).AddSeconds(15)
+\$waitLimit = (Get-Date).AddSeconds(5)
 while (Get-Process -Id \$pidToWait -ErrorAction SilentlyContinue) {
   if ((Get-Date) -gt \$waitLimit) {
     Add-Content -LiteralPath \$logFile -Value 'Timed out while waiting for the app process to exit. Forcing process shutdown.'
