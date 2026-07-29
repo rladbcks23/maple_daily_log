@@ -1281,9 +1281,9 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
   @override
   void onTrayIconRightMouseDown() {
-    Timer(const Duration(milliseconds: 50), () {
+    Timer(const Duration(milliseconds: 30), () {
       unawaited(
-        trayManager.popUpContextMenu().catchError((_) {
+        showWindowFromTray().catchError((_) {
           return;
         }),
       );
