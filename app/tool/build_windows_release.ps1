@@ -10,7 +10,7 @@ $appRoot = Split-Path -Parent $PSScriptRoot
 $repositoryRoot = Split-Path -Parent $appRoot
 $releaseDirectory = Join-Path $appRoot "build\windows\x64\runner\Release"
 $distDirectory = Join-Path $repositoryRoot "dist"
-$version = "0.1.18"
+$version = "0.1.19"
 $zipPath = Join-Path $distDirectory "MapleTaskReminder-$version-windows-x64.zip"
 $installerScript = Join-Path $appRoot "installer\maple_task_reminder.iss"
 
