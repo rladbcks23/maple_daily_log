@@ -4770,13 +4770,14 @@ class _MonsterParkCharacterChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.selected,
+        color: AppColors.completionTag,
         borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.completionTagBorder),
       ),
       child: Text(
         characterName,
         style: const TextStyle(
-          color: AppColors.primary,
+          color: AppColors.completionTagText,
           fontSize: 12,
           fontWeight: FontWeight.w800,
         ),
