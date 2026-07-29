@@ -7811,15 +7811,21 @@ class _CharacterCard extends StatelessWidget {
                   ),
                   Positioned(
                     top: 6,
+                    right: 42,
+                    child: _CharacterNotificationBadge(
+                      enabled: notificationEnabled,
+                      onPressed: onToggleNotification,
+                    ),
+                  ),
+                  Positioned(
+                    top: 6,
                     right: 6,
                     child: _CharacterCardMenu(
                       canMoveBefore: canMoveBefore,
                       canMoveAfter: canMoveAfter,
-                      notificationEnabled: notificationEnabled,
                       onDelete: onDelete,
                       onMoveBefore: onMoveBefore,
                       onMoveAfter: onMoveAfter,
-                      onToggleNotification: onToggleNotification,
                     ),
                   ),
                 ],
@@ -7873,24 +7879,64 @@ class _CharacterCard extends StatelessWidget {
   }
 }
 
+class _CharacterNotificationBadge extends StatelessWidget {
+  const _CharacterNotificationBadge({
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: enabled ? '알림 켜짐' : '알림 꺼짐',
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(999),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(999),
+          child: Container(
+            width: 30,
+            height: 30,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xEBFFFFFF),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: enabled ? AppColors.navBorder : AppColors.border,
+              ),
+            ),
+            child: Icon(
+              enabled
+                  ? Icons.notifications_active_outlined
+                  : Icons.notifications_off_outlined,
+              color: enabled ? AppColors.navAccent : AppColors.muted,
+              size: 17,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CharacterCardMenu extends StatelessWidget {
   const _CharacterCardMenu({
     required this.canMoveBefore,
     required this.canMoveAfter,
-    required this.notificationEnabled,
     required this.onDelete,
     required this.onMoveBefore,
     required this.onMoveAfter,
-    required this.onToggleNotification,
   });
 
   final bool canMoveBefore;
   final bool canMoveAfter;
-  final bool notificationEnabled;
   final VoidCallback onDelete;
   final VoidCallback onMoveBefore;
   final VoidCallback onMoveAfter;
-  final VoidCallback onToggleNotification;
 
   @override
   Widget build(BuildContext context) {
@@ -7904,8 +7950,6 @@ class _CharacterCardMenu extends StatelessWidget {
           onMoveBefore();
         } else if (value == 'moveAfter') {
           onMoveAfter();
-        } else if (value == 'toggleNotification') {
-          onToggleNotification();
         } else if (value == 'delete') {
           onDelete();
         }
@@ -7920,10 +7964,6 @@ class _CharacterCardMenu extends StatelessWidget {
           value: 'moveAfter',
           enabled: canMoveAfter,
           child: const Text('뒤로 이동'),
-        ),
-        PopupMenuItem(
-          value: 'toggleNotification',
-          child: Text(notificationEnabled ? '알림 끄기' : '알림 켜기'),
         ),
         const PopupMenuDivider(),
         const PopupMenuItem(
