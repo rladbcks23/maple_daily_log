@@ -97,8 +97,8 @@ Future<void> _hideMainWindowToTray() async {
   _isHidingMainWindowToTray = true;
   try {
     await windowManager.setPreventClose(true);
-    await windowManager.setSkipTaskbar(true);
     await windowManager.hide();
+    await windowManager.setSkipTaskbar(true);
   } finally {
     _isHidingMainWindowToTray = false;
   }
@@ -110,20 +110,41 @@ Future<void> _showMainWindowFromTray() async {
   }
   _isShowingMainWindowFromTray = true;
   try {
-    await Future<void>.delayed(const Duration(milliseconds: 150));
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    try {
+      await _setTrayIcon();
+    } catch (error) {
+      debugPrint('Failed to refresh tray icon: $error');
+    }
     try {
       await windowManager.setPreventClose(true);
-    } catch (_) {}
+    } catch (error) {
+      debugPrint('Failed to keep prevent-close enabled: $error');
+    }
     try {
       await windowManager.setSkipTaskbar(false);
-    } catch (_) {}
+    } catch (error) {
+      debugPrint('Failed to restore taskbar visibility: $error');
+    }
+    try {
+      if (await windowManager.isMinimized()) {
+        await windowManager.restore();
+      }
+    } catch (error) {
+      debugPrint('Failed to restore minimized window: $error');
+    }
     try {
       await windowManager.show();
-    } catch (_) {}
+    } catch (error) {
+      debugPrint('Failed to show main window from tray: $error');
+    }
     try {
       await windowManager.focus();
-    } catch (_) {}
-  } catch (_) {
+    } catch (error) {
+      debugPrint('Failed to focus main window from tray: $error');
+    }
+  } catch (error) {
+    debugPrint('Failed to recover main window from tray: $error');
     // Keep the tray process alive even if Windows rejects a foreground request.
   } finally {
     _isShowingMainWindowFromTray = false;
@@ -1188,7 +1209,13 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
   @override
   void onTrayIconMouseDown() {
-    Timer(const Duration(milliseconds: 1), () {
+    // Restore the window on mouse-up instead. Restoring during mouse-down can
+    // race with the native tray event and leave the icon/window in a bad state.
+  }
+
+  @override
+  void onTrayIconMouseUp() {
+    Timer(const Duration(milliseconds: 30), () {
       unawaited(
         showWindowFromTray().catchError((_) {
           return;
