@@ -5227,19 +5227,19 @@ final _bossRewards = <String, _BossRewardInfo>{
       const _BossRewardInfo(crystalMesos: 3078000000, solErdaEnergy: 900),
   _bossRewardKey('시즌 보스 메이린', 'normal'): const _BossRewardInfo(
     crystalMesos: 300000000,
-    solErdaEnergy: 0,
+    solErdaEnergy: 400,
   ),
   _bossRewardKey('시즌 보스 메이린', 'hard'): const _BossRewardInfo(
     crystalMesos: 600000000,
-    solErdaEnergy: 0,
+    solErdaEnergy: 550,
   ),
   _bossRewardKey('메이린', 'normal'): const _BossRewardInfo(
     crystalMesos: 300000000,
-    solErdaEnergy: 0,
+    solErdaEnergy: 400,
   ),
   _bossRewardKey('메이린', 'hard'): const _BossRewardInfo(
     crystalMesos: 600000000,
-    solErdaEnergy: 0,
+    solErdaEnergy: 550,
   ),
 };
 
