@@ -4810,6 +4810,15 @@ class _SharedWeeklyContentUsage {
   final _SharedWeeklyContentRule rule;
   final List<String> characterNames;
   final List<String> completionDetails;
+
+  int get completedCount => _isEpicDungeonSharedRule(rule)
+      ? completionDetails.length
+      : characterNames.length;
+
+  bool get hasCompletions => completedCount > 0;
+
+  String get emptyLabel =>
+      _isEpicDungeonSharedRule(rule) ? '완료 던전 없음' : '완료 캐릭터 없음';
 }
 
 final _sharedWeeklyContentRules = <_SharedWeeklyContentRule>[
@@ -4836,7 +4845,7 @@ List<_SharedWeeklyContentUsage> _buildSharedWeeklyContentUsage(
       _SharedWeeklyContentUsage(
         rule: rule,
         characterNames: _completedCharacterNames(rule, characters, snapshots),
-        completionDetails: rule.title == '에픽 던전'
+        completionDetails: _isEpicDungeonSharedRule(rule)
             ? _epicDungeonCompletionDetails(rule, characters, snapshots)
             : const [],
       ),
@@ -4854,8 +4863,8 @@ List<String> _completedCharacterNames(
 ) {
   return [
     for (final character in characters)
-      if ((snapshots[character.ocid]?.weeklyItems ?? const [])
-          .any((item) => rule.matches(item) && item.done))
+      if ((snapshots[character.ocid]?.weeklyItems ?? const []).any((item) =>
+          rule.matches(item) && _isSharedWeeklyContentDone(rule, item)))
         character.characterName,
   ];
 }
@@ -4868,8 +4877,23 @@ List<String> _epicDungeonCompletionDetails(
   return <String>{
     for (final character in characters)
       for (final item in snapshots[character.ocid]?.weeklyItems ?? const [])
-        if (rule.matches(item) && item.done) item.title,
+        if (rule.matches(item) && _isSharedWeeklyContentDone(rule, item))
+          item.title,
   }.toList();
+}
+
+bool _isSharedWeeklyContentDone(
+  _SharedWeeklyContentRule rule,
+  SchedulerItemSummary item,
+) {
+  if (_isEpicDungeonSharedRule(rule)) {
+    return (item.currentCount ?? 0) >= 5;
+  }
+  return item.done;
+}
+
+bool _isEpicDungeonSharedRule(_SharedWeeklyContentRule rule) {
+  return rule.title.replaceAll(' ', '').contains('에픽던전');
 }
 
 class _SharedWeeklyContentSummary extends StatelessWidget {
@@ -4907,13 +4931,13 @@ class _SharedWeeklyContentSummary extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    item.characterNames.isEmpty
-                        ? '완료 캐릭터 없음'
-                        : '${item.characterNames.length} / ${item.rule.limit}',
+                    item.hasCompletions
+                        ? '${item.completedCount} / ${item.rule.limit}'
+                        : item.emptyLabel,
                     style: TextStyle(
-                      color: item.characterNames.isEmpty
-                          ? AppColors.muted
-                          : AppColors.navAccent,
+                      color: item.hasCompletions
+                          ? AppColors.navAccent
+                          : AppColors.muted,
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
                     ),
@@ -4921,7 +4945,7 @@ class _SharedWeeklyContentSummary extends StatelessWidget {
                 ],
               ),
             ),
-            if (item.characterNames.isNotEmpty)
+            if (item.hasCompletions)
               Padding(
                 padding: const EdgeInsets.fromLTRB(49, 0, 20, 15),
                 child: Align(
