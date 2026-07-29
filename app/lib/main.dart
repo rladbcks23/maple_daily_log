@@ -6623,7 +6623,7 @@ class _ReorderableCharacterGridState extends State<_ReorderableCharacterGrid> {
                       onDragCanceled: _clearPreview,
                       onPreviewMove: (draggedCharacter) => _previewMove(
                         draggedCharacter,
-                        widget.selectedCharacters.indexWhere(
+                        displayedCharacters.indexWhere(
                           (character) => _isSameCharacter(character, entry.$2),
                         ),
                       ),
