@@ -33,7 +33,6 @@ const _singleInstancePort = 48721;
 // Keep a reference to the bound socket so the single-instance lock stays alive.
 // ignore: unused_element
 ServerSocket? _singleInstanceSocket;
-_DesktopLifecycleController? _desktopLifecycleController;
 var _isExitingMainApplication = false;
 var _isHidingMainWindowToTray = false;
 
@@ -62,27 +61,13 @@ Future<void> main(List<String> args) async {
     return;
   }
 
-  await _initializeDesktopLifecycleControls();
+  await _prepareMainWindowControls();
   runApp(const MapleTaskReminderApp());
 }
 
-Future<void> _initializeDesktopLifecycleControls() async {
-  _desktopLifecycleController ??= _DesktopLifecycleController();
+Future<void> _prepareMainWindowControls() async {
   await _lockCurrentWindowSize(_mainWindowSize);
   await windowManager.setPreventClose(true);
-  windowManager.addListener(_desktopLifecycleController!);
-  trayManager.addListener(_desktopLifecycleController!);
-  await _setTrayIcon();
-  await trayManager.setToolTip('메이플 숙제알리미');
-  await trayManager.setContextMenu(
-    Menu(
-      items: [
-        MenuItem(key: 'show_window', label: '열기'),
-        MenuItem.separator(),
-        MenuItem(key: 'exit_app', label: '종료'),
-      ],
-    ),
-  );
 }
 
 Future<void> _setTrayIcon() async {
@@ -130,35 +115,6 @@ Future<void> _exitMainApplication() async {
   await trayManager.destroy();
   await windowManager.destroy();
   exit(0);
-}
-
-class _DesktopLifecycleController with WindowListener, TrayListener {
-  @override
-  void onWindowClose() {
-    unawaited(_hideMainWindowToTray());
-  }
-
-  @override
-  void onTrayIconMouseDown() {
-    unawaited(_showMainWindowFromTray());
-  }
-
-  @override
-  void onTrayIconRightMouseDown() {
-    unawaited(trayManager.popUpContextMenu());
-  }
-
-  @override
-  void onTrayMenuItemClick(MenuItem menuItem) {
-    switch (menuItem.key) {
-      case 'show_window':
-        unawaited(_showMainWindowFromTray());
-        break;
-      case 'exit_app':
-        unawaited(_exitMainApplication());
-        break;
-    }
-  }
 }
 
 Future<bool> _ensureSingleMainInstance() async {
@@ -1108,6 +1064,8 @@ class _MapleAppShellState extends State<_MapleAppShell>
   @override
   void initState() {
     super.initState();
+    windowManager.addListener(this);
+    trayManager.addListener(this);
     appConfig = widget.startupData.appConfig;
     apiClient = ApiClient(
       baseUrl: appConfig.apiBaseUrl,
@@ -1197,6 +1155,8 @@ class _MapleAppShellState extends State<_MapleAppShell>
     notificationTimer?.cancel();
     launcherMonitorTimer?.cancel();
     overlayAlertBatchTimer?.cancel();
+    windowManager.removeListener(this);
+    trayManager.removeListener(this);
     super.dispose();
   }
 
