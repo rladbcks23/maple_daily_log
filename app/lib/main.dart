@@ -1763,7 +1763,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     }
   }
 
-  void moveCharacter(NexonCharacterSummary character, int offset) {
+  void moveCharacterToIndex(NexonCharacterSummary character, int targetIndex) {
     final currentIndex = selectedCharacters.indexWhere(
       (selected) => _isSameCharacter(selected, character),
     );
@@ -1771,14 +1771,15 @@ class _MapleAppShellState extends State<_MapleAppShell>
       return;
     }
 
-    final targetIndex = currentIndex + offset;
-    if (targetIndex < 0 || targetIndex >= selectedCharacters.length) {
+    final normalizedTargetIndex =
+        targetIndex.clamp(0, selectedCharacters.length - 1);
+    if (currentIndex == normalizedTargetIndex) {
       return;
     }
 
     final nextCharacters = [...selectedCharacters];
     final movedCharacter = nextCharacters.removeAt(currentIndex);
-    nextCharacters.insert(targetIndex, movedCharacter);
+    nextCharacters.insert(normalizedTargetIndex, movedCharacter);
 
     setState(() {
       selectedCharacters = nextCharacters;
@@ -2479,7 +2480,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
                   onSelectCharacter: selectCharacter,
                   onOpenCharacterScheduler: openCharacterScheduler,
                   onDeleteCharacter: deleteCharacter,
-                  onMoveCharacter: moveCharacter,
+                  onMoveCharacter: moveCharacterToIndex,
                   notificationDisabledOcids: notificationDisabledOcids,
                   onToggleCharacterNotification: toggleCharacterNotification,
                   onSavePartySchedule: savePartySchedule,
@@ -2851,7 +2852,7 @@ class _MainPanel extends StatelessWidget {
   final ValueChanged<NexonCharacterSummary> onSelectCharacter;
   final ValueChanged<NexonCharacterSummary> onOpenCharacterScheduler;
   final ValueChanged<NexonCharacterSummary> onDeleteCharacter;
-  final void Function(NexonCharacterSummary character, int offset)
+  final void Function(NexonCharacterSummary character, int targetIndex)
       onMoveCharacter;
   final Set<String> notificationDisabledOcids;
   final ValueChanged<NexonCharacterSummary> onToggleCharacterNotification;
@@ -6409,7 +6410,7 @@ class _CharacterSelectPanel extends StatelessWidget {
   final VoidCallback onAddCharacter;
   final ValueChanged<NexonCharacterSummary> onSelectCharacter;
   final ValueChanged<NexonCharacterSummary> onDeleteCharacter;
-  final void Function(NexonCharacterSummary character, int offset)
+  final void Function(NexonCharacterSummary character, int targetIndex)
       onMoveCharacter;
   final Set<String> notificationDisabledOcids;
   final ValueChanged<NexonCharacterSummary> onToggleCharacterNotification;
@@ -6438,27 +6439,23 @@ class _CharacterSelectPanel extends StatelessWidget {
                     crossAxisSpacing: 18,
                     mainAxisSpacing: 18,
                     children: [
-                      for (final character in selectedCharacters)
-                        _CharacterCard(
-                          character: character,
+                      for (final entry in selectedCharacters.indexed)
+                        _DraggableCharacterCard(
+                          character: entry.$2,
                           selected: _isSameCharacter(
-                            character,
+                            entry.$2,
                             selectedCharacter,
                           ),
-                          canMoveBefore:
-                              selectedCharacters.indexOf(character) > 0,
-                          canMoveAfter: selectedCharacters.indexOf(character) <
-                              selectedCharacters.length - 1,
                           notificationEnabled:
                               !notificationDisabledOcids.contains(
-                            character.ocid,
+                            entry.$2.ocid,
                           ),
-                          onTap: () => onSelectCharacter(character),
-                          onDelete: () => onDeleteCharacter(character),
-                          onMoveBefore: () => onMoveCharacter(character, -1),
-                          onMoveAfter: () => onMoveCharacter(character, 1),
+                          onTap: () => onSelectCharacter(entry.$2),
+                          onDelete: () => onDeleteCharacter(entry.$2),
+                          onMoveToIndex: (draggedCharacter) =>
+                              onMoveCharacter(draggedCharacter, entry.$1),
                           onToggleNotification: () =>
-                              onToggleCharacterNotification(character),
+                              onToggleCharacterNotification(entry.$2),
                         ),
                       _AddCharacterCard(
                         loading: isLoading,
@@ -7757,29 +7754,87 @@ class _BlockedPanel extends StatelessWidget {
   }
 }
 
-class _CharacterCard extends StatelessWidget {
-  const _CharacterCard({
+class _DraggableCharacterCard extends StatelessWidget {
+  const _DraggableCharacterCard({
     required this.character,
     required this.selected,
-    required this.canMoveBefore,
-    required this.canMoveAfter,
     required this.notificationEnabled,
     required this.onTap,
     required this.onDelete,
-    required this.onMoveBefore,
-    required this.onMoveAfter,
+    required this.onMoveToIndex,
     required this.onToggleNotification,
   });
 
   final NexonCharacterSummary character;
   final bool selected;
-  final bool canMoveBefore;
-  final bool canMoveAfter;
   final bool notificationEnabled;
   final VoidCallback onTap;
   final VoidCallback onDelete;
-  final VoidCallback onMoveBefore;
-  final VoidCallback onMoveAfter;
+  final ValueChanged<NexonCharacterSummary> onMoveToIndex;
+  final VoidCallback onToggleNotification;
+
+  @override
+  Widget build(BuildContext context) {
+    final card = _CharacterCard(
+      character: character,
+      selected: selected,
+      notificationEnabled: notificationEnabled,
+      onTap: onTap,
+      onDelete: onDelete,
+      onToggleNotification: onToggleNotification,
+    );
+
+    return DragTarget<NexonCharacterSummary>(
+      onWillAcceptWithDetails: (details) =>
+          !_isSameCharacter(details.data, character),
+      onAcceptWithDetails: (details) => onMoveToIndex(details.data),
+      builder: (context, candidateData, rejectedData) {
+        final isHovering = candidateData.isNotEmpty;
+
+        return LongPressDraggable<NexonCharacterSummary>(
+          data: character,
+          feedback: Material(
+            color: Colors.transparent,
+            child: SizedBox(width: 190, height: 220, child: card),
+          ),
+          childWhenDragging: Opacity(opacity: 0.35, child: card),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: isHovering
+                  ? [
+                      BoxShadow(
+                        color: AppColors.navAccent.withValues(alpha: 0.2),
+                        blurRadius: 18,
+                        spreadRadius: 2,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: card,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CharacterCard extends StatelessWidget {
+  const _CharacterCard({
+    required this.character,
+    required this.selected,
+    required this.notificationEnabled,
+    required this.onTap,
+    required this.onDelete,
+    required this.onToggleNotification,
+  });
+
+  final NexonCharacterSummary character;
+  final bool selected;
+  final bool notificationEnabled;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
   final VoidCallback onToggleNotification;
 
   @override
@@ -7821,11 +7876,7 @@ class _CharacterCard extends StatelessWidget {
                     top: 6,
                     right: 6,
                     child: _CharacterCardMenu(
-                      canMoveBefore: canMoveBefore,
-                      canMoveAfter: canMoveAfter,
                       onDelete: onDelete,
-                      onMoveBefore: onMoveBefore,
-                      onMoveAfter: onMoveAfter,
                     ),
                   ),
                 ],
@@ -7925,18 +7976,10 @@ class _CharacterNotificationBadge extends StatelessWidget {
 
 class _CharacterCardMenu extends StatelessWidget {
   const _CharacterCardMenu({
-    required this.canMoveBefore,
-    required this.canMoveAfter,
     required this.onDelete,
-    required this.onMoveBefore,
-    required this.onMoveAfter,
   });
 
-  final bool canMoveBefore;
-  final bool canMoveAfter;
   final VoidCallback onDelete;
-  final VoidCallback onMoveBefore;
-  final VoidCallback onMoveAfter;
 
   @override
   Widget build(BuildContext context) {
@@ -7946,26 +7989,11 @@ class _CharacterCardMenu extends StatelessWidget {
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onSelected: (value) {
-        if (value == 'moveBefore') {
-          onMoveBefore();
-        } else if (value == 'moveAfter') {
-          onMoveAfter();
-        } else if (value == 'delete') {
+        if (value == 'delete') {
           onDelete();
         }
       },
       itemBuilder: (context) => [
-        PopupMenuItem(
-          value: 'moveBefore',
-          enabled: canMoveBefore,
-          child: const Text('앞으로 이동'),
-        ),
-        PopupMenuItem(
-          value: 'moveAfter',
-          enabled: canMoveAfter,
-          child: const Text('뒤로 이동'),
-        ),
-        const PopupMenuDivider(),
         const PopupMenuItem(
           value: 'delete',
           child: Text('삭제'),
