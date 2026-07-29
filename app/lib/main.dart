@@ -2856,6 +2856,7 @@ class _MainPanel extends StatelessWidget {
                 AppSection.dashboard => _DashboardPanel(
                     characters: selectedCharacters,
                     snapshots: dashboardSnapshots,
+                    partySchedules: partySchedules,
                     onOpenCharacterScheduler: onOpenCharacterScheduler,
                   ),
                 AppSection.character => _CharacterSelectPanel(
@@ -4029,11 +4030,13 @@ class _DashboardPanel extends StatelessWidget {
   const _DashboardPanel({
     required this.characters,
     required this.snapshots,
+    required this.partySchedules,
     required this.onOpenCharacterScheduler,
   });
 
   final List<NexonCharacterSummary> characters;
   final Map<String, SchedulerSnapshot> snapshots;
+  final List<PartySchedule> partySchedules;
   final ValueChanged<NexonCharacterSummary> onOpenCharacterScheduler;
 
   @override
