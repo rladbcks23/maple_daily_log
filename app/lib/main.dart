@@ -5069,7 +5069,10 @@ class _DashboardEmptyState extends StatelessWidget {
 
 bool _isDashboardWeeklyBoss(SchedulerItemSummary item) {
   final cycle = item.cycle.trim().toLowerCase();
-  return cycle == 'weekly' || cycle == 'week' || cycle == '주간';
+  return cycle == 'weekly' ||
+      cycle == 'week' ||
+      cycle == 'bossweekly' ||
+      cycle == '주간';
 }
 
 bool _isGuildSuroItem(SchedulerItemSummary item) {
