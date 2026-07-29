@@ -4402,7 +4402,7 @@ class _CharacterProgressCard extends StatelessWidget {
                   child: _CharacterMetric(
                     icon: Icons.auto_awesome_outlined,
                     label: '솔 에르다',
-                    value: _formatSolErdaReward(rewardSummary),
+                    value: _formatSolErdaEnergy(rewardSummary.solErdaEnergy),
                   ),
                 ),
               ],
@@ -4516,24 +4516,20 @@ class _WeeklyRewardSummary {
   const _WeeklyRewardSummary({
     required this.crystalMesos,
     required this.solErdaEnergy,
-    required this.solErdaBoxLabels,
   });
 
   final int crystalMesos;
   final int solErdaEnergy;
-  final List<String> solErdaBoxLabels;
 }
 
 class _BossRewardInfo {
   const _BossRewardInfo({
     required this.crystalMesos,
     required this.solErdaEnergy,
-    this.solErdaBoxLabel = '',
   });
 
   final int crystalMesos;
   final int solErdaEnergy;
-  final String solErdaBoxLabel;
 }
 
 _WeeklyRewardSummary _buildWeeklyRewardSummary({
@@ -4543,7 +4539,6 @@ _WeeklyRewardSummary _buildWeeklyRewardSummary({
 }) {
   var crystalMesos = 0;
   var solErdaEnergy = 0;
-  final solErdaBoxLabels = <String>{};
 
   for (final item in snapshot.bossItems.where(_isDashboardWeeklyBoss)) {
     final reward = _bossRewardFor(item);
@@ -4557,15 +4552,11 @@ _WeeklyRewardSummary _buildWeeklyRewardSummary({
     );
     crystalMesos += reward.crystalMesos ~/ shareSize;
     solErdaEnergy += reward.solErdaEnergy ~/ shareSize;
-    if (reward.solErdaBoxLabel.isNotEmpty) {
-      solErdaBoxLabels.add(reward.solErdaBoxLabel);
-    }
   }
 
   return _WeeklyRewardSummary(
     crystalMesos: crystalMesos,
     solErdaEnergy: solErdaEnergy,
-    solErdaBoxLabels: solErdaBoxLabels.toList(),
   );
 }
 
@@ -4637,18 +4628,6 @@ String _formatSolErdaEnergy(int energy) {
     return '-';
   }
   return '$energy기운';
-}
-
-String _formatSolErdaReward(_WeeklyRewardSummary summary) {
-  final parts = <String>[];
-  if (summary.solErdaEnergy > 0) {
-    parts.add(_formatSolErdaEnergy(summary.solErdaEnergy));
-  }
-  parts.addAll(summary.solErdaBoxLabels);
-  if (parts.isEmpty) {
-    return '-';
-  }
-  return parts.join(' + ');
 }
 
 bool _isSeasonBossReward(String title) {
@@ -5249,22 +5228,18 @@ final _bossRewards = <String, _BossRewardInfo>{
   _bossRewardKey('시즌 보스 메이린', 'normal'): const _BossRewardInfo(
     crystalMesos: 10000000,
     solErdaEnergy: 0,
-    solErdaBoxLabel: '하급 솔 에르다 조각 상자',
   ),
   _bossRewardKey('시즌 보스 메이린', 'hard'): const _BossRewardInfo(
     crystalMesos: 10000000,
     solErdaEnergy: 0,
-    solErdaBoxLabel: '상급 솔 에르다 조각 상자',
   ),
   _bossRewardKey('메이린', 'normal'): const _BossRewardInfo(
     crystalMesos: 10000000,
     solErdaEnergy: 0,
-    solErdaBoxLabel: '하급 솔 에르다 조각 상자',
   ),
   _bossRewardKey('메이린', 'hard'): const _BossRewardInfo(
     crystalMesos: 10000000,
     solErdaEnergy: 0,
-    solErdaBoxLabel: '상급 솔 에르다 조각 상자',
   ),
 };
 
