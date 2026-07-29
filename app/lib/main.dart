@@ -7815,9 +7815,11 @@ class _CharacterCard extends StatelessWidget {
                     child: _CharacterCardMenu(
                       canMoveBefore: canMoveBefore,
                       canMoveAfter: canMoveAfter,
+                      notificationEnabled: notificationEnabled,
                       onDelete: onDelete,
                       onMoveBefore: onMoveBefore,
                       onMoveAfter: onMoveAfter,
+                      onToggleNotification: onToggleNotification,
                     ),
                   ),
                 ],
@@ -7864,70 +7866,8 @@ class _CharacterCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: AppColors.muted, fontSize: 12),
             ),
-            const SizedBox(height: 8),
-            _CharacterNotificationToggle(
-              enabled: notificationEnabled,
-              onChanged: onToggleNotification,
-            ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _CharacterNotificationToggle extends StatelessWidget {
-  const _CharacterNotificationToggle({
-    required this.enabled,
-    required this.onChanged,
-  });
-
-  final bool enabled;
-  final VoidCallback onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: enabled ? const Color(0xFFFFF4EC) : AppColors.surface,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: enabled ? AppColors.navBorder : AppColors.border,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            enabled
-                ? Icons.notifications_active_outlined
-                : Icons.notifications_off_outlined,
-            size: 15,
-            color: enabled ? AppColors.navAccent : AppColors.muted,
-          ),
-          const SizedBox(width: 5),
-          Expanded(
-            child: Text(
-              enabled ? '알림 ON' : '알림 OFF',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: enabled ? AppColors.navAccent : AppColors.muted,
-                fontSize: 11,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          Transform.scale(
-            scale: 0.72,
-            child: Switch(
-              value: enabled,
-              activeThumbColor: AppColors.navAccent,
-              inactiveThumbColor: AppColors.muted,
-              onChanged: (_) => onChanged(),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -7937,16 +7877,20 @@ class _CharacterCardMenu extends StatelessWidget {
   const _CharacterCardMenu({
     required this.canMoveBefore,
     required this.canMoveAfter,
+    required this.notificationEnabled,
     required this.onDelete,
     required this.onMoveBefore,
     required this.onMoveAfter,
+    required this.onToggleNotification,
   });
 
   final bool canMoveBefore;
   final bool canMoveAfter;
+  final bool notificationEnabled;
   final VoidCallback onDelete;
   final VoidCallback onMoveBefore;
   final VoidCallback onMoveAfter;
+  final VoidCallback onToggleNotification;
 
   @override
   Widget build(BuildContext context) {
@@ -7960,6 +7904,8 @@ class _CharacterCardMenu extends StatelessWidget {
           onMoveBefore();
         } else if (value == 'moveAfter') {
           onMoveAfter();
+        } else if (value == 'toggleNotification') {
+          onToggleNotification();
         } else if (value == 'delete') {
           onDelete();
         }
@@ -7974,6 +7920,10 @@ class _CharacterCardMenu extends StatelessWidget {
           value: 'moveAfter',
           enabled: canMoveAfter,
           child: const Text('뒤로 이동'),
+        ),
+        PopupMenuItem(
+          value: 'toggleNotification',
+          child: Text(notificationEnabled ? '알림 끄기' : '알림 켜기'),
         ),
         const PopupMenuDivider(),
         const PopupMenuItem(
