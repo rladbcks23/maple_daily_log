@@ -104,13 +104,13 @@ Future<void> _hideMainWindowToTray() async {
 }
 
 Future<void> _showMainWindowFromTray() async {
-  await windowManager.setSkipTaskbar(false);
-  await windowManager.restore();
-  await windowManager.show();
-  await windowManager.focus();
-  await windowManager.setAlwaysOnTop(true);
-  await Future<void>.delayed(const Duration(milliseconds: 100));
-  await windowManager.setAlwaysOnTop(false);
+  try {
+    await windowManager.setSkipTaskbar(false);
+    await windowManager.show();
+    await windowManager.focus();
+  } catch (_) {
+    // Keep the tray process alive even if Windows rejects a foreground request.
+  }
 }
 
 Future<void> _exitMainApplication() async {
