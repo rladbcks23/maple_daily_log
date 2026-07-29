@@ -6558,6 +6558,19 @@ class _ReorderableCharacterGridState extends State<_ReorderableCharacterGrid> {
     widget.onMoveCharacter(draggedCharacter, targetIndex);
   }
 
+  void _finishDrag(NexonCharacterSummary draggedCharacter) {
+    final targetIndex = _previewTargetIndex;
+    final draggingCharacter = _draggingCharacter;
+    if (targetIndex == null ||
+        draggingCharacter == null ||
+        !_isSameCharacter(draggingCharacter, draggedCharacter)) {
+      _clearPreview();
+      return;
+    }
+
+    _commitMove(draggedCharacter, targetIndex);
+  }
+
   @override
   Widget build(BuildContext context) {
     const spacing = 18.0;
@@ -6606,14 +6619,9 @@ class _ReorderableCharacterGridState extends State<_ReorderableCharacterGrid> {
                           (character) => _isSameCharacter(character, entry.$2),
                         ),
                       ),
-                      onDragEnded: _clearPreview,
+                      onDragEnded: () => _finishDrag(entry.$2),
+                      onDragCanceled: _clearPreview,
                       onPreviewMove: (draggedCharacter) => _previewMove(
-                        draggedCharacter,
-                        widget.selectedCharacters.indexWhere(
-                          (character) => _isSameCharacter(character, entry.$2),
-                        ),
-                      ),
-                      onMoveToIndex: (draggedCharacter) => _commitMove(
                         draggedCharacter,
                         widget.selectedCharacters.indexWhere(
                           (character) => _isSameCharacter(character, entry.$2),
@@ -7969,8 +7977,8 @@ class _DraggableCharacterCard extends StatelessWidget {
     required this.onDelete,
     required this.onDragStarted,
     required this.onDragEnded,
+    required this.onDragCanceled,
     required this.onPreviewMove,
-    required this.onMoveToIndex,
     required this.onToggleNotification,
   });
 
@@ -7981,8 +7989,8 @@ class _DraggableCharacterCard extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback onDragStarted;
   final VoidCallback onDragEnded;
+  final VoidCallback onDragCanceled;
   final ValueChanged<NexonCharacterSummary> onPreviewMove;
-  final ValueChanged<NexonCharacterSummary> onMoveToIndex;
   final VoidCallback onToggleNotification;
 
   @override
@@ -8004,7 +8012,7 @@ class _DraggableCharacterCard extends StatelessWidget {
         onPreviewMove(details.data);
         return true;
       },
-      onAcceptWithDetails: (details) => onMoveToIndex(details.data),
+      onAcceptWithDetails: (_) {},
       builder: (context, candidateData, rejectedData) {
         final isHovering = candidateData.isNotEmpty;
 
@@ -8012,8 +8020,7 @@ class _DraggableCharacterCard extends StatelessWidget {
           data: character,
           onDragStarted: onDragStarted,
           onDragEnd: (_) => onDragEnded(),
-          onDraggableCanceled: (_, __) => onDragEnded(),
-          onDragCompleted: onDragEnded,
+          onDraggableCanceled: (_, __) => onDragCanceled(),
           feedback: Material(
             color: Colors.transparent,
             child: SizedBox(width: 190, height: 220, child: card),
