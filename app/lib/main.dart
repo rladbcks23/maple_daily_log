@@ -3532,19 +3532,26 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     File pendingInfoCandidate,
   ) async {
     final script = await _createUpdateScript(installer, pendingInfoCandidate);
+    final launcher = await _createUpdateLauncher(script);
     await Process.start(
-      'powershell.exe',
-      [
-        '-NoProfile',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-WindowStyle',
-        'Hidden',
-        '-File',
-        script.path,
-      ],
+      'cmd.exe',
+      ['/c', 'start', '', launcher.path],
       mode: ProcessStartMode.detached,
     );
+  }
+
+  Future<File> _createUpdateLauncher(File script) async {
+    final launcher = File(
+      '${script.parent.path}${Platform.pathSeparator}'
+      'run_update_${DateTime.now().millisecondsSinceEpoch}.cmd',
+    );
+    await launcher.writeAsString('''
+@echo off
+title MapleTaskReminder Update
+echo MapleTaskReminder update started.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "${script.path}"
+''');
+    return launcher;
   }
 
   Future<File> _createUpdateScript(
