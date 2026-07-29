@@ -6433,35 +6433,18 @@ class _CharacterSelectPanel extends StatelessWidget {
                 alignment: Alignment.topLeft,
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 960),
-                  child: GridView.count(
+                  child: _ReorderableCharacterGrid(
+                    selectedCharacter: selectedCharacter,
+                    selectedCharacters: selectedCharacters,
                     crossAxisCount: crossAxisCount,
-                    childAspectRatio: 0.9,
-                    crossAxisSpacing: 18,
-                    mainAxisSpacing: 18,
-                    children: [
-                      for (final entry in selectedCharacters.indexed)
-                        _DraggableCharacterCard(
-                          character: entry.$2,
-                          selected: _isSameCharacter(
-                            entry.$2,
-                            selectedCharacter,
-                          ),
-                          notificationEnabled:
-                              !notificationDisabledOcids.contains(
-                            entry.$2.ocid,
-                          ),
-                          onTap: () => onSelectCharacter(entry.$2),
-                          onDelete: () => onDeleteCharacter(entry.$2),
-                          onMoveToIndex: (draggedCharacter) =>
-                              onMoveCharacter(draggedCharacter, entry.$1),
-                          onToggleNotification: () =>
-                              onToggleCharacterNotification(entry.$2),
-                        ),
-                      _AddCharacterCard(
-                        loading: isLoading,
-                        onTap: isLoading ? null : onAddCharacter,
-                      ),
-                    ],
+                    isLoading: isLoading,
+                    notificationDisabledOcids: notificationDisabledOcids,
+                    onAddCharacter: onAddCharacter,
+                    onSelectCharacter: onSelectCharacter,
+                    onDeleteCharacter: onDeleteCharacter,
+                    onMoveCharacter: onMoveCharacter,
+                    onToggleCharacterNotification:
+                        onToggleCharacterNotification,
                   ),
                 ),
               ),
@@ -6469,6 +6452,229 @@ class _CharacterSelectPanel extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _ReorderableCharacterGrid extends StatefulWidget {
+  const _ReorderableCharacterGrid({
+    required this.selectedCharacter,
+    required this.selectedCharacters,
+    required this.crossAxisCount,
+    required this.isLoading,
+    required this.notificationDisabledOcids,
+    required this.onAddCharacter,
+    required this.onSelectCharacter,
+    required this.onDeleteCharacter,
+    required this.onMoveCharacter,
+    required this.onToggleCharacterNotification,
+  });
+
+  final NexonCharacterSummary? selectedCharacter;
+  final List<NexonCharacterSummary> selectedCharacters;
+  final int crossAxisCount;
+  final bool isLoading;
+  final Set<String> notificationDisabledOcids;
+  final VoidCallback onAddCharacter;
+  final ValueChanged<NexonCharacterSummary> onSelectCharacter;
+  final ValueChanged<NexonCharacterSummary> onDeleteCharacter;
+  final void Function(NexonCharacterSummary character, int targetIndex)
+      onMoveCharacter;
+  final ValueChanged<NexonCharacterSummary> onToggleCharacterNotification;
+
+  @override
+  State<_ReorderableCharacterGrid> createState() =>
+      _ReorderableCharacterGridState();
+}
+
+class _ReorderableCharacterGridState extends State<_ReorderableCharacterGrid> {
+  NexonCharacterSummary? _draggingCharacter;
+  int? _previewTargetIndex;
+
+  @override
+  void didUpdateWidget(covariant _ReorderableCharacterGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_draggingCharacter != null &&
+        !widget.selectedCharacters.any(
+          (character) => _isSameCharacter(character, _draggingCharacter),
+        )) {
+      _clearPreview();
+    }
+  }
+
+  List<NexonCharacterSummary> get _previewCharacters {
+    final draggingCharacter = _draggingCharacter;
+    final targetIndex = _previewTargetIndex;
+    if (draggingCharacter == null || targetIndex == null) {
+      return widget.selectedCharacters;
+    }
+
+    final sourceIndex = widget.selectedCharacters.indexWhere(
+      (character) => _isSameCharacter(character, draggingCharacter),
+    );
+    if (sourceIndex < 0) {
+      return widget.selectedCharacters;
+    }
+
+    final nextCharacters = [...widget.selectedCharacters];
+    final movedCharacter = nextCharacters.removeAt(sourceIndex);
+    final normalizedTargetIndex = targetIndex.clamp(0, nextCharacters.length);
+    nextCharacters.insert(normalizedTargetIndex, movedCharacter);
+    return nextCharacters;
+  }
+
+  void _previewMove(NexonCharacterSummary character, int targetIndex) {
+    if (!mounted || targetIndex < 0) {
+      return;
+    }
+    final draggingCharacter = _draggingCharacter;
+    if (draggingCharacter != null &&
+        _isSameCharacter(draggingCharacter, character) &&
+        _previewTargetIndex == targetIndex) {
+      return;
+    }
+    setState(() {
+      _draggingCharacter = character;
+      _previewTargetIndex = targetIndex;
+    });
+  }
+
+  void _clearPreview() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _draggingCharacter = null;
+      _previewTargetIndex = null;
+    });
+  }
+
+  void _commitMove(NexonCharacterSummary draggedCharacter, int targetIndex) {
+    if (targetIndex < 0) {
+      _clearPreview();
+      return;
+    }
+    _clearPreview();
+    widget.onMoveCharacter(draggedCharacter, targetIndex);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const spacing = 18.0;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final cardWidth = (width - spacing * (widget.crossAxisCount - 1)) /
+            widget.crossAxisCount;
+        final cardHeight = cardWidth / 0.9;
+        final displayedCharacters = _previewCharacters;
+        final itemCount = displayedCharacters.length + 1;
+        final rowCount = (itemCount / widget.crossAxisCount).ceil();
+        final totalHeight =
+            rowCount * cardHeight + (rowCount > 1 ? rowCount - 1 : 0) * spacing;
+
+        return SingleChildScrollView(
+          child: SizedBox(
+            height: totalHeight,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                for (final entry in displayedCharacters.indexed)
+                  _AnimatedCharacterGridItem(
+                    key: ValueKey('character-${entry.$2.ocid}'),
+                    index: entry.$1,
+                    crossAxisCount: widget.crossAxisCount,
+                    width: cardWidth,
+                    height: cardHeight,
+                    spacing: spacing,
+                    child: _DraggableCharacterCard(
+                      character: entry.$2,
+                      selected: _isSameCharacter(
+                        entry.$2,
+                        widget.selectedCharacter,
+                      ),
+                      notificationEnabled:
+                          !widget.notificationDisabledOcids.contains(
+                        entry.$2.ocid,
+                      ),
+                      onTap: () => widget.onSelectCharacter(entry.$2),
+                      onDelete: () => widget.onDeleteCharacter(entry.$2),
+                      onDragStarted: () => _previewMove(
+                        entry.$2,
+                        widget.selectedCharacters.indexWhere(
+                          (character) => _isSameCharacter(character, entry.$2),
+                        ),
+                      ),
+                      onDragEnded: _clearPreview,
+                      onPreviewMove: (draggedCharacter) => _previewMove(
+                        draggedCharacter,
+                        widget.selectedCharacters.indexWhere(
+                          (character) => _isSameCharacter(character, entry.$2),
+                        ),
+                      ),
+                      onMoveToIndex: (draggedCharacter) => _commitMove(
+                        draggedCharacter,
+                        widget.selectedCharacters.indexWhere(
+                          (character) => _isSameCharacter(character, entry.$2),
+                        ),
+                      ),
+                      onToggleNotification: () =>
+                          widget.onToggleCharacterNotification(entry.$2),
+                    ),
+                  ),
+                _AnimatedCharacterGridItem(
+                  key: const ValueKey('add-character-card'),
+                  index: displayedCharacters.length,
+                  crossAxisCount: widget.crossAxisCount,
+                  width: cardWidth,
+                  height: cardHeight,
+                  spacing: spacing,
+                  child: _AddCharacterCard(
+                    loading: widget.isLoading,
+                    onTap: widget.isLoading ? null : widget.onAddCharacter,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _AnimatedCharacterGridItem extends StatelessWidget {
+  const _AnimatedCharacterGridItem({
+    super.key,
+    required this.index,
+    required this.crossAxisCount,
+    required this.width,
+    required this.height,
+    required this.spacing,
+    required this.child,
+  });
+
+  final int index;
+  final int crossAxisCount;
+  final double width;
+  final double height;
+  final double spacing;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final row = index ~/ crossAxisCount;
+    final column = index % crossAxisCount;
+
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+      left: column * (width + spacing),
+      top: row * (height + spacing),
+      width: width,
+      height: height,
+      child: child,
     );
   }
 }
@@ -7761,6 +7967,9 @@ class _DraggableCharacterCard extends StatelessWidget {
     required this.notificationEnabled,
     required this.onTap,
     required this.onDelete,
+    required this.onDragStarted,
+    required this.onDragEnded,
+    required this.onPreviewMove,
     required this.onMoveToIndex,
     required this.onToggleNotification,
   });
@@ -7770,6 +7979,9 @@ class _DraggableCharacterCard extends StatelessWidget {
   final bool notificationEnabled;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final VoidCallback onDragStarted;
+  final VoidCallback onDragEnded;
+  final ValueChanged<NexonCharacterSummary> onPreviewMove;
   final ValueChanged<NexonCharacterSummary> onMoveToIndex;
   final VoidCallback onToggleNotification;
 
@@ -7785,14 +7997,23 @@ class _DraggableCharacterCard extends StatelessWidget {
     );
 
     return DragTarget<NexonCharacterSummary>(
-      onWillAcceptWithDetails: (details) =>
-          !_isSameCharacter(details.data, character),
+      onWillAcceptWithDetails: (details) {
+        if (_isSameCharacter(details.data, character)) {
+          return false;
+        }
+        onPreviewMove(details.data);
+        return true;
+      },
       onAcceptWithDetails: (details) => onMoveToIndex(details.data),
       builder: (context, candidateData, rejectedData) {
         final isHovering = candidateData.isNotEmpty;
 
         return LongPressDraggable<NexonCharacterSummary>(
           data: character,
+          onDragStarted: onDragStarted,
+          onDragEnd: (_) => onDragEnded(),
+          onDraggableCanceled: (_, __) => onDragEnded(),
+          onDragCompleted: onDragEnded,
           feedback: Material(
             color: Colors.transparent,
             child: SizedBox(width: 190, height: 220, child: card),
