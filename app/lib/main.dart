@@ -4393,7 +4393,7 @@ class _CharacterProgressCard extends StatelessWidget {
                 Expanded(
                   child: _CharacterMetric(
                     icon: Icons.monetization_on_outlined,
-                    label: '주간 메소',
+                    label: '주간 보스 수익',
                     value: _formatMesos(rewardSummary.crystalMesos),
                   ),
                 ),
@@ -4401,7 +4401,7 @@ class _CharacterProgressCard extends StatelessWidget {
                 Expanded(
                   child: _CharacterMetric(
                     icon: Icons.auto_awesome_outlined,
-                    label: '솔 에르다',
+                    label: '솔 에르다 기운',
                     value: _formatSolErdaEnergy(rewardSummary.solErdaEnergy),
                   ),
                 ),
