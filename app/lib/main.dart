@@ -1226,7 +1226,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
   @override
   void onTrayIconRightMouseDown() {
-    Timer(const Duration(milliseconds: 1), () {
+    Timer(const Duration(milliseconds: 50), () {
       unawaited(
         trayManager.popUpContextMenu().catchError((_) {
           return;
@@ -1239,11 +1239,13 @@ class _MapleAppShellState extends State<_MapleAppShell>
   void onTrayMenuItemClick(MenuItem menuItem) {
     switch (menuItem.key) {
       case 'show_window':
-        unawaited(
-          showWindowFromTray().catchError((_) {
-            return;
-          }),
-        );
+        Timer(const Duration(milliseconds: 180), () {
+          unawaited(
+            showWindowFromTray().catchError((_) {
+              return;
+            }),
+          );
+        });
         break;
       case 'exit_app':
         unawaited(
