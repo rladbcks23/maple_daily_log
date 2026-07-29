@@ -3572,29 +3572,11 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     File installer,
     File pendingInfoCandidate,
   ) async {
-    final script = await _createUpdateScript(installer, pendingInfoCandidate);
-    final powershell = File(
-      r'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe',
-    );
-    final powershellExecutable =
-        await powershell.exists() ? powershell.path : 'powershell.exe';
-    await Process.start(
-      powershellExecutable,
-      [
-        '-NoProfile',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-File',
-        script.path,
-      ],
-      mode: ProcessStartMode.detached,
-    );
-  }
+    final pendingInfoFile = await _pendingUpdateInfoFile();
+    if (await pendingInfoCandidate.exists()) {
+      await pendingInfoCandidate.copy(pendingInfoFile.path);
+    }
 
-  Future<File> _createUpdateScript(
-    File installer,
-    File pendingInfoCandidate,
-  ) async {
     final directory = Directory(
       '${Directory.systemTemp.path}${Platform.pathSeparator}'
       'MapleTaskReminderUpdates',
@@ -3602,71 +3584,23 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     if (!await directory.exists()) {
       await directory.create(recursive: true);
     }
+    final logPath =
+        '${directory.path}${Platform.pathSeparator}'
+        'installer_${DateTime.now().millisecondsSinceEpoch}.log';
 
-    final script = File(
-      '${directory.path}${Platform.pathSeparator}'
-      'run_update_${DateTime.now().millisecondsSinceEpoch}.ps1',
+    await Process.start(
+      installer.path,
+      [
+        '/VERYSILENT',
+        '/SUPPRESSMSGBOXES',
+        '/NORESTART',
+        '/CLOSEAPPLICATIONS',
+        '/RESTARTAPPLICATIONS',
+        '/SP-',
+        '/LOG=$logPath',
+      ],
+      mode: ProcessStartMode.detached,
     );
-    final currentExecutable = Platform.resolvedExecutable;
-    final pendingInfoFile = await _pendingUpdateInfoFile();
-    final logFile = File(
-      '${directory.path}${Platform.pathSeparator}'
-      'update_${DateTime.now().millisecondsSinceEpoch}.log',
-    );
-    await script.writeAsString('''
-\$ErrorActionPreference = 'SilentlyContinue'
-\$installer = ${_powerShellString(installer.path)}
-\$runner = ${_powerShellString(currentExecutable)}
-\$fallbackRunner = Join-Path \$env:LOCALAPPDATA 'Programs\\MapleTaskReminder\\maple_task_reminder.exe'
-\$pendingSource = ${_powerShellString(pendingInfoCandidate.path)}
-\$pendingTarget = ${_powerShellString(pendingInfoFile.path)}
-\$logFile = ${_powerShellString(logFile.path)}
-\$pidToWait = $pid
-
-\$waitLimit = (Get-Date).AddSeconds(5)
-while (Get-Process -Id \$pidToWait -ErrorAction SilentlyContinue) {
-  if ((Get-Date) -gt \$waitLimit) {
-    Add-Content -LiteralPath \$logFile -Value 'Timed out while waiting for the app process to exit. Forcing process shutdown.'
-    break
-  }
-  Start-Sleep -Seconds 1
-}
-
-Get-Process -Name 'maple_task_reminder' -ErrorAction SilentlyContinue |
-  Stop-Process -Force
-
-\$arguments = @(
-  '/VERYSILENT',
-  '/SUPPRESSMSGBOXES',
-  '/NORESTART',
-  '/CLOSEAPPLICATIONS',
-  '/RESTARTAPPLICATIONS',
-  '/SP-',
-  "/LOG=`"\$logFile`""
-)
-\$installerProcess = Start-Process -FilePath \$installer -ArgumentList \$arguments -Wait -PassThru -WindowStyle Hidden
-
-if (\$installerProcess.ExitCode -eq 0) {
-  if (Test-Path \$pendingSource) {
-    Move-Item -LiteralPath \$pendingSource -Destination \$pendingTarget -Force
-  }
-} else {
-  Add-Content -LiteralPath \$logFile -Value ('Installer failed with exit code ' + \$installerProcess.ExitCode + '.')
-}
-
-if (Test-Path \$runner) {
-  Start-Process -FilePath \$runner
-} elseif (Test-Path \$fallbackRunner) {
-  Start-Process -FilePath \$fallbackRunner
-}
-
-Remove-Item -LiteralPath \$MyInvocation.MyCommand.Path -Force
-''');
-    return script;
-  }
-
-  String _powerShellString(String value) {
-    return "'${value.replaceAll("'", "''")}'";
   }
 
   bool _isNewerVersion(String latestVersion, String currentVersion) {
