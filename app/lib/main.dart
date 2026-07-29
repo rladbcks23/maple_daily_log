@@ -2412,6 +2412,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
               _AppSidebar(
                 currentSection: currentSection,
                 selectedCharacter: selectedCharacter,
+                noticeItems: noticeItems,
                 onAddCharacter: () => selectSection(AppSection.character),
                 onSelectSection: selectSection,
               ),
@@ -2469,12 +2470,14 @@ class _AppSidebar extends StatelessWidget {
   const _AppSidebar({
     required this.currentSection,
     required this.selectedCharacter,
+    required this.noticeItems,
     required this.onAddCharacter,
     required this.onSelectSection,
   });
 
   final AppSection currentSection;
   final NexonCharacterSummary? selectedCharacter;
+  final List<NoticeItemSummary> noticeItems;
   final VoidCallback onAddCharacter;
   final ValueChanged<AppSection> onSelectSection;
 
@@ -2521,6 +2524,7 @@ class _AppSidebar extends StatelessWidget {
                     section != AppSection.settings) ...[
                   _SidebarNavItem(
                     section: section,
+                    label: _sectionLabel(section, noticeItems),
                     selected: currentSection == section,
                     enabled: hasCharacter || section == AppSection.party,
                     onPressed: () => onSelectSection(section),
@@ -2538,6 +2542,7 @@ class _AppSidebar extends StatelessWidget {
               ),
               _SidebarNavItem(
                 section: AppSection.settings,
+                label: _sectionLabel(AppSection.settings, noticeItems),
                 selected: currentSection == AppSection.settings,
                 enabled: true,
                 onPressed: () => onSelectSection(AppSection.settings),
@@ -2691,12 +2696,14 @@ class _SidebarCharacterButton extends StatelessWidget {
 class _SidebarNavItem extends StatelessWidget {
   const _SidebarNavItem({
     required this.section,
+    this.label,
     required this.selected,
     required this.enabled,
     required this.onPressed,
   });
 
   final AppSection section;
+  final String? label;
   final bool selected;
   final bool enabled;
   final VoidCallback onPressed;
@@ -2730,7 +2737,7 @@ class _SidebarNavItem extends StatelessWidget {
               ),
             ),
             child: Text(
-              section.label,
+              label ?? section.label,
               style: TextStyle(
                 color: color,
                 fontSize: 14,
@@ -2813,6 +2820,8 @@ class _MainPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sectionLabel = _sectionLabel(currentSection, noticeItems);
+
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(32, 26, 32, 32),
@@ -2822,7 +2831,7 @@ class _MainPanel extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  currentSection.label,
+                  sectionLabel,
                   style: const TextStyle(
                     color: AppColors.text,
                     fontSize: 25,
@@ -7321,6 +7330,13 @@ class _SundayContentPanel extends StatelessWidget {
       },
     );
   }
+}
+
+String _sectionLabel(AppSection section, List<NoticeItemSummary> noticeItems) {
+  if (section == AppSection.sunday) {
+    return _findSpecialSundayEvent(noticeItems) == null ? '지난 썬데이' : '이번주 썬데이';
+  }
+  return section.label;
 }
 
 NoticeItemSummary? _findSpecialSundayEvent(List<NoticeItemSummary> items) {
