@@ -35,6 +35,7 @@ const _singleInstancePort = 48721;
 ServerSocket? _singleInstanceSocket;
 var _isExitingMainApplication = false;
 var _isHidingMainWindowToTray = false;
+var _isShowingMainWindowFromTray = false;
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -104,12 +105,28 @@ Future<void> _hideMainWindowToTray() async {
 }
 
 Future<void> _showMainWindowFromTray() async {
+  if (_isExitingMainApplication || _isShowingMainWindowFromTray) {
+    return;
+  }
+  _isShowingMainWindowFromTray = true;
   try {
-    await windowManager.setSkipTaskbar(false);
-    await windowManager.show();
-    await windowManager.focus();
+    await Future<void>.delayed(const Duration(milliseconds: 150));
+    try {
+      await windowManager.setPreventClose(true);
+    } catch (_) {}
+    try {
+      await windowManager.setSkipTaskbar(false);
+    } catch (_) {}
+    try {
+      await windowManager.show();
+    } catch (_) {}
+    try {
+      await windowManager.focus();
+    } catch (_) {}
   } catch (_) {
     // Keep the tray process alive even if Windows rejects a foreground request.
+  } finally {
+    _isShowingMainWindowFromTray = false;
   }
 }
 
@@ -1171,22 +1188,42 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
   @override
   void onTrayIconMouseDown() {
-    unawaited(showWindowFromTray());
+    Timer(const Duration(milliseconds: 1), () {
+      unawaited(
+        showWindowFromTray().catchError((_) {
+          return;
+        }),
+      );
+    });
   }
 
   @override
   void onTrayIconRightMouseDown() {
-    unawaited(trayManager.popUpContextMenu());
+    Timer(const Duration(milliseconds: 1), () {
+      unawaited(
+        trayManager.popUpContextMenu().catchError((_) {
+          return;
+        }),
+      );
+    });
   }
 
   @override
   void onTrayMenuItemClick(MenuItem menuItem) {
     switch (menuItem.key) {
       case 'show_window':
-        unawaited(showWindowFromTray());
+        unawaited(
+          showWindowFromTray().catchError((_) {
+            return;
+          }),
+        );
         break;
       case 'exit_app':
-        unawaited(exitApplication());
+        unawaited(
+          exitApplication().catchError((_) {
+            return;
+          }),
+        );
         break;
     }
   }
