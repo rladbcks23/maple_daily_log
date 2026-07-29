@@ -29,10 +29,13 @@ const _mapleProcessNames = {
   'nexonlauncher.exe',
 };
 const _singleInstancePort = 48721;
+const _showMainWindowArgument = '--show-main-window';
+const _singleInstanceShowCommand = 'show';
 
 // Keep a reference to the bound socket so the single-instance lock stays alive.
 // ignore: unused_element
 ServerSocket? _singleInstanceSocket;
+final _mainWindowShowRequests = StreamController<void>.broadcast();
 var _isExitingMainApplication = false;
 var _isHidingMainWindowToTray = false;
 var _isShowingMainWindowFromTray = false;
@@ -166,9 +169,56 @@ Future<bool> _ensureSingleMainInstance() async {
       _singleInstancePort,
       shared: false,
     );
+    _listenForSingleInstanceSignals(_singleInstanceSocket!);
     return true;
   } on SocketException {
+    await _notifyExistingMainInstance(_singleInstanceShowCommand);
     return false;
+  }
+}
+
+void _listenForSingleInstanceSignals(ServerSocket serverSocket) {
+  serverSocket.listen((client) {
+    unawaited(() async {
+      try {
+        final command = (await utf8.decoder.bind(client).join()).trim();
+        if (command == _singleInstanceShowCommand) {
+          _mainWindowShowRequests.add(null);
+        }
+      } catch (error) {
+        debugPrint('Failed to process single-instance signal: $error');
+      } finally {
+        await client.close();
+      }
+    }());
+  });
+}
+
+Future<void> _notifyExistingMainInstance(String command) async {
+  try {
+    final socket = await Socket.connect(
+      InternetAddress.loopbackIPv4,
+      _singleInstancePort,
+      timeout: const Duration(milliseconds: 800),
+    );
+    socket.write(command);
+    await socket.flush();
+    await socket.close();
+  } catch (error) {
+    debugPrint('Failed to notify existing main instance: $error');
+  }
+}
+
+Future<void> _requestMainWindowFromDetachedProcess() async {
+  try {
+    await Process.start(
+      Platform.resolvedExecutable,
+      [_showMainWindowArgument],
+      mode: ProcessStartMode.detached,
+    );
+  } catch (error) {
+    debugPrint('Failed to request main window through detached process: $error');
+    await _notifyExistingMainInstance(_singleInstanceShowCommand);
   }
 }
 
@@ -1071,6 +1121,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   Timer? notificationTimer;
   Timer? launcherMonitorTimer;
   Timer? overlayAlertBatchTimer;
+  StreamSubscription<void>? mainWindowShowRequestSubscription;
   var isCheckingScheduledNotifications = false;
   var isCheckingNoticeNotifications = false;
   var isCheckingLauncherProcess = false;
@@ -1108,6 +1159,9 @@ class _MapleAppShellState extends State<_MapleAppShell>
     super.initState();
     windowManager.addListener(this);
     trayManager.addListener(this);
+    mainWindowShowRequestSubscription = _mainWindowShowRequests.stream.listen(
+      (_) => unawaited(showWindowFromTray()),
+    );
     appConfig = widget.startupData.appConfig;
     apiClient = ApiClient(
       baseUrl: appConfig.apiBaseUrl,
@@ -1197,6 +1251,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     notificationTimer?.cancel();
     launcherMonitorTimer?.cancel();
     overlayAlertBatchTimer?.cancel();
+    mainWindowShowRequestSubscription?.cancel();
     windowManager.removeListener(this);
     trayManager.removeListener(this);
     super.dispose();
@@ -1240,11 +1295,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     switch (menuItem.key) {
       case 'show_window':
         Timer(const Duration(milliseconds: 180), () {
-          unawaited(
-            showWindowFromTray().catchError((_) {
-              return;
-            }),
-          );
+          unawaited(_requestMainWindowFromDetachedProcess());
         });
         break;
       case 'exit_app':
