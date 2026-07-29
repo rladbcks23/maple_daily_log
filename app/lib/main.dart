@@ -4623,8 +4623,7 @@ String _formatSolErdaEnergy(int energy) {
   if (energy <= 0) {
     return '-';
   }
-  final solErda = energy / 1000;
-  return '$energy기운 (${solErda.toStringAsFixed(2)}개)';
+  return '$energy기운';
 }
 
 class _MonsterParkWorldUsage {
