@@ -7,10 +7,12 @@ class CharacterCacheData {
   const CharacterCacheData({
     required this.characters,
     required this.selectedOcid,
+    required this.notificationDisabledOcids,
   });
 
   final List<NexonCharacterSummary> characters;
   final String selectedOcid;
+  final Set<String> notificationDisabledOcids;
 }
 
 class CharacterCache {
@@ -49,6 +51,8 @@ class CharacterCache {
       return CharacterCacheData(
         characters: characters,
         selectedOcid: decoded['selectedOcid'] as String? ?? '',
+        notificationDisabledOcids:
+            _readStringSet(decoded['notificationDisabledOcids']),
       );
     } on FileSystemException {
       return null;
@@ -69,6 +73,7 @@ class CharacterCache {
   Future<void> save(
     List<NexonCharacterSummary> characters,
     NexonCharacterSummary? selectedCharacter,
+    Set<String> notificationDisabledOcids,
   ) async {
     final file = await _cacheFile;
     await file.writeAsString(
@@ -76,7 +81,18 @@ class CharacterCache {
         'characters':
             characters.map((character) => character.toCacheJson()).toList(),
         'selectedOcid': selectedCharacter?.ocid ?? '',
+        'notificationDisabledOcids': notificationDisabledOcids.toList(),
       }),
     );
+  }
+
+  Set<String> _readStringSet(dynamic value) {
+    if (value is! List) {
+      return {};
+    }
+    return value
+        .whereType<String>()
+        .where((item) => item.trim().isNotEmpty)
+        .toSet();
   }
 }

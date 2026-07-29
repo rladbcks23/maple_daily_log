@@ -1092,6 +1092,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   String? noticeErrorMessage;
   NexonCharacterSummary? selectedCharacter;
   List<NexonCharacterSummary> selectedCharacters = const [];
+  Set<String> notificationDisabledOcids = {};
   SchedulerSnapshot? schedulerSnapshot;
   Map<String, SchedulerSnapshot> dashboardSnapshots = const {};
   List<NoticeItemSummary> noticeItems = const [];
@@ -1478,6 +1479,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     setState(() {
       selectedCharacters = cachedData.characters;
       selectedCharacter = selected;
+      notificationDisabledOcids = cachedData.notificationDisabledOcids;
     });
     unawaited(loadDashboardSnapshots());
     unawaited(loadScheduler(selected));
@@ -1487,7 +1489,17 @@ class _MapleAppShellState extends State<_MapleAppShell>
   }
 
   void persistCharacters() {
-    unawaited(characterCache.save(selectedCharacters, selectedCharacter));
+    final selectedOcids =
+        selectedCharacters.map((character) => character.ocid).toSet();
+    notificationDisabledOcids =
+        notificationDisabledOcids.intersection(selectedOcids);
+    unawaited(
+      characterCache.save(
+        selectedCharacters,
+        selectedCharacter,
+        notificationDisabledOcids,
+      ),
+    );
   }
 
   Future<void> refreshCharacterListCache() async {
@@ -1731,6 +1743,8 @@ class _MapleAppShellState extends State<_MapleAppShell>
       dashboardSnapshots = Map<String, SchedulerSnapshot>.from(
         dashboardSnapshots,
       )..remove(character.ocid);
+      notificationDisabledOcids = {...notificationDisabledOcids}
+        ..remove(character.ocid);
       if (deletesSelected) {
         nextSelectedCharacter =
             selectedCharacters.isEmpty ? null : selectedCharacters.first;
@@ -1768,6 +1782,19 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
     setState(() {
       selectedCharacters = nextCharacters;
+    });
+    persistCharacters();
+  }
+
+  void toggleCharacterNotification(NexonCharacterSummary character) {
+    setState(() {
+      final nextDisabledOcids = {...notificationDisabledOcids};
+      if (nextDisabledOcids.contains(character.ocid)) {
+        nextDisabledOcids.remove(character.ocid);
+      } else {
+        nextDisabledOcids.add(character.ocid);
+      }
+      notificationDisabledOcids = nextDisabledOcids;
     });
     persistCharacters();
   }
@@ -2215,7 +2242,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     }
 
     final missingCharacters = <NexonCharacterSummary>[];
-    for (final character in selectedCharacters) {
+    for (final character in notificationTargetCharacters) {
       try {
         final snapshot = await apiClient.fetchScheduler(character.ocid);
         if (!snapshot.hasDailyItems) {
@@ -2245,7 +2272,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
     }
 
     final incompleteCharacters = <NexonCharacterSummary>[];
-    for (final character in selectedCharacters) {
+    for (final character in notificationTargetCharacters) {
       try {
         final snapshot = await apiClient.fetchScheduler(character.ocid);
         final cachedSnapshot = await schedulerCache.load(character.ocid);
@@ -2275,6 +2302,13 @@ class _MapleAppShellState extends State<_MapleAppShell>
       payload: 'section:scheduler',
     );
     await notificationHistory.markSent(ruleKey);
+  }
+
+  List<NexonCharacterSummary> get notificationTargetCharacters {
+    return selectedCharacters
+        .where(
+            (character) => !notificationDisabledOcids.contains(character.ocid))
+        .toList();
   }
 
   bool _isWeeklyBoss(SchedulerItemSummary item) {
@@ -2446,6 +2480,8 @@ class _MapleAppShellState extends State<_MapleAppShell>
                   onOpenCharacterScheduler: openCharacterScheduler,
                   onDeleteCharacter: deleteCharacter,
                   onMoveCharacter: moveCharacter,
+                  notificationDisabledOcids: notificationDisabledOcids,
+                  onToggleCharacterNotification: toggleCharacterNotification,
                   onSavePartySchedule: savePartySchedule,
                   onDeletePartySchedule: deletePartySchedule,
                 ),
@@ -2781,6 +2817,8 @@ class _MainPanel extends StatelessWidget {
     required this.onOpenCharacterScheduler,
     required this.onDeleteCharacter,
     required this.onMoveCharacter,
+    required this.notificationDisabledOcids,
+    required this.onToggleCharacterNotification,
     required this.onSavePartySchedule,
     required this.onDeletePartySchedule,
   });
@@ -2815,6 +2853,8 @@ class _MainPanel extends StatelessWidget {
   final ValueChanged<NexonCharacterSummary> onDeleteCharacter;
   final void Function(NexonCharacterSummary character, int offset)
       onMoveCharacter;
+  final Set<String> notificationDisabledOcids;
+  final ValueChanged<NexonCharacterSummary> onToggleCharacterNotification;
   final Future<void> Function(PartySchedule schedule) onSavePartySchedule;
   final Future<void> Function(PartySchedule schedule) onDeletePartySchedule;
 
@@ -2877,6 +2917,9 @@ class _MainPanel extends StatelessWidget {
                     onSelectCharacter: onSelectCharacter,
                     onDeleteCharacter: onDeleteCharacter,
                     onMoveCharacter: onMoveCharacter,
+                    notificationDisabledOcids: notificationDisabledOcids,
+                    onToggleCharacterNotification:
+                        onToggleCharacterNotification,
                   ),
                 AppSection.party => _PartySchedulePanel(
                     schedules: partySchedules,
@@ -6355,6 +6398,8 @@ class _CharacterSelectPanel extends StatelessWidget {
     required this.onSelectCharacter,
     required this.onDeleteCharacter,
     required this.onMoveCharacter,
+    required this.notificationDisabledOcids,
+    required this.onToggleCharacterNotification,
   });
 
   final NexonCharacterSummary? selectedCharacter;
@@ -6366,6 +6411,8 @@ class _CharacterSelectPanel extends StatelessWidget {
   final ValueChanged<NexonCharacterSummary> onDeleteCharacter;
   final void Function(NexonCharacterSummary character, int offset)
       onMoveCharacter;
+  final Set<String> notificationDisabledOcids;
+  final ValueChanged<NexonCharacterSummary> onToggleCharacterNotification;
 
   @override
   Widget build(BuildContext context) {
@@ -6402,10 +6449,16 @@ class _CharacterSelectPanel extends StatelessWidget {
                               selectedCharacters.indexOf(character) > 0,
                           canMoveAfter: selectedCharacters.indexOf(character) <
                               selectedCharacters.length - 1,
+                          notificationEnabled:
+                              !notificationDisabledOcids.contains(
+                            character.ocid,
+                          ),
                           onTap: () => onSelectCharacter(character),
                           onDelete: () => onDeleteCharacter(character),
                           onMoveBefore: () => onMoveCharacter(character, -1),
                           onMoveAfter: () => onMoveCharacter(character, 1),
+                          onToggleNotification: () =>
+                              onToggleCharacterNotification(character),
                         ),
                       _AddCharacterCard(
                         loading: isLoading,
@@ -7710,20 +7763,24 @@ class _CharacterCard extends StatelessWidget {
     required this.selected,
     required this.canMoveBefore,
     required this.canMoveAfter,
+    required this.notificationEnabled,
     required this.onTap,
     required this.onDelete,
     required this.onMoveBefore,
     required this.onMoveAfter,
+    required this.onToggleNotification,
   });
 
   final NexonCharacterSummary character;
   final bool selected;
   final bool canMoveBefore;
   final bool canMoveAfter;
+  final bool notificationEnabled;
   final VoidCallback onTap;
   final VoidCallback onDelete;
   final VoidCallback onMoveBefore;
   final VoidCallback onMoveAfter;
+  final VoidCallback onToggleNotification;
 
   @override
   Widget build(BuildContext context) {
@@ -7807,8 +7864,70 @@ class _CharacterCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: AppColors.muted, fontSize: 12),
             ),
+            const SizedBox(height: 8),
+            _CharacterNotificationToggle(
+              enabled: notificationEnabled,
+              onChanged: onToggleNotification,
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CharacterNotificationToggle extends StatelessWidget {
+  const _CharacterNotificationToggle({
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final bool enabled;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: enabled ? const Color(0xFFFFF4EC) : AppColors.surface,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: enabled ? AppColors.navBorder : AppColors.border,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            enabled
+                ? Icons.notifications_active_outlined
+                : Icons.notifications_off_outlined,
+            size: 15,
+            color: enabled ? AppColors.navAccent : AppColors.muted,
+          ),
+          const SizedBox(width: 5),
+          Expanded(
+            child: Text(
+              enabled ? '알림 ON' : '알림 OFF',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: enabled ? AppColors.navAccent : AppColors.muted,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          Transform.scale(
+            scale: 0.72,
+            child: Switch(
+              value: enabled,
+              activeThumbColor: AppColors.navAccent,
+              inactiveThumbColor: AppColors.muted,
+              onChanged: (_) => onChanged(),
+            ),
+          ),
+        ],
       ),
     );
   }
