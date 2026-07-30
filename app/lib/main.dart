@@ -115,6 +115,11 @@ Future<void> _showMainWindowFromTray() async {
   try {
     await Future<void>.delayed(const Duration(milliseconds: 80));
     try {
+      await windowManager.setAlwaysOnTop(true);
+    } catch (error) {
+      debugPrint('Failed to set always-on-top for tray restore: $error');
+    }
+    try {
       await windowManager.setPreventClose(true);
     } catch (error) {
       debugPrint('Failed to keep prevent-close enabled: $error');
@@ -140,6 +145,11 @@ Future<void> _showMainWindowFromTray() async {
       await windowManager.focus();
     } catch (error) {
       debugPrint('Failed to focus main window from tray: $error');
+    }
+    try {
+      await windowManager.setAlwaysOnTop(false);
+    } catch (error) {
+      debugPrint('Failed to reset always-on-top after tray restore: $error');
     }
   } catch (error) {
     debugPrint('Failed to recover main window from tray: $error');
