@@ -115,11 +115,6 @@ Future<void> _showMainWindowFromTray() async {
   try {
     await Future<void>.delayed(const Duration(milliseconds: 80));
     try {
-      await _setTrayIcon();
-    } catch (error) {
-      debugPrint('Failed to refresh tray icon: $error');
-    }
-    try {
       await windowManager.setPreventClose(true);
     } catch (error) {
       debugPrint('Failed to keep prevent-close enabled: $error');
@@ -1264,12 +1259,6 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
   @override
   void onTrayIconMouseDown() {
-    // Restore the window on mouse-up instead. Restoring during mouse-down can
-    // race with the native tray event and leave the icon/window in a bad state.
-  }
-
-  @override
-  void onTrayIconMouseUp() {
     Timer(const Duration(milliseconds: 30), () {
       unawaited(
         showWindowFromTray().catchError((_) {
