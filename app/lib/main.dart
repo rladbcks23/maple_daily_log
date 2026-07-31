@@ -6393,26 +6393,24 @@ class _PartyBossSelector extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 7,
-                      runSpacing: 7,
+                    Row(
                       children: [
-                        for (final difficulty in difficulties)
-                          SizedBox(
-                            width: 66,
+                        for (final difficulty in difficulties) ...[
+                          Expanded(
                             child: _PartyDifficultyChoice(
                               difficulty: difficulty,
                               selected: difficulty == selectedDifficulty,
                               onTap: () => onDifficultyChanged(difficulty),
                             ),
                           ),
+                          if (difficulty != difficulties.last)
+                            const SizedBox(width: 7),
+                        ],
                       ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              const Icon(Icons.grid_view_rounded, color: AppColors.navAccent),
             ],
           ),
         ),
