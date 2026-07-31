@@ -5744,6 +5744,8 @@ class _PartySchedulePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final displayedSchedules = _sortedPartySchedules();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -5773,10 +5775,10 @@ class _PartySchedulePanel extends StatelessWidget {
                   message: '등록된 파티 일정이 없습니다.\n일정 추가 버튼으로 주간 보스 파티를 등록해보세요.',
                 )
               : ListView.separated(
-                  itemCount: schedules.length,
+                  itemCount: displayedSchedules.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
-                    final schedule = schedules[index];
+                    final schedule = displayedSchedules[index];
                     return _PartyScheduleCard(
                       schedule: schedule,
                       isCleared: _isPartyScheduleClearedBySnapshots(
@@ -5793,6 +5795,25 @@ class _PartySchedulePanel extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  List<PartySchedule> _sortedPartySchedules() {
+    final sorted = [...schedules];
+    sorted.sort((a, b) {
+      final aCleared = _isPartyScheduleClearedBySnapshots(
+        a,
+        dashboardSnapshots,
+      );
+      final bCleared = _isPartyScheduleClearedBySnapshots(
+        b,
+        dashboardSnapshots,
+      );
+      if (aCleared != bCleared) {
+        return aCleared ? 1 : -1;
+      }
+      return _comparePartySchedules(a, b);
+    });
+    return sorted;
   }
 
   Future<void> _confirmDeleteSchedule(
@@ -6560,11 +6581,14 @@ class _PartyScheduleCard extends StatelessWidget {
     final now = DateTime.now();
     final overdue =
         !isCleared && schedule.currentScheduleFrom(now).isBefore(now);
+    final contentColor = isCleared ? Colors.white : AppColors.text;
+    final mutedColor = isCleared ? Colors.white70 : AppColors.muted;
+    final accentColor = isCleared ? Colors.white : AppColors.navAccent;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: BoxDecoration(
-        color: isCleared ? AppColors.completionTag : AppColors.surface,
+        color: isCleared ? const Color(0xFF7A818A) : AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: overdue ? AppColors.navAccent : AppColors.border,
@@ -6578,6 +6602,9 @@ class _PartyScheduleCard extends StatelessWidget {
               icon: Icons.groups_2_rounded,
               label: '파티원',
               value: memberText,
+              iconColor: accentColor,
+              labelColor: mutedColor,
+              valueColor: contentColor,
             ),
           ),
           const SizedBox(width: 18),
@@ -6586,9 +6613,10 @@ class _PartyScheduleCard extends StatelessWidget {
             child: Row(
               children: [
                 _BossIconImage(
-                  bossName: schedule.bossName,
-                  size: 36,
-                ),
+                        bossName: schedule.bossName,
+                        size: 36,
+                        fallbackTextColor: contentColor,
+                      ),
                 const SizedBox(width: 10),
                 _BossDifficultyBadge(difficulty: schedule.difficulty),
                 const SizedBox(width: 10),
@@ -6597,8 +6625,8 @@ class _PartyScheduleCard extends StatelessWidget {
                     schedule.bossName,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.text,
+                    style: TextStyle(
+                      color: contentColor,
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
                     ),
@@ -6614,6 +6642,9 @@ class _PartyScheduleCard extends StatelessWidget {
               icon: Icons.schedule_rounded,
               label: _partyRepeatTypeLabel(schedule.repeatType),
               value: _partyScheduleText(schedule),
+              iconColor: accentColor,
+              labelColor: mutedColor,
+              valueColor: contentColor,
             ),
           ),
           const Spacer(),
@@ -6622,16 +6653,10 @@ class _PartyScheduleCard extends StatelessWidget {
             children: [
               _PartyStatusChip(isCleared: isCleared),
               const SizedBox(width: 8),
-              _SmallIconButton(
-                icon: Icons.edit_rounded,
-                tooltip: '수정',
-                onPressed: onEdit,
-              ),
-              const SizedBox(width: 6),
-              _SmallIconButton(
-                icon: Icons.delete_outline_rounded,
-                tooltip: '삭제',
-                onPressed: onDelete,
+              _PartyScheduleMenuButton(
+                onEdit: onEdit,
+                onDelete: onDelete,
+                foregroundColor: contentColor,
               ),
             ],
           ),
@@ -6669,22 +6694,70 @@ class _PartyStatusChip extends StatelessWidget {
   }
 }
 
+class _PartyScheduleMenuButton extends StatelessWidget {
+  const _PartyScheduleMenuButton({
+    required this.onEdit,
+    required this.onDelete,
+    required this.foregroundColor,
+  });
+
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+  final Color foregroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      tooltip: '일정 메뉴',
+      icon: Icon(
+        Icons.more_horiz_rounded,
+        color: foregroundColor,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      onSelected: (value) {
+        switch (value) {
+          case 'edit':
+            onEdit();
+          case 'delete':
+            onDelete();
+        }
+      },
+      itemBuilder: (context) => const [
+        PopupMenuItem(
+          value: 'edit',
+          child: Text('수정'),
+        ),
+        PopupMenuItem(
+          value: 'delete',
+          child: Text('삭제'),
+        ),
+      ],
+    );
+  }
+}
+
 class _PartyCardInfo extends StatelessWidget {
   const _PartyCardInfo({
     required this.icon,
     required this.label,
     required this.value,
+    this.iconColor = AppColors.navAccent,
+    this.labelColor = AppColors.muted,
+    this.valueColor = AppColors.text,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final Color iconColor;
+  final Color labelColor;
+  final Color valueColor;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: AppColors.navAccent, size: 18),
+        Icon(icon, color: iconColor, size: 18),
         const SizedBox(width: 8),
         Expanded(
           child: Column(
@@ -6692,8 +6765,8 @@ class _PartyCardInfo extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: const TextStyle(
-                  color: AppColors.muted,
+                style: TextStyle(
+                  color: labelColor,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                 ),
@@ -6702,8 +6775,8 @@ class _PartyCardInfo extends StatelessWidget {
               Text(
                 value,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.text,
+                style: TextStyle(
+                  color: valueColor,
                   fontSize: 13,
                   fontWeight: FontWeight.w900,
                 ),
@@ -6737,34 +6810,6 @@ class _PrimaryActionButton extends StatelessWidget {
         backgroundColor: AppColors.navAccent,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      ),
-    );
-  }
-}
-
-class _SmallIconButton extends StatelessWidget {
-  const _SmallIconButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: IconButton(
-        onPressed: onPressed,
-        icon: Icon(icon),
-        color: AppColors.text,
-        style: IconButton.styleFrom(
-          side: const BorderSide(color: AppColors.border),
-          padding: const EdgeInsets.all(10),
-        ),
       ),
     );
   }
