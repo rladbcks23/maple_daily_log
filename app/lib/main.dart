@@ -6572,62 +6572,56 @@ class _PartyScheduleCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: Wrap(
-              spacing: 18,
-              runSpacing: 12,
-              crossAxisAlignment: WrapCrossAlignment.center,
+          SizedBox(
+            width: 220,
+            child: _PartyCardInfo(
+              icon: Icons.groups_2_rounded,
+              label: '파티원',
+              value: memberText,
+            ),
+          ),
+          const SizedBox(width: 18),
+          SizedBox(
+            width: 280,
+            child: Row(
               children: [
-                SizedBox(
-                  width: 235,
-                  child: _PartyCardInfo(
-                    icon: Icons.groups_2_rounded,
-                    label: '파티원',
-                    value: memberText,
-                  ),
+                _BossIconImage(
+                  bossName: schedule.bossName,
+                  size: 36,
                 ),
-                SizedBox(
-                  width: 250,
-                  child: Row(
-                    children: [
-                      _BossIconImage(
-                        bossName: schedule.bossName,
-                        size: 32,
-                      ),
-                      const SizedBox(width: 10),
-                      _BossDifficultyBadge(difficulty: schedule.difficulty),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          schedule.bossName,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.text,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(
-                  width: 160,
-                  child: _PartyCardInfo(
-                    icon: Icons.schedule_rounded,
-                    label: _partyRepeatTypeLabel(schedule.repeatType),
-                    value: _partyScheduleText(schedule),
+                const SizedBox(width: 10),
+                _BossDifficultyBadge(difficulty: schedule.difficulty),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    schedule.bossName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 14),
+          _PartyStatusChip(isCleared: isCleared),
+          const SizedBox(width: 18),
+          SizedBox(
+            width: 150,
+            child: _PartyCardInfo(
+              icon: Icons.schedule_rounded,
+              label: _partyRepeatTypeLabel(schedule.repeatType),
+              value: _partyScheduleText(schedule),
+            ),
+          ),
+          const Spacer(),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _PartyStatusChip(isCleared: isCleared),
-              const SizedBox(width: 8),
               _SmallIconButton(
                 icon: Icons.edit_rounded,
                 tooltip: '수정',
