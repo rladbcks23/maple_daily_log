@@ -6340,43 +6340,49 @@ class _PartyBossSelector extends StatelessWidget {
           border: OutlineInputBorder(),
           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.asset(
-                _partyBossImageAsset(bossName),
-                width: 112,
-                height: 112,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+        child: SizedBox(
+          height: 112,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(
+                  _partyBossImageAsset(bossName),
                   width: 112,
                   height: 112,
-                  color: AppColors.softBorder,
-                  alignment: Alignment.center,
-                  child: Text(
-                    bossName.characters.first,
-                    style: const TextStyle(
-                      color: AppColors.navAccent,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 112,
+                    height: 112,
+                    color: AppColors.softBorder,
+                    alignment: Alignment.center,
+                    child: Text(
+                      bossName.characters.first,
+                      style: const TextStyle(
+                        color: AppColors.navAccent,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
+              const SizedBox(width: 14),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      _BossDifficultyBadge(difficulty: selectedDifficulty),
+                      Flexible(
+                        flex: 0,
+                        child: _BossDifficultyBadge(
+                          difficulty: selectedDifficulty,
+                        ),
+                      ),
                       const SizedBox(width: 8),
-                      Expanded(
+                      Flexible(
                         child: Text(
                           bossName,
                           maxLines: 1,
@@ -6390,28 +6396,31 @@ class _PartyBossSelector extends StatelessWidget {
                       ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final difficulty in difficulties) ...[
-                  _PartyDifficultyChoice(
-                    difficulty: difficulty,
-                    selected: difficulty == selectedDifficulty,
-                    onTap: () => onDifficultyChanged(difficulty),
-                  ),
-                  if (difficulty != difficulties.last)
-                    const SizedBox(height: 6),
-                ],
-              ],
-            ),
-            const SizedBox(width: 10),
-            const Icon(Icons.grid_view_rounded, color: AppColors.navAccent),
-          ],
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 74,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    for (final difficulty in difficulties) ...[
+                      _PartyDifficultyChoice(
+                        difficulty: difficulty,
+                        selected: difficulty == selectedDifficulty,
+                        onTap: () => onDifficultyChanged(difficulty),
+                      ),
+                      if (difficulty != difficulties.last)
+                        const SizedBox(height: 6),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Icon(Icons.grid_view_rounded, color: AppColors.navAccent),
+            ],
+          ),
         ),
       ),
     );
