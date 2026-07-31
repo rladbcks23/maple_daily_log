@@ -5612,9 +5612,8 @@ List<String> _frequentPartyMembers(
 
 List<String> _normalizePartyMembers(
   String text,
-  List<NexonCharacterSummary> ownCharacters, {
-  int? maxMembers,
-}) {
+  List<NexonCharacterSummary> ownCharacters,
+) {
   final ownCharacterNames = ownCharacters
       .map((character) => character.characterName.trim())
       .where((name) => name.isNotEmpty)
@@ -5628,9 +5627,6 @@ List<String> _normalizePartyMembers(
       continue;
     }
     members.add(member);
-    if (maxMembers != null && members.length >= maxMembers) {
-      break;
-    }
   }
   return members;
 }
@@ -5638,16 +5634,13 @@ List<String> _normalizePartyMembers(
 void _appendPartyMember(
   TextEditingController controller,
   String member,
-  List<NexonCharacterSummary> ownCharacters, {
-  int? maxMembers,
-}) {
+  List<NexonCharacterSummary> ownCharacters,
+) {
   final members = _normalizePartyMembers(
     controller.text,
     ownCharacters,
-    maxMembers: maxMembers,
   );
-  if (!members.contains(member) &&
-      (maxMembers == null || members.length < maxMembers)) {
+  if (!members.contains(member)) {
     members.add(member);
   }
   controller.text = members.join(', ');
@@ -5905,40 +5898,6 @@ class _PartySchedulePanel extends StatelessWidget {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
-            final maxPartyMembers = _partyBossMaxMembers(
-              selectedBoss,
-              selectedDifficulty,
-            );
-            final maxInputMembers = maxPartyMembers - 1;
-
-            void enforcePartyMemberLimit({
-              String? bossName,
-              String? difficulty,
-            }) {
-              final limitBossName = bossName ?? selectedBoss;
-              final limitDifficulty = difficulty ?? selectedDifficulty;
-              final limitMaxPartyMembers = _partyBossMaxMembers(
-                limitBossName,
-                limitDifficulty,
-              );
-              final limitMaxInputMembers = limitMaxPartyMembers - 1;
-              final members = _normalizePartyMembers(
-                memberController.text,
-                characters,
-              );
-              if (members.length <= limitMaxInputMembers) {
-                return;
-              }
-              final limitedMembers =
-                  members.take(limitMaxInputMembers).toList();
-              memberController.text = limitedMembers.join(', ');
-              memberController.selection = TextSelection.collapsed(
-                offset: memberController.text.length,
-              );
-              validationMessage =
-                  '$limitBossName ${limitDifficulty.toUpperCase()} 파티는 본인 포함 최대 $limitMaxPartyMembers명까지 가능해요.';
-            }
-
             return Dialog(
               insetPadding: const EdgeInsets.all(28),
               shape: RoundedRectangleBorder(
@@ -5969,8 +5928,11 @@ class _PartySchedulePanel extends StatelessWidget {
                           });
                         },
                         onChanged: (_) {
+                          if (validationMessage == null) {
+                            return;
+                          }
                           setDialogState(() {
-                            enforcePartyMemberLimit();
+                            validationMessage = null;
                           });
                         },
                         decoration: const InputDecoration(
@@ -6004,8 +5966,8 @@ class _PartySchedulePanel extends StatelessWidget {
                                       memberController,
                                       member,
                                       characters,
-                                      maxMembers: maxInputMembers,
                                     );
+                                    validationMessage = null;
                                   });
                                 },
                                 backgroundColor: AppColors.navAccent.withValues(
@@ -6046,16 +6008,12 @@ class _PartySchedulePanel extends StatelessWidget {
                                 difficultyOptions.contains(selectedDifficulty)
                                     ? selectedDifficulty
                                     : difficultyOptions.last;
-                            enforcePartyMemberLimit(
-                              bossName: selectedBoss,
-                              difficulty: selectedDifficulty,
-                            );
                           });
                         },
                         onDifficultyChanged: (difficulty) {
                           setDialogState(() {
                             selectedDifficulty = difficulty;
-                            enforcePartyMemberLimit(difficulty: difficulty);
+                            validationMessage = null;
                           });
                         },
                       ),
@@ -6281,18 +6239,8 @@ class _PartySchedulePanel extends StatelessWidget {
                               final members = _normalizePartyMembers(
                                 memberController.text,
                                 characters,
-                                maxMembers: maxInputMembers,
                               );
-                              final rawMembers = _normalizePartyMembers(
-                                memberController.text,
-                                characters,
-                              );
-                              if (rawMembers.length > maxInputMembers) {
-                                memberController.text = members.join(', ');
-                                memberController.selection =
-                                    TextSelection.collapsed(
-                                  offset: memberController.text.length,
-                                );
+                              if (members.length > maxInputMembers) {
                                 setDialogState(() {
                                   validationMessage =
                                       '$selectedBoss ${selectedDifficulty.toUpperCase()} 파티는 본인 포함 최대 $maxPartyMembers명까지 가능해요.';
