@@ -5796,10 +5796,10 @@ class _PartySchedulePanel extends StatelessWidget {
                 )
               : GridView.builder(
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 470,
-                    mainAxisExtent: 205,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
+                    maxCrossAxisExtent: 360,
+                    mainAxisExtent: 215,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
                   ),
                   itemCount: displayedSchedules.length,
                   itemBuilder: (context, index) {
@@ -6633,7 +6633,7 @@ class _PartyScheduleCard extends StatelessWidget {
     final accentColor = isCleared ? Colors.white : AppColors.navAccent;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isCleared ? const Color(0xFF7A818A) : AppColors.surface,
         borderRadius: BorderRadius.circular(14),
@@ -6649,10 +6649,10 @@ class _PartyScheduleCard extends StatelessWidget {
             children: [
               _BossIconImage(
                 bossName: schedule.bossName,
-                size: 42,
+                size: 38,
                 fallbackTextColor: contentColor,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
