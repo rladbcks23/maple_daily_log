@@ -5212,9 +5212,15 @@ bool _isGuildSuroItem(SchedulerItemSummary item) {
 }
 
 const _partyBossDifficultyOptions = <String, List<String>>{
+  '발록': ['easy', 'normal'],
   '자쿰': ['normal', 'chaos'],
   '매그너스': ['easy', 'normal', 'hard'],
   '힐라': ['normal', 'hard'],
+  '반 레온': ['easy', 'normal', 'hard'],
+  '혼테일': ['easy', 'normal', 'chaos'],
+  '아카이럼': ['easy', 'normal'],
+  '핑크빈': ['normal', 'chaos'],
+  '시그너스': ['normal'],
   '카웅': ['normal'],
   '파풀라투스': ['easy', 'normal', 'chaos'],
   '피에르': ['normal', 'chaos'],
@@ -5238,7 +5244,65 @@ const _partyBossDifficultyOptions = <String, List<String>>{
   '최초의 대적자': ['easy', 'normal', 'hard', 'extreme'],
   '찬란한 흉성': ['normal', 'hard'],
   '유피테르': ['normal', 'hard'],
+  '시즌 보스 메이린': ['normal', 'hard'],
 };
+
+const _partyBossPriorityOrder = <String>[
+  '유피테르',
+  '찬란한 흉성',
+  '최초의 대적자',
+  '발드릭스',
+  '림보',
+  '카링',
+  '감시자 칼로스',
+  '선택받은 세렌',
+  '검은 마법사',
+  '시즌 보스 메이린',
+  '듄켈',
+  '진 힐라',
+  '더스크',
+  '윌',
+  '루시드',
+  '가디언 엔젤 슬라임',
+  '데미안',
+  '스우',
+  '벨룸',
+  '블러디퀸',
+  '반반',
+  '피에르',
+  '파풀라투스',
+  '카웅',
+  '시그너스',
+  '핑크빈',
+  '아카이럼',
+  '혼테일',
+  '반 레온',
+  '힐라',
+  '매그너스',
+  '자쿰',
+  '발록',
+];
+
+List<String> _partyBossSelectionOptions() {
+  final ranked = _partyBossPriorityOrder
+      .where(_partyBossDifficultyOptions.containsKey)
+      .toList();
+  final rankedSet = ranked.toSet();
+  return [
+    ...ranked,
+    ..._partyBossDifficultyOptions.keys
+        .where((boss) => !rankedSet.contains(boss)),
+  ];
+}
+
+String _partyBossImageAsset(String bossName) {
+  final fileName = switch (bossName) {
+    '블러디퀸' => '블러디 퀸',
+    '시즌 보스 메이린' => '메이린',
+    _ => bossName,
+  };
+  return 'assets/images/bosses/$fileName.webp';
+}
 
 final _bossRewards = <String, _BossRewardInfo>{
   _bossRewardKey('자쿰', 'normal'):
@@ -5850,26 +5914,19 @@ class _PartySchedulePanel extends StatelessWidget {
                         ),
                       ],
                       const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        initialValue: selectedBoss,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: '보스',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: [
-                          for (final boss in _partyBossDifficultyOptions.keys)
-                            DropdownMenuItem(
-                              value: boss,
-                              child: Text(boss),
-                            ),
-                        ],
-                        onChanged: (value) {
-                          if (value == null) {
+                      _PartyBossSelector(
+                        bossName: selectedBoss,
+                        difficulties: difficultyOptions,
+                        onTap: () async {
+                          final pickedBoss = await _pickPartyBoss(
+                            dialogContext,
+                            selectedBoss,
+                          );
+                          if (pickedBoss == null) {
                             return;
                           }
                           setDialogState(() {
-                            selectedBoss = value;
+                            selectedBoss = pickedBoss;
                             validationMessage = null;
                             selectedRepeatType =
                                 _defaultPartyRepeatType(selectedBoss);
@@ -6203,6 +6260,239 @@ class _PartySchedulePanel extends StatelessWidget {
     if (result != null) {
       await onSave(result);
     }
+  }
+}
+
+Future<String?> _pickPartyBoss(BuildContext context, String selectedBoss) {
+  final bosses = _partyBossSelectionOptions();
+  final size = MediaQuery.sizeOf(context);
+  return showDialog<String>(
+    context: context,
+    builder: (dialogContext) {
+      return Dialog(
+        insetPadding: const EdgeInsets.all(28),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 760,
+            maxHeight: size.height * 0.82,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        '보스 선택',
+                        style: TextStyle(
+                          color: AppColors.text,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: '닫기',
+                      onPressed: () => Navigator.pop(dialogContext),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Expanded(
+                  child: GridView.builder(
+                    padding: EdgeInsets.zero,
+                    itemCount: bosses.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 4,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 0.82,
+                    ),
+                    itemBuilder: (context, index) {
+                      final boss = bosses[index];
+                      return _PartyBossPickerCard(
+                        bossName: boss,
+                        selected: boss == selectedBoss,
+                        onTap: () => Navigator.pop(dialogContext, boss),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
+class _PartyBossSelector extends StatelessWidget {
+  const _PartyBossSelector({
+    required this.bossName,
+    required this.difficulties,
+    required this.onTap,
+  });
+
+  final String bossName;
+  final List<String> difficulties;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: InputDecorator(
+        decoration: const InputDecoration(
+          labelText: '보스',
+          border: OutlineInputBorder(),
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.asset(
+                _partyBossImageAsset(bossName),
+                width: 54,
+                height: 54,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 54,
+                  height: 54,
+                  color: AppColors.softBorder,
+                  alignment: Alignment.center,
+                  child: Text(
+                    bossName.characters.first,
+                    style: const TextStyle(
+                      color: AppColors.navAccent,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    bossName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final difficulty in difficulties)
+                        _BossDifficultyBadge(difficulty: difficulty),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.grid_view_rounded,
+              color: AppColors.navAccent,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PartyBossPickerCard extends StatelessWidget {
+  const _PartyBossPickerCard({
+    required this.bossName,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String bossName;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected
+          ? AppColors.navAccent.withValues(alpha: 0.1)
+          : AppColors.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? AppColors.navBorder : AppColors.border,
+              width: selected ? 1.4 : 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(9),
+                  child: Image.asset(
+                    _partyBossImageAsset(bossName),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: AppColors.softBorder,
+                      alignment: Alignment.center,
+                      child: Text(
+                        bossName.characters.first,
+                        style: const TextStyle(
+                          color: AppColors.navAccent,
+                          fontSize: 34,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                bossName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
