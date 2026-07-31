@@ -7523,6 +7523,14 @@ class _SchedulerItemRow extends StatelessWidget {
       child: Row(
         children: [
           if (item.difficulty.isNotEmpty) ...[
+            _BossIconImage(
+              bossName: item.title,
+              size: 30,
+              fallbackTextColor: color,
+            ),
+            const SizedBox(width: 10),
+          ],
+          if (item.difficulty.isNotEmpty) ...[
             _BossDifficultyBadge(difficulty: item.difficulty),
             const SizedBox(width: 10),
           ],
@@ -7608,6 +7616,51 @@ class _BossDifficultyBadge extends StatelessWidget {
                       blurRadius: 1,
                     ),
                   ]),
+      ),
+    );
+  }
+}
+
+class _BossIconImage extends StatelessWidget {
+  const _BossIconImage({
+    required this.bossName,
+    required this.size,
+    this.fallbackTextColor = AppColors.text,
+  });
+
+  final String bossName;
+  final double size;
+  final Color fallbackTextColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: Image.asset(
+        _partyBossImageAsset(bossName),
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) {
+          return Container(
+            width: size,
+            height: size,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.selected,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: AppColors.softBorder),
+            ),
+            child: Text(
+              bossName.characters.isEmpty ? '?' : bossName.characters.first,
+              style: TextStyle(
+                color: fallbackTextColor,
+                fontSize: size * 0.38,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          );
+        },
       ),
     );
   }
