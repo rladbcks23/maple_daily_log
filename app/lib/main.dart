@@ -6349,12 +6349,12 @@ class _PartyBossSelector extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 child: Image.asset(
                   _partyBossImageAsset(bossName),
-                  width: 112,
-                  height: 112,
+                  width: 104,
+                  height: 104,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
-                    width: 112,
-                    height: 112,
+                    width: 104,
+                    height: 104,
                     color: AppColors.softBorder,
                     alignment: Alignment.center,
                     child: Text(
@@ -6398,10 +6398,13 @@ class _PartyBossSelector extends StatelessWidget {
                       runSpacing: 7,
                       children: [
                         for (final difficulty in difficulties)
-                          _PartyDifficultyChoice(
-                            difficulty: difficulty,
-                            selected: difficulty == selectedDifficulty,
-                            onTap: () => onDifficultyChanged(difficulty),
+                          SizedBox(
+                            width: 66,
+                            child: _PartyDifficultyChoice(
+                              difficulty: difficulty,
+                              selected: difficulty == selectedDifficulty,
+                              onTap: () => onDifficultyChanged(difficulty),
+                            ),
                           ),
                       ],
                     ),
@@ -6444,7 +6447,7 @@ class _PartyDifficultyChoice extends StatelessWidget {
           borderRadius: BorderRadius.circular(999),
           border: Border.all(color: Colors.transparent),
         ),
-        child: _BossDifficultyBadge(difficulty: difficulty),
+        child: Center(child: _BossDifficultyBadge(difficulty: difficulty)),
       ),
     );
   }
