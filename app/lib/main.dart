@@ -5235,6 +5235,9 @@ const _partyBossDifficultyOptions = <String, List<String>>{
   '카링': ['easy', 'normal', 'hard', 'extreme'],
   '림보': ['normal', 'hard'],
   '발드릭스': ['normal', 'hard'],
+  '최초의 대적자': ['easy', 'normal', 'hard', 'extreme'],
+  '찬란한 흉성': ['normal', 'hard'],
+  '유피테르': ['normal', 'hard'],
 };
 
 final _bossRewards = <String, _BossRewardInfo>{
