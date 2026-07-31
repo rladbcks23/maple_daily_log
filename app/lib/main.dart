@@ -6608,8 +6608,6 @@ class _PartyScheduleCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 14),
-          _PartyStatusChip(isCleared: isCleared),
-          const SizedBox(width: 18),
           SizedBox(
             width: 150,
             child: _PartyCardInfo(
@@ -6622,6 +6620,8 @@ class _PartyScheduleCard extends StatelessWidget {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              _PartyStatusChip(isCleared: isCleared),
+              const SizedBox(width: 8),
               _SmallIconButton(
                 icon: Icons.edit_rounded,
                 tooltip: '수정',
