@@ -13,6 +13,7 @@ import 'app_config.dart';
 import 'api_client.dart';
 import 'character_cache.dart';
 import 'character_profile_cache.dart';
+import 'event_notice_cache.dart';
 import 'local_notification_service.dart';
 import 'notification_history.dart';
 import 'notification_settings.dart';
@@ -537,11 +538,17 @@ class _StartupGateState extends State<_StartupGate> {
     final appConfigStore = AppConfigStore();
     final appConfig = await appConfigStore.load();
     final apiClient = ApiClient(baseUrl: appConfig.apiBaseUrl);
+    final eventCache = EventNoticeCache();
     final sundayCache = SundayEventCache();
+    await eventCache.ensure();
     final cachedSundayEvent = await sundayCache.load();
 
     try {
-      final noticeItems = await apiClient.fetchCurrentNotices();
+      final fetchedNoticeItems = await apiClient.fetchCurrentNotices();
+      final noticeItems = await _mergeCurrentNoticeItemsWithEventCache(
+        fetchedNoticeItems,
+        eventCache,
+      );
       var sundayEvent = _findSpecialSundayEvent(noticeItems);
       sundayEvent ??= await apiClient.fetchLatestSundayEvent();
       if (sundayEvent != null) {
@@ -1124,6 +1131,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
   final CharacterCache characterCache = CharacterCache();
   final CharacterProfileCache characterProfileCache = CharacterProfileCache();
   final SchedulerCache schedulerCache = SchedulerCache();
+  final EventNoticeCache eventNoticeCache = EventNoticeCache();
   final SundayEventCache sundayEventCache = SundayEventCache();
   final NotificationHistory notificationHistory = NotificationHistory();
   final PartyScheduleStore partyScheduleStore = PartyScheduleStore();
@@ -1534,6 +1542,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
       characterCache.ensure(),
       characterProfileCache.ensure(),
       schedulerCache.ensure(),
+      eventNoticeCache.ensure(),
       sundayEventCache.ensure(),
       partyScheduleStore.ensure(),
       notificationSettingsStore.ensure(),
@@ -1990,8 +1999,12 @@ class _MapleAppShellState extends State<_MapleAppShell>
     });
 
     try {
-      final items = await apiClient.fetchCurrentNotices(
+      final fetchedItems = await apiClient.fetchCurrentNotices(
         forceRefresh: refresh,
+      );
+      final items = await _mergeCurrentNoticeItemsWithEventCache(
+        fetchedItems,
+        eventNoticeCache,
       );
       final currentSundayEvent = _findSpecialSundayEvent(items);
       NoticeItemSummary? nextSundayEvent = currentSundayEvent;
@@ -2198,7 +2211,11 @@ class _MapleAppShellState extends State<_MapleAppShell>
     try {
       var currentItems = noticeItems;
       if (currentItems.isEmpty) {
-        currentItems = await apiClient.fetchCurrentNotices();
+        final fetchedItems = await apiClient.fetchCurrentNotices();
+        currentItems = await _mergeCurrentNoticeItemsWithEventCache(
+          fetchedItems,
+          eventNoticeCache,
+        );
       }
 
       final previousSnapshot = await notificationHistory.loadNoticeSnapshot();
@@ -2207,6 +2224,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
           item.notificationKey: {
             'title': item.title,
             'type': item.displayType,
+            'eventEndAt': item.eventEndAt,
           },
       };
 
@@ -2221,6 +2239,7 @@ class _MapleAppShellState extends State<_MapleAppShell>
       final endedEvents = previousSnapshot.entries
           .where((entry) =>
               entry.value['type'] == 'event' &&
+              _isSnapshotEventEnded(entry.value, DateTime.now()) &&
               !currentSnapshot.containsKey(entry.key))
           .map((entry) => entry.value['title'] ?? '')
           .where((title) => title.isNotEmpty)
@@ -7763,6 +7782,75 @@ class _EventThumbnail extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<List<NoticeItemSummary>> _mergeCurrentNoticeItemsWithEventCache(
+  List<NoticeItemSummary> fetchedItems,
+  EventNoticeCache eventCache,
+) async {
+  final now = DateTime.now();
+  final fetchedEvents =
+      fetchedItems.where((item) => item.noticeType == 'event');
+  final cachedEvents = await eventCache.load();
+  final eventsByKey = <String, NoticeItemSummary>{
+    for (final event in cachedEvents)
+      if (!_isEventEnded(event, now)) event.notificationKey: event,
+  };
+
+  for (final event in fetchedEvents) {
+    if (!_isEventEnded(event, now)) {
+      eventsByKey[event.notificationKey] = event;
+    }
+  }
+
+  final mergedItems = <NoticeItemSummary>[];
+  final emittedKeys = <String>{};
+  for (final item in fetchedItems) {
+    if (item.noticeType == 'event') {
+      final event = eventsByKey[item.notificationKey];
+      if (event != null && emittedKeys.add(event.notificationKey)) {
+        mergedItems.add(event);
+      }
+      continue;
+    }
+    mergedItems.add(item);
+  }
+
+  for (final event in eventsByKey.values) {
+    if (emittedKeys.add(event.notificationKey)) {
+      mergedItems.add(event);
+    }
+  }
+
+  await eventCache.save(eventsByKey.values.toList());
+  return mergedItems;
+}
+
+bool _isEventEnded(NoticeItemSummary event, DateTime now) {
+  final endDate = _noticeDateOnly(event.eventEndAt);
+  if (endDate == null) {
+    return false;
+  }
+  final today = DateTime(now.year, now.month, now.day);
+  return endDate.isBefore(today);
+}
+
+bool _isSnapshotEventEnded(Map<String, String> snapshot, DateTime now) {
+  final endDate = _noticeDateOnly(snapshot['eventEndAt'] ?? '');
+  if (endDate == null) {
+    return false;
+  }
+  final today = DateTime(now.year, now.month, now.day);
+  return endDate.isBefore(today);
+}
+
+DateTime? _noticeDateOnly(String value) {
+  final match = RegExp(r'\d{4}-\d{2}-\d{2}').firstMatch(value);
+  if (match == null) {
+    return null;
+  }
+  final parts = match.group(0)!.split('-').map(int.parse).toList();
+  return DateTime(parts[0], parts[1], parts[2]);
 }
 
 class _LinkTapArea extends StatelessWidget {
