@@ -6341,7 +6341,7 @@ class _PartyBossSelector extends StatelessWidget {
           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
         child: SizedBox(
-          height: 112,
+          height: 96,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -6349,12 +6349,12 @@ class _PartyBossSelector extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 child: Image.asset(
                   _partyBossImageAsset(bossName),
-                  width: 96,
-                  height: 96,
+                  width: 88,
+                  height: 88,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
-                    width: 96,
-                    height: 96,
+                    width: 88,
+                    height: 88,
                     color: AppColors.softBorder,
                     alignment: Alignment.center,
                     child: Text(
