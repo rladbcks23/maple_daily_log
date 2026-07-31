@@ -6657,23 +6657,17 @@ class _PartyScheduleCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        _BossDifficultyBadge(difficulty: schedule.difficulty),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            schedule.bossName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: contentColor,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ],
+                    _BossDifficultyBadge(difficulty: schedule.difficulty),
+                    const SizedBox(height: 5),
+                    Text(
+                      schedule.bossName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: contentColor,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ],
                 ),
@@ -6683,14 +6677,16 @@ class _PartyScheduleCard extends StatelessWidget {
                 icon: Icons.edit_rounded,
                 tooltip: '수정',
                 onPressed: onEdit,
-                foregroundColor: contentColor,
+                foregroundColor: isCleared ? AppColors.text : contentColor,
+                backgroundColor: isCleared ? Colors.white : AppColors.surface,
               ),
               const SizedBox(width: 4),
               _PartyScheduleIconButton(
                 icon: Icons.delete_outline_rounded,
                 tooltip: '삭제',
                 onPressed: onDelete,
-                foregroundColor: contentColor,
+                foregroundColor: isCleared ? AppColors.text : contentColor,
+                backgroundColor: isCleared ? Colors.white : AppColors.surface,
               ),
             ],
           ),
@@ -6743,19 +6739,21 @@ class _PartyScheduleIconButton extends StatelessWidget {
     required this.tooltip,
     required this.onPressed,
     required this.foregroundColor,
+    required this.backgroundColor,
   });
 
   final IconData icon;
   final String tooltip;
   final VoidCallback onPressed;
   final Color foregroundColor;
+  final Color backgroundColor;
 
   @override
   Widget build(BuildContext context) {
     return Tooltip(
       message: tooltip,
       child: Material(
-        color: AppColors.surface,
+        color: backgroundColor,
         shape: const CircleBorder(
           side: BorderSide(color: AppColors.border),
         ),
@@ -6823,6 +6821,7 @@ class _PartyStatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      alignment: Alignment.center,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
         color: isCleared ? AppColors.completionTag : AppColors.surface,
