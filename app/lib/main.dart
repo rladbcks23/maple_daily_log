@@ -6587,9 +6587,14 @@ class _PartyScheduleCard extends StatelessWidget {
                   ),
                 ),
                 SizedBox(
-                  width: 220,
+                  width: 250,
                   child: Row(
                     children: [
+                      _BossIconImage(
+                        bossName: schedule.bossName,
+                        size: 32,
+                      ),
+                      const SizedBox(width: 10),
                       _BossDifficultyBadge(difficulty: schedule.difficulty),
                       const SizedBox(width: 10),
                       Expanded(
