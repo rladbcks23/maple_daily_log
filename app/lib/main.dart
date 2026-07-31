@@ -5794,9 +5794,14 @@ class _PartySchedulePanel extends StatelessWidget {
               ? const _DashboardEmptyState(
                   message: '등록된 파티 일정이 없습니다.\n일정 추가 버튼으로 주간 보스 파티를 등록해보세요.',
                 )
-              : ListView.separated(
+              : GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 470,
+                    mainAxisExtent: 205,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                  ),
                   itemCount: displayedSchedules.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final schedule = displayedSchedules[index];
                     return _PartyScheduleCard(
@@ -6628,81 +6633,184 @@ class _PartyScheduleCard extends StatelessWidget {
     final accentColor = isCleared ? Colors.white : AppColors.navAccent;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: isCleared ? const Color(0xFF7A818A) : AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: overdue ? AppColors.navAccent : AppColors.border,
+          color: overdue ? AppColors.navAccent : AppColors.navBorder,
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: _PartyCardInfo(
-              icon: Icons.groups_2_rounded,
-              label: '파티원',
-              value: memberText,
-              iconColor: accentColor,
-              labelColor: mutedColor,
-              valueColor: contentColor,
-            ),
-          ),
-          const SizedBox(width: 18),
-          SizedBox(
-            width: 210,
-            child: Row(
-              children: [
-                _BossIconImage(
-                  bossName: schedule.bossName,
-                  size: 36,
-                  fallbackTextColor: contentColor,
-                ),
-                const SizedBox(width: 10),
-                _BossDifficultyBadge(difficulty: schedule.difficulty),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    schedule.bossName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: contentColor,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 14),
-          SizedBox(
-            width: 150,
-            child: _PartyCardInfo(
-              icon: Icons.schedule_rounded,
-              label: _partyRepeatTypeLabel(schedule.repeatType),
-              value: _partyScheduleText(schedule),
-              iconColor: accentColor,
-              labelColor: mutedColor,
-              valueColor: contentColor,
-            ),
-          ),
-          const Spacer(),
           Row(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _PartyStatusChip(isCleared: isCleared),
+              _BossIconImage(
+                bossName: schedule.bossName,
+                size: 42,
+                fallbackTextColor: contentColor,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        _BossDifficultyBadge(difficulty: schedule.difficulty),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            schedule.bossName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: contentColor,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(width: 8),
-              _PartyScheduleMenuButton(
-                onEdit: onEdit,
-                onDelete: onDelete,
+              _PartyScheduleIconButton(
+                icon: Icons.edit_rounded,
+                tooltip: '수정',
+                onPressed: onEdit,
+                foregroundColor: contentColor,
+              ),
+              const SizedBox(width: 4),
+              _PartyScheduleIconButton(
+                icon: Icons.delete_outline_rounded,
+                tooltip: '삭제',
+                onPressed: onDelete,
                 foregroundColor: contentColor,
               ),
             ],
           ),
+          const SizedBox(height: 18),
+          _PartyCardTextBlock(
+            label: '파티원',
+            value: memberText,
+            labelColor: mutedColor,
+            valueColor: contentColor,
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Icon(Icons.schedule_rounded, color: accentColor, size: 16),
+              const SizedBox(width: 6),
+              Text(
+                _partyRepeatTypeLabel(schedule.repeatType),
+                style: TextStyle(
+                  color: mutedColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  '· ${_partyScheduleText(schedule)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: mutedColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          _PartyStatusChip(isCleared: isCleared),
         ],
       ),
+    );
+  }
+}
+
+class _PartyScheduleIconButton extends StatelessWidget {
+  const _PartyScheduleIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    required this.foregroundColor,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+  final Color foregroundColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: AppColors.surface,
+        shape: const CircleBorder(
+          side: BorderSide(color: AppColors.border),
+        ),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: Icon(icon, color: foregroundColor, size: 20),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PartyCardTextBlock extends StatelessWidget {
+  const _PartyCardTextBlock({
+    required this.label,
+    required this.value,
+    required this.labelColor,
+    required this.valueColor,
+  });
+
+  final String label;
+  final String value;
+  final Color labelColor;
+  final Color valueColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: labelColor,
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          value,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: valueColor,
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -6731,101 +6839,6 @@ class _PartyStatusChip extends StatelessWidget {
           fontWeight: FontWeight.w800,
         ),
       ),
-    );
-  }
-}
-
-class _PartyScheduleMenuButton extends StatelessWidget {
-  const _PartyScheduleMenuButton({
-    required this.onEdit,
-    required this.onDelete,
-    required this.foregroundColor,
-  });
-
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-  final Color foregroundColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      tooltip: '일정 메뉴',
-      icon: Icon(
-        Icons.more_horiz_rounded,
-        color: foregroundColor,
-      ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onSelected: (value) {
-        switch (value) {
-          case 'edit':
-            onEdit();
-          case 'delete':
-            onDelete();
-        }
-      },
-      itemBuilder: (context) => const [
-        PopupMenuItem(
-          value: 'edit',
-          child: Text('수정'),
-        ),
-        PopupMenuItem(
-          value: 'delete',
-          child: Text('삭제'),
-        ),
-      ],
-    );
-  }
-}
-
-class _PartyCardInfo extends StatelessWidget {
-  const _PartyCardInfo({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.iconColor = AppColors.navAccent,
-    this.labelColor = AppColors.muted,
-    this.valueColor = AppColors.text,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color iconColor;
-  final Color labelColor;
-  final Color valueColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, color: iconColor, size: 18),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: labelColor,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: valueColor,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
