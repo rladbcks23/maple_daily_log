@@ -5593,18 +5593,12 @@ List<String> _frequentPartyMembers(
   return sorted.map((entry) => entry.key).toList();
 }
 
-void _appendPartyMember(TextEditingController controller, String member) {
-  final members = controller.text
-      .split(',')
-      .map((item) => item.trim())
-      .where((item) => item.isNotEmpty)
-      .toList();
+List<String> _appendPartyMember(List<String> members, String member) {
+  final nextMembers = [...members];
   if (!members.contains(member)) {
-    members.add(member);
+    nextMembers.add(member);
   }
-  controller.text = members.join(', ');
-  controller.selection =
-      TextSelection.collapsed(offset: controller.text.length);
+  return nextMembers;
 }
 
 Future<int?> _pickMonthlyPartyDay(BuildContext context, int selectedDay) {
@@ -5806,10 +5800,10 @@ class _PartySchedulePanel extends StatelessWidget {
     BuildContext context, [
     PartySchedule? schedule,
   ]) async {
-    final memberController = TextEditingController(
-      text: schedule?.members.join(', ') ??
-          characters.map((item) => item.characterName).take(1).join(', '),
-    );
+    var memberDraft = [
+      ...schedule?.members ??
+          characters.map((item) => item.characterName).take(1),
+    ].where((item) => item.trim().isNotEmpty).toList();
     final frequentMembers = _frequentPartyMembers(schedules, characters);
     var showMemberSuggestions = false;
     var selectedBoss =
@@ -5859,18 +5853,18 @@ class _PartySchedulePanel extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      TextField(
-                        controller: memberController,
-                        onTap: () {
+                      _PartyMemberTagInput(
+                        members: memberDraft,
+                        onChanged: (members) {
+                          setDialogState(() {
+                            memberDraft = members;
+                          });
+                        },
+                        onFocused: () {
                           setDialogState(() {
                             showMemberSuggestions = true;
                           });
                         },
-                        decoration: const InputDecoration(
-                          labelText: '파티원',
-                          hintText: '말못함채금임, 유렌괜찬',
-                          border: OutlineInputBorder(),
-                        ),
                       ),
                       if (showMemberSuggestions &&
                           frequentMembers.isNotEmpty) ...[
@@ -5893,10 +5887,8 @@ class _PartySchedulePanel extends StatelessWidget {
                                 label: Text(member),
                                 onPressed: () {
                                   setDialogState(() {
-                                    _appendPartyMember(
-                                      memberController,
-                                      member,
-                                    );
+                                    memberDraft =
+                                        _appendPartyMember(memberDraft, member);
                                   });
                                 },
                                 backgroundColor: AppColors.navAccent.withValues(
@@ -6159,8 +6151,7 @@ class _PartySchedulePanel extends StatelessWidget {
                           const SizedBox(width: 10),
                           FilledButton(
                             onPressed: () {
-                              final members = memberController.text
-                                  .split(',')
+                              final members = memberDraft
                                   .map((item) => item.trim())
                                   .where((item) => item.isNotEmpty)
                                   .toList();
@@ -6234,7 +6225,6 @@ class _PartySchedulePanel extends StatelessWidget {
       },
     );
 
-    memberController.dispose();
     hourController.dispose();
     minuteController.dispose();
 
@@ -6312,6 +6302,143 @@ Future<String?> _pickPartyBoss(BuildContext context, String selectedBoss) {
       );
     },
   );
+}
+
+class _PartyMemberTagInput extends StatefulWidget {
+  const _PartyMemberTagInput({
+    required this.members,
+    required this.onChanged,
+    required this.onFocused,
+  });
+
+  final List<String> members;
+  final ValueChanged<List<String>> onChanged;
+  final VoidCallback onFocused;
+
+  @override
+  State<_PartyMemberTagInput> createState() => _PartyMemberTagInputState();
+}
+
+class _PartyMemberTagInputState extends State<_PartyMemberTagInput> {
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_handleFocusChanged);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_handleFocusChanged);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleFocusChanged() {
+    if (_focusNode.hasFocus) {
+      widget.onFocused();
+    }
+  }
+
+  void _commitInput() {
+    final tokens = _controller.text
+        .split(',')
+        .map((item) => item.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+    if (tokens.isEmpty) {
+      return;
+    }
+    final nextMembers = [...widget.members];
+    for (final token in tokens) {
+      if (!nextMembers.contains(token)) {
+        nextMembers.add(token);
+      }
+    }
+    widget.onChanged(nextMembers);
+    _controller.clear();
+  }
+
+  void _handleTextChanged(String value) {
+    if (value.contains(',')) {
+      _commitInput();
+    }
+  }
+
+  void _removeMember(String member) {
+    widget.onChanged(widget.members.where((item) => item != member).toList());
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) {
+      return KeyEventResult.ignored;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.enter) {
+      _commitInput();
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.backspace &&
+        _controller.text.isEmpty &&
+        widget.members.isNotEmpty) {
+      final nextMembers = [...widget.members]..removeLast();
+      widget.onChanged(nextMembers);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InputDecorator(
+      decoration: const InputDecoration(
+        labelText: '파티원',
+        hintText: '닉네임을 입력하고 콤마로 구분',
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      ),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          for (final member in widget.members)
+            InputChip(
+              label: Text(member),
+              onDeleted: () => _removeMember(member),
+              deleteIcon: const Icon(Icons.close, size: 16),
+              backgroundColor: AppColors.navAccent.withValues(alpha: 0.08),
+              side: const BorderSide(color: AppColors.navBorder),
+              labelStyle: const TextStyle(
+                color: AppColors.navAccent,
+                fontWeight: FontWeight.w800,
+              ),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
+          SizedBox(
+            width: 170,
+            child: Focus(
+              onKeyEvent: _handleKeyEvent,
+              child: TextField(
+                controller: _controller,
+                focusNode: _focusNode,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  border: InputBorder.none,
+                  hintText: '파티원 추가',
+                ),
+                onChanged: _handleTextChanged,
+                onSubmitted: (_) => _commitInput(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _PartyBossSelector extends StatelessWidget {
