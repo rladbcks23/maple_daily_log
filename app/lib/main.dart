@@ -6251,14 +6251,14 @@ Future<String?> _pickPartyBoss(BuildContext context, String selectedBoss) {
     context: context,
     builder: (dialogContext) {
       return Dialog(
-        insetPadding: const EdgeInsets.symmetric(horizontal: 56, vertical: 42),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 72, vertical: 54),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
         ),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxWidth: 680,
-            maxHeight: size.height * 0.74,
+            maxWidth: 620,
+            maxHeight: size.height * 0.68,
           ),
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -6292,8 +6292,8 @@ Future<String?> _pickPartyBoss(BuildContext context, String selectedBoss) {
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 4,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
                       childAspectRatio: 0.82,
                     ),
                     itemBuilder: (context, index) {
@@ -6347,12 +6347,12 @@ class _PartyBossSelector extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               child: Image.asset(
                 _partyBossImageAsset(bossName),
-                width: 84,
-                height: 84,
+                width: 112,
+                height: 112,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
-                  width: 84,
-                  height: 84,
+                  width: 112,
+                  height: 112,
                   color: AppColors.softBorder,
                   alignment: Alignment.center,
                   child: Text(
@@ -6370,40 +6370,47 @@ class _PartyBossSelector extends StatelessWidget {
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    bossName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.text,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 7),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
+                  Row(
                     children: [
-                      for (final difficulty in difficulties)
-                        _PartyDifficultyChoice(
-                          difficulty: difficulty,
-                          selected: difficulty == selectedDifficulty,
-                          onTap: () => onDifficultyChanged(difficulty),
+                      _BossDifficultyBadge(difficulty: selectedDifficulty),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          bossName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.text,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
+                      ),
                     ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            const Icon(
-              Icons.grid_view_rounded,
-              color: AppColors.navAccent,
-              size: 20,
+            const SizedBox(width: 12),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final difficulty in difficulties) ...[
+                  _PartyDifficultyChoice(
+                    difficulty: difficulty,
+                    selected: difficulty == selectedDifficulty,
+                    onTap: () => onDifficultyChanged(difficulty),
+                  ),
+                  if (difficulty != difficulties.last)
+                    const SizedBox(height: 6),
+                ],
+              ],
             ),
+            const SizedBox(width: 10),
+            const Icon(Icons.grid_view_rounded, color: AppColors.navAccent),
           ],
         ),
       ),
@@ -6427,25 +6434,19 @@ class _PartyDifficultyChoice extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(999),
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.navAccent
-              : AppColors.navAccent.withValues(alpha: 0.08),
+              ? AppColors.navAccent.withValues(alpha: 0.14)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? AppColors.navAccent : AppColors.navBorder,
+            color: selected ? AppColors.navBorder : Colors.transparent,
           ),
         ),
-        child: Text(
-          difficulty.toUpperCase(),
-          style: TextStyle(
-            color: selected ? Colors.white : AppColors.navAccent,
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
+        child: _BossDifficultyBadge(difficulty: difficulty),
       ),
     );
   }
@@ -6463,7 +6464,7 @@ class _PartyBossPickerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFF303840),
+      color: const Color(0xFF414A52),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -6473,7 +6474,7 @@ class _PartyBossPickerCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: const Color(0xFF5E6872),
+              color: const Color(0xFF727B84),
             ),
           ),
           child: Column(
