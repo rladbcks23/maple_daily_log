@@ -6349,12 +6349,12 @@ class _PartyBossSelector extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
                 child: Image.asset(
                   _partyBossImageAsset(bossName),
-                  width: 104,
-                  height: 104,
+                  width: 96,
+                  height: 96,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
-                    width: 104,
-                    height: 104,
+                    width: 96,
+                    height: 96,
                     color: AppColors.softBorder,
                     alignment: Alignment.center,
                     child: Text(
@@ -6368,7 +6368,7 @@ class _PartyBossSelector extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -6404,7 +6404,7 @@ class _PartyBossSelector extends StatelessWidget {
                             ),
                           ),
                           if (difficulty != difficulties.last)
-                            const SizedBox(width: 7),
+                            const SizedBox(width: 5),
                         ],
                       ],
                     ),
