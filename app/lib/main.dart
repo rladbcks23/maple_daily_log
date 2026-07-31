@@ -5917,6 +5917,7 @@ class _PartySchedulePanel extends StatelessWidget {
                       _PartyBossSelector(
                         bossName: selectedBoss,
                         difficulties: difficultyOptions,
+                        selectedDifficulty: selectedDifficulty,
                         onTap: () async {
                           final pickedBoss = await _pickPartyBoss(
                             dialogContext,
@@ -5938,29 +5939,9 @@ class _PartySchedulePanel extends StatelessWidget {
                                     : difficultyOptions.last;
                           });
                         },
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        key: ValueKey('party-difficulty-$selectedBoss'),
-                        initialValue: selectedDifficulty,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: '난이도',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: [
-                          for (final difficulty in difficultyOptions)
-                            DropdownMenuItem(
-                              value: difficulty,
-                              child: Text(difficulty.toUpperCase()),
-                            ),
-                        ],
-                        onChanged: (value) {
-                          if (value == null) {
-                            return;
-                          }
+                        onDifficultyChanged: (difficulty) {
                           setDialogState(() {
-                            selectedDifficulty = value;
+                            selectedDifficulty = difficulty;
                           });
                         },
                       ),
@@ -6270,14 +6251,14 @@ Future<String?> _pickPartyBoss(BuildContext context, String selectedBoss) {
     context: context,
     builder: (dialogContext) {
       return Dialog(
-        insetPadding: const EdgeInsets.all(28),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 56, vertical: 42),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
         ),
         child: ConstrainedBox(
           constraints: BoxConstraints(
-            maxWidth: 760,
-            maxHeight: size.height * 0.82,
+            maxWidth: 680,
+            maxHeight: size.height * 0.74,
           ),
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -6319,7 +6300,6 @@ Future<String?> _pickPartyBoss(BuildContext context, String selectedBoss) {
                       final boss = bosses[index];
                       return _PartyBossPickerCard(
                         bossName: boss,
-                        selected: boss == selectedBoss,
                         onTap: () => Navigator.pop(dialogContext, boss),
                       );
                     },
@@ -6338,12 +6318,16 @@ class _PartyBossSelector extends StatelessWidget {
   const _PartyBossSelector({
     required this.bossName,
     required this.difficulties,
+    required this.selectedDifficulty,
     required this.onTap,
+    required this.onDifficultyChanged,
   });
 
   final String bossName;
   final List<String> difficulties;
+  final String selectedDifficulty;
   final VoidCallback onTap;
+  final ValueChanged<String> onDifficultyChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -6354,20 +6338,21 @@ class _PartyBossSelector extends StatelessWidget {
         decoration: const InputDecoration(
           labelText: '보스',
           border: OutlineInputBorder(),
-          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               child: Image.asset(
                 _partyBossImageAsset(bossName),
-                width: 54,
-                height: 54,
+                width: 84,
+                height: 84,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => Container(
-                  width: 54,
-                  height: 54,
+                  width: 84,
+                  height: 84,
                   color: AppColors.softBorder,
                   alignment: Alignment.center,
                   child: Text(
@@ -6403,7 +6388,11 @@ class _PartyBossSelector extends StatelessWidget {
                     runSpacing: 6,
                     children: [
                       for (final difficulty in difficulties)
-                        _BossDifficultyBadge(difficulty: difficulty),
+                        _PartyDifficultyChoice(
+                          difficulty: difficulty,
+                          selected: difficulty == selectedDifficulty,
+                          onTap: () => onDifficultyChanged(difficulty),
+                        ),
                     ],
                   ),
                 ],
@@ -6422,23 +6411,59 @@ class _PartyBossSelector extends StatelessWidget {
   }
 }
 
-class _PartyBossPickerCard extends StatelessWidget {
-  const _PartyBossPickerCard({
-    required this.bossName,
+class _PartyDifficultyChoice extends StatelessWidget {
+  const _PartyDifficultyChoice({
+    required this.difficulty,
     required this.selected,
     required this.onTap,
   });
 
-  final String bossName;
+  final String difficulty;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(999),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.navAccent
+              : AppColors.navAccent.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? AppColors.navAccent : AppColors.navBorder,
+          ),
+        ),
+        child: Text(
+          difficulty.toUpperCase(),
+          style: TextStyle(
+            color: selected ? Colors.white : AppColors.navAccent,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PartyBossPickerCard extends StatelessWidget {
+  const _PartyBossPickerCard({
+    required this.bossName,
+    required this.onTap,
+  });
+
+  final String bossName;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     return Material(
-      color: selected
-          ? AppColors.navAccent.withValues(alpha: 0.1)
-          : AppColors.surface,
+      color: const Color(0xFF303840),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -6448,8 +6473,7 @@ class _PartyBossPickerCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? AppColors.navBorder : AppColors.border,
-              width: selected ? 1.4 : 1,
+              color: const Color(0xFF5E6872),
             ),
           ),
           child: Column(
@@ -6483,7 +6507,7 @@ class _PartyBossPickerCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color: AppColors.text,
+                  color: Colors.white,
                   fontSize: 13,
                   fontWeight: FontWeight.w900,
                 ),
