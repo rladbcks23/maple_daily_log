@@ -6596,8 +6596,7 @@ class _PartyScheduleCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          SizedBox(
-            width: 220,
+          Expanded(
             child: _PartyCardInfo(
               icon: Icons.groups_2_rounded,
               label: '파티원',
@@ -6609,14 +6608,14 @@ class _PartyScheduleCard extends StatelessWidget {
           ),
           const SizedBox(width: 18),
           SizedBox(
-            width: 280,
+            width: 210,
             child: Row(
               children: [
                 _BossIconImage(
-                        bossName: schedule.bossName,
-                        size: 36,
-                        fallbackTextColor: contentColor,
-                      ),
+                  bossName: schedule.bossName,
+                  size: 36,
+                  fallbackTextColor: contentColor,
+                ),
                 const SizedBox(width: 10),
                 _BossDifficultyBadge(difficulty: schedule.difficulty),
                 const SizedBox(width: 10),
