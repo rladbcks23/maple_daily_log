@@ -6370,50 +6370,41 @@ class _PartyBossSelector extends StatelessWidget {
               ),
               const SizedBox(width: 14),
               Expanded(
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        flex: 0,
-                        child: _BossDifficultyBadge(
-                          difficulty: selectedDifficulty,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          bossName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.text,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        _BossDifficultyBadge(difficulty: selectedDifficulty),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            bossName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.text,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: 74,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    for (final difficulty in difficulties) ...[
-                      _PartyDifficultyChoice(
-                        difficulty: difficulty,
-                        selected: difficulty == selectedDifficulty,
-                        onTap: () => onDifficultyChanged(difficulty),
-                      ),
-                      if (difficulty != difficulties.last)
-                        const SizedBox(height: 6),
-                    ],
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 7,
+                      runSpacing: 7,
+                      children: [
+                        for (final difficulty in difficulties)
+                          _PartyDifficultyChoice(
+                            difficulty: difficulty,
+                            selected: difficulty == selectedDifficulty,
+                            onTap: () => onDifficultyChanged(difficulty),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -6448,12 +6439,10 @@ class _PartyDifficultyChoice extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.navAccent.withValues(alpha: 0.14)
+              ? AppColors.navAccent.withValues(alpha: 0.12)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected ? AppColors.navBorder : Colors.transparent,
-          ),
+          border: Border.all(color: Colors.transparent),
         ),
         child: _BossDifficultyBadge(difficulty: difficulty),
       ),
