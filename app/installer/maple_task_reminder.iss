@@ -1,5 +1,6 @@
 #define MyAppName "메이플 숙제알리미"
-#define MyAppVersion "0.1.30"
+#define MyAppVersion "0.1.31"
+#define MyDistVersion "0.1.4"
 #define MyAppPublisher "rladbcks23"
 #define MyAppExeName "maple_task_reminder.exe"
 
@@ -12,7 +13,7 @@ DefaultDirName={localappdata}\Programs\MapleTaskReminder
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=..\..\dist
-OutputBaseFilename=MapleTaskReminder-Setup-{#MyAppVersion}
+OutputBaseFilename=MapleTaskReminder-Setup-{#MyDistVersion}
 SetupIconFile=..\assets\images\app_icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2

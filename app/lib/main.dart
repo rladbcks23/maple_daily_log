@@ -21,7 +21,7 @@ import 'party_schedule_store.dart';
 import 'scheduler_cache.dart';
 import 'sunday_event_cache.dart';
 
-const appCurrentVersion = '0.1.30';
+const appCurrentVersion = '0.1.31';
 const _mainWindowSize = Size(1280, 860);
 const _mapleProcessNames = {
   'maplestory.exe',

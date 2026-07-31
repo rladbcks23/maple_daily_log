@@ -10,8 +10,9 @@ $appRoot = Split-Path -Parent $PSScriptRoot
 $repositoryRoot = Split-Path -Parent $appRoot
 $releaseDirectory = Join-Path $appRoot "build\windows\x64\runner\Release"
 $distDirectory = Join-Path $repositoryRoot "dist"
-$version = "0.1.30"
-$zipPath = Join-Path $distDirectory "MapleTaskReminder-$version-windows-x64.zip"
+$version = "0.1.31"
+$distVersion = "0.1.4"
+$zipPath = Join-Path $distDirectory "MapleTaskReminder-$distVersion-windows-x64.zip"
 $installerScript = Join-Path $appRoot "installer\maple_task_reminder.iss"
 
 function Invoke-Checked {
@@ -78,4 +79,4 @@ if (-not $innoSetupCompiler) {
 Invoke-Checked `
     -Command $innoSetupCompiler `
     -CommandArguments @($installerScript)
-Write-Host "Installer: $(Join-Path $distDirectory "MapleTaskReminder-Setup-$version.exe")"
+Write-Host "Installer: $(Join-Path $distDirectory "MapleTaskReminder-Setup-$distVersion.exe")"
