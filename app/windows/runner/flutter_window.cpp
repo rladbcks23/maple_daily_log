@@ -166,8 +166,17 @@ void FlutterWindow::HideToNativeTray(HWND hwnd) {
     return;
   }
 
-  // Make the hidden window inert as well as invisible, so it cannot keep a
-  // stale hit-test/input surface over the desktop.
+  HWND flutter_view_window = nullptr;
+  if (flutter_controller_ && flutter_controller_->view()) {
+    flutter_view_window = flutter_controller_->view()->GetNativeWindow();
+  }
+
+  // Hide both the host window and Flutter's child view. On Windows the child
+  // view can otherwise keep a stale input surface over the desktop.
+  if (flutter_view_window != nullptr) {
+    EnableWindow(flutter_view_window, FALSE);
+    ShowWindow(flutter_view_window, SW_HIDE);
+  }
   EnableWindow(hwnd, FALSE);
   SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0,
                SWP_HIDEWINDOW | SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
@@ -179,6 +188,14 @@ void FlutterWindow::RestoreFromNativeTray(HWND hwnd) {
   }
 
   EnableWindow(hwnd, TRUE);
+  HWND flutter_view_window = nullptr;
+  if (flutter_controller_ && flutter_controller_->view()) {
+    flutter_view_window = flutter_controller_->view()->GetNativeWindow();
+  }
+  if (flutter_view_window != nullptr) {
+    EnableWindow(flutter_view_window, TRUE);
+    ShowWindow(flutter_view_window, SW_SHOW);
+  }
   ShowWindow(hwnd, SW_SHOW);
   ShowWindow(hwnd, SW_RESTORE);
   SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0,
