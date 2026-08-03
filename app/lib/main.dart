@@ -6,7 +6,6 @@ import 'dart:math' as math;
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app_config.dart';
@@ -74,25 +73,6 @@ Future<void> _prepareMainWindowControls() async {
   await windowManager.setPreventClose(true);
 }
 
-Future<void> _setTrayIcon() async {
-  final executableDirectory = File(
-    Platform.resolvedExecutable,
-  ).parent.path;
-  final installedAssetIcon = File(
-    '$executableDirectory${Platform.pathSeparator}data'
-    '${Platform.pathSeparator}flutter_assets'
-    '${Platform.pathSeparator}assets'
-    '${Platform.pathSeparator}images'
-    '${Platform.pathSeparator}app_icon.ico',
-  );
-  if (await installedAssetIcon.exists()) {
-    await trayManager.setIcon(installedAssetIcon.path);
-    return;
-  }
-
-  await trayManager.setIcon('assets/images/app_icon.ico');
-}
-
 Future<void> _hideMainWindowToTray() async {
   if (_isExitingMainApplication || _isHidingMainWindowToTray) {
     return;
@@ -149,7 +129,6 @@ Future<void> _showMainWindowFromTray() async {
 Future<void> _exitMainApplication() async {
   _isExitingMainApplication = true;
   await windowManager.setPreventClose(false);
-  await trayManager.destroy();
   await windowManager.destroy();
   exit(0);
 }
@@ -1096,8 +1075,7 @@ class _MapleAppShell extends StatefulWidget {
   State<_MapleAppShell> createState() => _MapleAppShellState();
 }
 
-class _MapleAppShellState extends State<_MapleAppShell>
-    with WindowListener, TrayListener {
+class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
   late ApiClient apiClient;
   final AppConfigStore appConfigStore = AppConfigStore();
   final CharacterCache characterCache = CharacterCache();
@@ -1150,7 +1128,6 @@ class _MapleAppShellState extends State<_MapleAppShell>
   void initState() {
     super.initState();
     windowManager.addListener(this);
-    trayManager.addListener(this);
     mainWindowShowRequestSubscription = _mainWindowShowRequests.stream.listen(
       (_) => unawaited(showWindowFromTray()),
     );
@@ -1225,17 +1202,6 @@ class _MapleAppShellState extends State<_MapleAppShell>
   Future<void> initializeDesktopControls() async {
     await _lockCurrentWindowSize(_mainWindowSize);
     await windowManager.setPreventClose(true);
-    await _setTrayIcon();
-    await trayManager.setToolTip('메이플 숙제알리미');
-    await trayManager.setContextMenu(
-      Menu(
-        items: [
-          MenuItem(key: 'show_window', label: '열기'),
-          MenuItem.separator(),
-          MenuItem(key: 'exit_app', label: '종료'),
-        ],
-      ),
-    );
   }
 
   @override
@@ -1245,51 +1211,12 @@ class _MapleAppShellState extends State<_MapleAppShell>
     overlayAlertBatchTimer?.cancel();
     mainWindowShowRequestSubscription?.cancel();
     windowManager.removeListener(this);
-    trayManager.removeListener(this);
     super.dispose();
   }
 
   @override
   void onWindowClose() {
     unawaited(_handleWindowClose());
-  }
-
-  @override
-  void onTrayIconMouseDown() {
-    unawaited(
-      showWindowFromTray().catchError((_) {
-        return;
-      }),
-    );
-  }
-
-  @override
-  void onTrayIconRightMouseDown() {
-    unawaited(
-      showWindowFromTray().catchError((_) {
-        return;
-      }),
-    );
-  }
-
-  @override
-  void onTrayMenuItemClick(MenuItem menuItem) {
-    switch (menuItem.key) {
-      case 'show_window':
-        unawaited(
-          showWindowFromTray().catchError((_) {
-            return;
-          }),
-        );
-        break;
-      case 'exit_app':
-        unawaited(
-          exitApplication().catchError((_) {
-            return;
-          }),
-        );
-        break;
-    }
   }
 
   Future<void> _handleWindowClose() async {

@@ -4,6 +4,8 @@
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
 
+#include <shellapi.h>
+
 #include <memory>
 
 #include "win32_window.h"
@@ -23,11 +25,19 @@ class FlutterWindow : public Win32Window {
                          LPARAM const lparam) noexcept override;
 
  private:
+  void AddNativeTrayIcon(HWND hwnd);
+  void RemoveNativeTrayIcon();
+  void ShowNativeTrayMenu(HWND hwnd);
+  void RestoreFromNativeTray(HWND hwnd);
+
   // The project to run.
   flutter::DartProject project_;
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+
+  NOTIFYICONDATA tray_icon_data_ = {};
+  bool tray_icon_added_ = false;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

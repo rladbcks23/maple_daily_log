@@ -4,6 +4,13 @@
 
 #include "desktop_multi_window/desktop_multi_window_plugin.h"
 #include "flutter/generated_plugin_registrant.h"
+#include "resource.h"
+
+namespace {
+constexpr UINT kTrayIconMessage = WM_APP + 1;
+constexpr UINT kTrayMenuShow = 1001;
+constexpr UINT kTrayMenuExit = 1002;
+}  // namespace
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -42,11 +49,14 @@ bool FlutterWindow::OnCreate() {
   // registered. The following call ensures a frame is pending to ensure the
   // window is shown. It is a no-op if the first frame hasn't completed yet.
   flutter_controller_->ForceRedraw();
+  AddNativeTrayIcon(GetHandle());
 
   return true;
 }
 
 void FlutterWindow::OnDestroy() {
+  RemoveNativeTrayIcon();
+
   if (flutter_controller_) {
     flutter_controller_ = nullptr;
   }
@@ -61,6 +71,30 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   if (message == WM_CLOSE) {
     ShowWindow(hwnd, SW_HIDE);
     return 0;
+  }
+
+  if (message == kTrayIconMessage) {
+    switch (LOWORD(lparam)) {
+      case WM_LBUTTONUP:
+        RestoreFromNativeTray(hwnd);
+        return 0;
+      case WM_RBUTTONUP:
+        ShowNativeTrayMenu(hwnd);
+        return 0;
+    }
+  }
+
+  if (message == WM_COMMAND) {
+    switch (LOWORD(wparam)) {
+      case kTrayMenuShow:
+        RestoreFromNativeTray(hwnd);
+        return 0;
+      case kTrayMenuExit:
+        RemoveNativeTrayIcon();
+        DestroyWindow(hwnd);
+        PostQuitMessage(0);
+        return 0;
+    }
   }
 
   // Give Flutter, including plugins, an opportunity to handle window messages.
@@ -80,4 +114,55 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   }
 
   return Win32Window::MessageHandler(hwnd, message, wparam, lparam);
+}
+
+void FlutterWindow::AddNativeTrayIcon(HWND hwnd) {
+  if (tray_icon_added_ || hwnd == nullptr) {
+    return;
+  }
+
+  tray_icon_data_ = {};
+  tray_icon_data_.cbSize = sizeof(NOTIFYICONDATA);
+  tray_icon_data_.hWnd = hwnd;
+  tray_icon_data_.uID = 1;
+  tray_icon_data_.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+  tray_icon_data_.uCallbackMessage = kTrayIconMessage;
+  tray_icon_data_.hIcon =
+      LoadIcon(GetModuleHandle(nullptr), MAKEINTRESOURCE(IDI_APP_ICON));
+  wcscpy_s(tray_icon_data_.szTip, L"\uBA54\uC774\uD50C \uC219\uC81C\uC54C\uB9AC\uBBF8");
+  tray_icon_added_ = Shell_NotifyIcon(NIM_ADD, &tray_icon_data_) == TRUE;
+}
+
+void FlutterWindow::RemoveNativeTrayIcon() {
+  if (!tray_icon_added_) {
+    return;
+  }
+
+  Shell_NotifyIcon(NIM_DELETE, &tray_icon_data_);
+  tray_icon_added_ = false;
+}
+
+void FlutterWindow::ShowNativeTrayMenu(HWND hwnd) {
+  HMENU menu = CreatePopupMenu();
+  if (menu == nullptr) {
+    RestoreFromNativeTray(hwnd);
+    return;
+  }
+
+  AppendMenu(menu, MF_STRING, kTrayMenuShow, L"\uC5F4\uAE30");
+  AppendMenu(menu, MF_SEPARATOR, 0, nullptr);
+  AppendMenu(menu, MF_STRING, kTrayMenuExit, L"\uC885\uB8CC");
+
+  POINT cursor_position;
+  GetCursorPos(&cursor_position);
+  SetForegroundWindow(hwnd);
+  TrackPopupMenu(menu, TPM_RIGHTBUTTON, cursor_position.x, cursor_position.y, 0,
+                 hwnd, nullptr);
+  DestroyMenu(menu);
+}
+
+void FlutterWindow::RestoreFromNativeTray(HWND hwnd) {
+  ShowWindow(hwnd, SW_SHOW);
+  ShowWindow(hwnd, SW_RESTORE);
+  SetForegroundWindow(hwnd);
 }
