@@ -68,11 +68,6 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
-  if (message == WM_CLOSE) {
-    HideToNativeTray(hwnd);
-    return 0;
-  }
-
   if (message == kTrayIconMessage) {
     switch (LOWORD(lparam)) {
       case WM_LBUTTONUP:
