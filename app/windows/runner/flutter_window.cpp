@@ -69,7 +69,7 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
   if (message == WM_CLOSE) {
-    ShowWindow(hwnd, SW_HIDE);
+    HideToNativeTray(hwnd);
     return 0;
   }
 
@@ -161,8 +161,27 @@ void FlutterWindow::ShowNativeTrayMenu(HWND hwnd) {
   DestroyMenu(menu);
 }
 
+void FlutterWindow::HideToNativeTray(HWND hwnd) {
+  if (hwnd == nullptr) {
+    return;
+  }
+
+  // Make the hidden window inert as well as invisible, so it cannot keep a
+  // stale hit-test/input surface over the desktop.
+  EnableWindow(hwnd, FALSE);
+  SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0,
+               SWP_HIDEWINDOW | SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+}
+
 void FlutterWindow::RestoreFromNativeTray(HWND hwnd) {
+  if (hwnd == nullptr) {
+    return;
+  }
+
+  EnableWindow(hwnd, TRUE);
   ShowWindow(hwnd, SW_SHOW);
   ShowWindow(hwnd, SW_RESTORE);
+  SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0,
+               SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
   SetForegroundWindow(hwnd);
 }

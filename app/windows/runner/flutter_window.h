@@ -28,6 +28,7 @@ class FlutterWindow : public Win32Window {
   void AddNativeTrayIcon(HWND hwnd);
   void RemoveNativeTrayIcon();
   void ShowNativeTrayMenu(HWND hwnd);
+  void HideToNativeTray(HWND hwnd);
   void RestoreFromNativeTray(HWND hwnd);
 
   // The project to run.
