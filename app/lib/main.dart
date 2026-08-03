@@ -3691,20 +3691,67 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     }
     final logPath = '${directory.path}${Platform.pathSeparator}'
         'installer_${DateTime.now().millisecondsSinceEpoch}.log';
+    final powershell = File(
+      '${Platform.environment['SystemRoot'] ?? r'C:\Windows'}'
+      r'\System32\WindowsPowerShell\v1.0\powershell.exe',
+    );
+    final powershellCommand =
+        await powershell.exists() ? powershell.path : 'powershell.exe';
+    final appExecutable = Platform.resolvedExecutable;
+    final script = '''
+\$ErrorActionPreference = 'Continue'
+\$targetPid = $pid
+\$installer = ${_powerShellLiteral(installer.path)}
+\$logPath = ${_powerShellLiteral(logPath)}
+\$appExecutable = ${_powerShellLiteral(appExecutable)}
+
+try {
+  Wait-Process -Id \$targetPid -Timeout 30 -ErrorAction SilentlyContinue
+} catch {}
+
+Start-Sleep -Milliseconds 500
+\$arguments = @(
+  '/VERYSILENT',
+  '/SUPPRESSMSGBOXES',
+  '/NORESTART',
+  '/SP-',
+  "/LOG=\$logPath"
+)
+
+try {
+  Start-Process -FilePath \$installer -ArgumentList \$arguments -Wait -WindowStyle Hidden
+} catch {}
+
+Start-Sleep -Milliseconds 700
+if (Test-Path -LiteralPath \$appExecutable) {
+  try {
+    Start-Process -FilePath \$appExecutable
+  } catch {}
+}
+''';
+    final encodedScript = base64Encode(
+      script.codeUnits
+          .expand((unit) => [unit & 0xff, (unit >> 8) & 0xff])
+          .toList(),
+    );
 
     await Process.start(
-      installer.path,
+      powershellCommand,
       [
-        '/VERYSILENT',
-        '/SUPPRESSMSGBOXES',
-        '/NORESTART',
-        '/CLOSEAPPLICATIONS',
-        '/RESTARTAPPLICATIONS',
-        '/SP-',
-        '/LOG=$logPath',
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-WindowStyle',
+        'Hidden',
+        '-EncodedCommand',
+        encodedScript,
       ],
       mode: ProcessStartMode.detached,
     );
+  }
+
+  String _powerShellLiteral(String value) {
+    return "'${value.replaceAll("'", "''")}'";
   }
 
   bool _isNewerVersion(String latestVersion, String currentVersion) {
