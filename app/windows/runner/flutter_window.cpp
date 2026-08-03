@@ -68,6 +68,11 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
     }
   }
 
+  if (message == WM_CLOSE) {
+    ShowWindow(hwnd, SW_HIDE);
+    return 0;
+  }
+
   switch (message) {
     case WM_FONTCHANGE:
       flutter_controller_->engine()->ReloadSystemFonts();
