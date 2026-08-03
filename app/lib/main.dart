@@ -30,7 +30,6 @@ const _mapleProcessNames = {
   'nexonlauncher.exe',
 };
 const _singleInstancePort = 48721;
-const _showMainWindowArgument = '--show-main-window';
 const _singleInstanceShowCommand = 'show';
 
 // Keep a reference to the bound socket so the single-instance lock stays alive.
@@ -114,12 +113,6 @@ Future<void> _showMainWindowFromTray() async {
   }
   _isShowingMainWindowFromTray = true;
   try {
-    await Future<void>.delayed(const Duration(milliseconds: 80));
-    try {
-      await windowManager.setAlwaysOnTop(true);
-    } catch (error) {
-      debugPrint('Failed to set always-on-top for tray restore: $error');
-    }
     try {
       await windowManager.setPreventClose(true);
     } catch (error) {
@@ -131,26 +124,19 @@ Future<void> _showMainWindowFromTray() async {
       debugPrint('Failed to restore taskbar visibility: $error');
     }
     try {
-      if (await windowManager.isMinimized()) {
-        await windowManager.restore();
-      }
-    } catch (error) {
-      debugPrint('Failed to restore minimized window: $error');
-    }
-    try {
       await windowManager.show();
     } catch (error) {
       debugPrint('Failed to show main window from tray: $error');
     }
     try {
+      await windowManager.restore();
+    } catch (error) {
+      debugPrint('Failed to restore main window from tray: $error');
+    }
+    try {
       await windowManager.focus();
     } catch (error) {
       debugPrint('Failed to focus main window from tray: $error');
-    }
-    try {
-      await windowManager.setAlwaysOnTop(false);
-    } catch (error) {
-      debugPrint('Failed to reset always-on-top after tray restore: $error');
     }
   } catch (error) {
     debugPrint('Failed to recover main window from tray: $error');
@@ -212,20 +198,6 @@ Future<void> _notifyExistingMainInstance(String command) async {
     await socket.close();
   } catch (error) {
     debugPrint('Failed to notify existing main instance: $error');
-  }
-}
-
-Future<void> _requestMainWindowFromDetachedProcess() async {
-  try {
-    await Process.start(
-      Platform.resolvedExecutable,
-      [_showMainWindowArgument],
-      mode: ProcessStartMode.detached,
-    );
-  } catch (error) {
-    debugPrint(
-        'Failed to request main window through detached process: $error');
-    await _notifyExistingMainInstance(_singleInstanceShowCommand);
   }
 }
 
@@ -1284,33 +1256,31 @@ class _MapleAppShellState extends State<_MapleAppShell>
 
   @override
   void onTrayIconMouseDown() {
-    Timer(const Duration(milliseconds: 30), () {
-      unawaited(
-        showWindowFromTray().catchError((_) {
-          return;
-        }),
-      );
-    });
+    unawaited(
+      showWindowFromTray().catchError((_) {
+        return;
+      }),
+    );
   }
 
   @override
   void onTrayIconRightMouseDown() {
-    Timer(const Duration(milliseconds: 30), () {
-      unawaited(
-        showWindowFromTray().catchError((_) {
-          return;
-        }),
-      );
-    });
+    unawaited(
+      showWindowFromTray().catchError((_) {
+        return;
+      }),
+    );
   }
 
   @override
   void onTrayMenuItemClick(MenuItem menuItem) {
     switch (menuItem.key) {
       case 'show_window':
-        Timer(const Duration(milliseconds: 180), () {
-          unawaited(_requestMainWindowFromDetachedProcess());
-        });
+        unawaited(
+          showWindowFromTray().catchError((_) {
+            return;
+          }),
+        );
         break;
       case 'exit_app':
         unawaited(
