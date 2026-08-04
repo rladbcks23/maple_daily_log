@@ -1991,33 +1991,65 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
     DateTime now, {
     bool requireSameDate = false,
   }) async {
+    final upcomingSchedules = <({PartySchedule schedule, String ruleKey})>[];
     final dueSchedules = <({PartySchedule schedule, String ruleKey})>[];
     for (final schedule in partySchedules) {
       final targetTime = schedule.currentScheduleFrom(now);
+      final until = targetTime.difference(now);
       final elapsed = now.difference(targetTime);
       if (_isPartyScheduleClearedBySnapshots(schedule, dashboardSnapshots) ||
-          targetTime.isAfter(now) ||
           (requireSameDate && _dateKey(targetTime) != _dateKey(now)) ||
+          until > const Duration(minutes: 30) ||
           elapsed > const Duration(minutes: 30)) {
         continue;
       }
 
-      final ruleKey =
-          'party-schedule-${schedule.id}-${schedule.repeatType}-${_dateKey(targetTime)}-${schedule.hour}-${schedule.minute}';
-      if (pendingPartyScheduleRuleKeys.contains(ruleKey) ||
-          await notificationHistory.hasSent(ruleKey)) {
-        continue;
+      if (targetTime.isAfter(now)) {
+        final ruleKey =
+            'party-schedule-before30-${schedule.id}-${schedule.repeatType}-${_dateKey(targetTime)}-${schedule.hour}-${schedule.minute}';
+        if (!pendingPartyScheduleRuleKeys.contains(ruleKey) &&
+            !await notificationHistory.hasSent(ruleKey)) {
+          upcomingSchedules.add((schedule: schedule, ruleKey: ruleKey));
+        }
+      } else {
+        final ruleKey =
+            'party-schedule-due-${schedule.id}-${schedule.repeatType}-${_dateKey(targetTime)}-${schedule.hour}-${schedule.minute}';
+        if (!pendingPartyScheduleRuleKeys.contains(ruleKey) &&
+            !await notificationHistory.hasSent(ruleKey)) {
+          dueSchedules.add((schedule: schedule, ruleKey: ruleKey));
+        }
       }
-
-      dueSchedules.add((schedule: schedule, ruleKey: ruleKey));
     }
 
-    if (dueSchedules.isEmpty) {
+    if (upcomingSchedules.isEmpty && dueSchedules.isEmpty) {
       return;
     }
 
+    for (final item in upcomingSchedules) {
+      pendingPartyScheduleRuleKeys.add(item.ruleKey);
+    }
     for (final item in dueSchedules) {
       pendingPartyScheduleRuleKeys.add(item.ruleKey);
+    }
+
+    if (upcomingSchedules.isNotEmpty) {
+      await showOverlayAlert(
+        title: upcomingSchedules.length == 1
+            ? '파티 일정 30분 전이에요'
+            : '파티 일정 ${upcomingSchedules.length}개가 30분 전이에요',
+        body: upcomingSchedules
+            .map((item) => _partyScheduleNotificationText(item.schedule))
+            .join('\n'),
+        payload: 'section:party',
+      );
+    }
+
+    if (dueSchedules.isEmpty) {
+      for (final item in upcomingSchedules) {
+        await notificationHistory.markSent(item.ruleKey);
+        pendingPartyScheduleRuleKeys.remove(item.ruleKey);
+      }
+      return;
     }
 
     await showOverlayAlert(
@@ -2030,6 +2062,10 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
       payload: 'section:party',
     );
 
+    for (final item in upcomingSchedules) {
+      await notificationHistory.markSent(item.ruleKey);
+      pendingPartyScheduleRuleKeys.remove(item.ruleKey);
+    }
     for (final item in dueSchedules) {
       await notificationHistory.markSent(item.ruleKey);
       pendingPartyScheduleRuleKeys.remove(item.ruleKey);
