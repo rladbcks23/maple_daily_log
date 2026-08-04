@@ -4,6 +4,8 @@
 
 #include "desktop_multi_window/desktop_multi_window_plugin.h"
 #include "flutter/generated_plugin_registrant.h"
+#include "flutter/method_channel.h"
+#include "flutter/standard_method_codec.h"
 #include "resource.h"
 
 namespace {
@@ -43,6 +45,35 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  window_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(),
+          "maple_task_reminder/window",
+          &flutter::StandardMethodCodec::GetInstance());
+  window_channel_->SetMethodCallHandler(
+      [this](const flutter::MethodCall<flutter::EncodableValue>& call,
+             std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+                 result) {
+        HWND hwnd = GetHandle();
+        if (call.method_name() == "hideMainWindow") {
+          HideMainWindow(hwnd);
+          result->Success();
+          return;
+        }
+        if (call.method_name() == "restoreMainWindow") {
+          RestoreMainWindow(hwnd);
+          result->Success();
+          return;
+        }
+        if (call.method_name() == "exitApplication") {
+          result->Success();
+          RemoveNativeTrayIcon();
+          DestroyWindow(hwnd);
+          PostQuitMessage(0);
+          return;
+        }
+        result->NotImplemented();
+      });
   DesktopMultiWindowSetWindowCreatedCallback([](void *controller) {
     auto *flutter_view_controller =
         reinterpret_cast<flutter::FlutterViewController *>(controller);
@@ -65,6 +96,7 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  window_channel_.reset();
   RemoveNativeTrayIcon();
 
   if (flutter_controller_) {

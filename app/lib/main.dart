@@ -22,6 +22,7 @@ import 'sunday_event_cache.dart';
 
 const appCurrentVersion = '0.1.31';
 const _mainWindowSize = Size(1280, 860);
+const _nativeWindowChannel = MethodChannel('maple_task_reminder/window');
 const _mapleProcessNames = {
   'maplestory.exe',
   'maplestoryclient.exe',
@@ -70,7 +71,9 @@ Future<void> main(List<String> args) async {
 
 Future<void> _prepareMainWindowControls() async {
   await _lockCurrentWindowSize(_mainWindowSize);
-  await windowManager.setPreventClose(true);
+  if (!Platform.isWindows) {
+    await windowManager.setPreventClose(true);
+  }
 }
 
 Future<void> _hideMainWindowToTray() async {
@@ -79,9 +82,13 @@ Future<void> _hideMainWindowToTray() async {
   }
   _isHidingMainWindowToTray = true;
   try {
-    await windowManager.setPreventClose(true);
-    await windowManager.hide();
-    await windowManager.setSkipTaskbar(true);
+    if (Platform.isWindows) {
+      await _nativeWindowChannel.invokeMethod<void>('hideMainWindow');
+    } else {
+      await windowManager.setPreventClose(true);
+      await windowManager.hide();
+      await windowManager.setSkipTaskbar(true);
+    }
   } finally {
     _isHidingMainWindowToTray = false;
   }
@@ -93,6 +100,10 @@ Future<void> _showMainWindowFromTray() async {
   }
   _isShowingMainWindowFromTray = true;
   try {
+    if (Platform.isWindows) {
+      await _nativeWindowChannel.invokeMethod<void>('restoreMainWindow');
+      return;
+    }
     try {
       await windowManager.setPreventClose(true);
     } catch (error) {
@@ -128,6 +139,14 @@ Future<void> _showMainWindowFromTray() async {
 
 Future<void> _exitMainApplication() async {
   _isExitingMainApplication = true;
+  if (Platform.isWindows) {
+    try {
+      await _nativeWindowChannel.invokeMethod<void>('exitApplication');
+      return;
+    } catch (error) {
+      debugPrint('Failed to exit through native window channel: $error');
+    }
+  }
   await windowManager.setPreventClose(false);
   await windowManager.destroy();
   exit(0);
@@ -1201,7 +1220,9 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
 
   Future<void> initializeDesktopControls() async {
     await _lockCurrentWindowSize(_mainWindowSize);
-    await windowManager.setPreventClose(true);
+    if (!Platform.isWindows) {
+      await windowManager.setPreventClose(true);
+    }
   }
 
   @override
