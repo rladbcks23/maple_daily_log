@@ -3753,12 +3753,18 @@ class _DashboardPanel extends StatelessWidget {
         continue;
       }
       for (final item in snapshot.weeklyItems) {
+        if (_isGuildWeeklyMissionPointItem(item)) {
+          continue;
+        }
         if (_isSharedWeeklyContentItem(item)) {
           continue;
         }
         weeklyContentCharacters.putIfAbsent(item.title, () => []);
         final isSuro = _isGuildSuroItem(item);
-        final isCompleted = isSuro ? (item.currentCount ?? 0) >= 1 : item.done;
+        final isFlag = _isGuildFlagRaceItem(item);
+        final isCompleted = (isSuro || isFlag)
+            ? (item.currentCount ?? 0) >= 1
+            : item.done;
         if (isCompleted) {
           final label = isSuro
               ? '${character.characterName} · ${item.currentCount}점'
@@ -4852,6 +4858,19 @@ bool _isDashboardWeeklyBoss(SchedulerItemSummary item) {
 
 bool _isGuildSuroItem(SchedulerItemSummary item) {
   return item.title.replaceAll(' ', '').contains('지하수로');
+}
+
+bool _isGuildFlagRaceItem(SchedulerItemSummary item) {
+  final title = item.title.replaceAll(' ', '');
+  return title.contains('플래그레이스') || title.contains('플래그');
+}
+
+bool _isGuildWeeklyMissionPointItem(SchedulerItemSummary item) {
+  final title = item.title.replaceAll(' ', '');
+  return title.contains('길드') &&
+      title.contains('주간') &&
+      title.contains('미션') &&
+      title.contains('포인트');
 }
 
 const _partyBossDifficultyOptions = <String, List<String>>{

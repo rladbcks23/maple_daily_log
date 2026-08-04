@@ -624,6 +624,7 @@ class SchedulerItemSummary {
     final done = hasExplicitDone ||
         state == '2' ||
         _isEpicDungeonDone(normalizedTitle, current, max) ||
+        _isGuildFlagRaceDone(normalizedTitle, current) ||
         _isGuildWeeklyMissionDone(normalizedTitle, current, max) ||
         _isCountDone(normalizedTitle, current, max);
 
@@ -646,6 +647,9 @@ class SchedulerItemSummary {
   }) {
     final count = current ?? 0;
 
+    if (_isGuildFlagRace(title)) {
+      return current == null ? '' : '$current점';
+    }
     if (state == '0' && count == 0) {
       return '';
     }
@@ -692,6 +696,15 @@ class SchedulerItemSummary {
         max != null &&
         max > 0 &&
         current >= max;
+  }
+
+  static bool _isGuildFlagRaceDone(String title, int? current) {
+    return _isGuildFlagRace(title) && (current ?? 0) >= 1;
+  }
+
+  static bool _isGuildFlagRace(String title) {
+    final normalized = title.replaceAll(' ', '');
+    return normalized.contains('플래그레이스') || normalized.contains('플래그');
   }
 
   static bool _isCountDone(String title, int? current, int? max) {
