@@ -1,6 +1,9 @@
 #include "flutter_window.h"
 
+#include <cstdint>
 #include <optional>
+#include <sstream>
+#include <string>
 
 #include "desktop_multi_window/desktop_multi_window_plugin.h"
 #include "flutter/generated_plugin_registrant.h"
@@ -10,6 +13,7 @@ namespace {
 constexpr UINT kTrayIconMessage = WM_APP + 1;
 constexpr UINT kTrayMenuShow = 1001;
 constexpr UINT kTrayMenuExit = 1002;
+constexpr UINT_PTR kWindowProbeTimer = 2001;
 
 BOOL CALLBACK HideChildWindow(HWND child, LPARAM) {
   ShowWindow(child, SW_HIDE);
@@ -19,6 +23,63 @@ BOOL CALLBACK HideChildWindow(HWND child, LPARAM) {
 BOOL CALLBACK ShowChildWindow(HWND child, LPARAM) {
   ShowWindow(child, SW_SHOW);
   return TRUE;
+}
+
+std::wstring WindowText(HWND hwnd) {
+  if (hwnd == nullptr || !IsWindow(hwnd)) {
+    return L"<null>";
+  }
+
+  wchar_t class_name[256]{};
+  wchar_t title[256]{};
+  GetClassNameW(hwnd, class_name, 256);
+  GetWindowTextW(hwnd, title, 256);
+
+  DWORD process_id = 0;
+  GetWindowThreadProcessId(hwnd, &process_id);
+
+  std::wstringstream stream;
+  stream << L"hwnd=0x" << std::hex << reinterpret_cast<uintptr_t>(hwnd)
+         << std::dec << L" pid=" << process_id << L" class=\"" << class_name
+         << L"\" title=\"" << title << L"\" visible=" << IsWindowVisible(hwnd)
+         << L" iconic=" << IsIconic(hwnd);
+  return stream.str();
+}
+
+std::wstring DebugLogPath() {
+  wchar_t local_app_data[MAX_PATH]{};
+  DWORD length = GetEnvironmentVariableW(L"LOCALAPPDATA", local_app_data,
+                                         MAX_PATH);
+  std::wstring directory =
+      length > 0 ? std::wstring(local_app_data, length) : L".";
+  directory += L"\\MapleTaskReminder";
+  CreateDirectoryW(directory.c_str(), nullptr);
+  return directory + L"\\window_debug.log";
+}
+
+void AppendDebugLog(const std::wstring& message) {
+  const std::wstring path = DebugLogPath();
+  HANDLE file = CreateFileW(path.c_str(), FILE_APPEND_DATA, FILE_SHARE_READ,
+                            nullptr, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL,
+                            nullptr);
+  if (file == INVALID_HANDLE_VALUE) {
+    OutputDebugStringW((message + L"\n").c_str());
+    return;
+  }
+
+  SYSTEMTIME time{};
+  GetLocalTime(&time);
+  std::wstringstream line;
+  line << L"[" << time.wYear << L"-" << time.wMonth << L"-" << time.wDay
+       << L" " << time.wHour << L":" << time.wMinute << L":" << time.wSecond
+       << L"." << time.wMilliseconds << L"] " << message << L"\r\n";
+  const std::wstring text = line.str();
+  DWORD bytes_written = 0;
+  WriteFile(file, text.c_str(),
+            static_cast<DWORD>(text.size() * sizeof(wchar_t)), &bytes_written,
+            nullptr);
+  CloseHandle(file);
+  OutputDebugStringW(text.c_str());
 }
 }  // namespace
 
@@ -78,6 +139,15 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  if (message == WM_TIMER && wparam == kWindowProbeTimer) {
+    LogWindowProbe(hwnd, L"timer");
+    window_probe_ticks_++;
+    if (window_probe_ticks_ >= 5) {
+      KillTimer(hwnd, kWindowProbeTimer);
+    }
+    return 0;
+  }
+
   if (message == WM_CLOSE) {
     HideMainWindow(hwnd);
     return 0;
@@ -195,6 +265,9 @@ void FlutterWindow::HideMainWindow(HWND hwnd) {
   EnumChildWindows(hwnd, HideChildWindow, 0);
   ShowWindow(hwnd, SW_HIDE);
   main_window_state_ = MainWindowState::kHiddenToTray;
+  window_probe_ticks_ = 0;
+  LogWindowProbe(hwnd, L"hide");
+  SetTimer(hwnd, kWindowProbeTimer, 1000, nullptr);
 }
 
 void FlutterWindow::RestoreMainWindow(HWND hwnd) {
@@ -226,4 +299,35 @@ void FlutterWindow::RestoreMainWindow(HWND hwnd) {
     SetFocus(flutter_view_window);
   }
   main_window_state_ = MainWindowState::kVisible;
+  KillTimer(hwnd, kWindowProbeTimer);
+  LogWindowProbe(hwnd, L"restore");
+}
+
+void FlutterWindow::LogWindowProbe(HWND hwnd, const wchar_t* phase) {
+  HWND flutter_view_window = nullptr;
+  if (flutter_controller_ && flutter_controller_->view()) {
+    flutter_view_window = flutter_controller_->view()->GetNativeWindow();
+  }
+
+  POINT point{};
+  GetCursorPos(&point);
+  HWND hit = WindowFromPoint(point);
+  HWND capture = GetCapture();
+  HWND foreground = GetForegroundWindow();
+  HWND active = GetActiveWindow();
+  HWND owner = hwnd != nullptr ? GetWindow(hwnd, GW_OWNER) : nullptr;
+
+  std::wstringstream stream;
+  stream << L"phase=" << phase << L" mouse=(" << point.x << L"," << point.y
+         << L") state="
+         << (main_window_state_ == MainWindowState::kVisible ? L"visible"
+                                                             : L"hidden")
+         << L"\n  main: " << WindowText(hwnd)
+         << L"\n  flutter: " << WindowText(flutter_view_window)
+         << L"\n  hit: " << WindowText(hit)
+         << L"\n  capture: " << WindowText(capture)
+         << L"\n  foreground: " << WindowText(foreground)
+         << L"\n  active: " << WindowText(active)
+         << L"\n  owner: " << WindowText(owner);
+  AppendDebugLog(stream.str());
 }
