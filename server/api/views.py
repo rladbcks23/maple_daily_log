@@ -12,9 +12,10 @@ from .models import NoticeSnapshot, SundayEventSnapshot
 from .nexon import NexonApiError, NexonClient
 from .serializers import NoticeSnapshotSerializer, SundayEventSnapshotSerializer
 from .services import (
+    active_notice_items_from_db,
     check_new_notices,
+    collect_and_store_notice_items,
     collect_or_load_latest_sunday_event,
-    collect_current_notice_items,
     run_reminder_check,
 )
 
@@ -22,9 +23,6 @@ from .services import (
 SCHEDULER_CACHE_SECONDS = 30
 CHARACTER_LIST_CACHE_SECONDS = 600
 CHARACTER_BASIC_CACHE_SECONDS = 86400
-CURRENT_NOTICES_CACHE_SECONDS = 300
-
-
 def nexon_api_key_from_request(request):
     return (
         request.headers.get("X-Nexon-Api-Key")
@@ -137,12 +135,11 @@ class NexonSchedulerView(APIView):
 class CurrentNoticesView(APIView):
     def get(self, request):
         try:
-            items = cached_response(
-                "nexon:current-notices",
-                CURRENT_NOTICES_CACHE_SECONDS,
-                request.query_params.get("refresh") == "1",
-                collect_current_notice_items,
-            )
+            force_refresh = request.query_params.get("refresh") == "1"
+            if force_refresh or not NoticeSnapshot.objects.filter(is_active=True).exists():
+                items = collect_and_store_notice_items()["items"]
+            else:
+                items = active_notice_items_from_db()
             return Response({"items": items})
         except NexonApiError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)

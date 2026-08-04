@@ -19,6 +19,17 @@ class NoticeSnapshot(models.Model):
     title = models.CharField(max_length=300)
     link = models.URLField(max_length=500, blank=True)
     registered_at = models.CharField(max_length=40, blank=True)
+    thumbnail = models.URLField(max_length=500, blank=True)
+    event_start_at = models.CharField(max_length=40, blank=True)
+    event_end_at = models.CharField(max_length=40, blank=True)
+    sale_start_at = models.CharField(max_length=40, blank=True)
+    sale_end_at = models.CharField(max_length=40, blank=True)
+    sale_ongoing = models.BooleanField(default=False)
+    content = models.TextField(blank=True)
+    content_image_urls = models.JSONField(default=list, blank=True)
+    is_active = models.BooleanField(default=True)
+    ended_notified = models.BooleanField(default=False)
+    first_seen_at = models.DateTimeField(auto_now_add=True)
     collected_at = models.DateTimeField(auto_now=True)
 
     class Meta:

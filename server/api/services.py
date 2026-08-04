@@ -1,5 +1,6 @@
 import re
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from html import unescape
 from types import SimpleNamespace
 
@@ -152,6 +153,133 @@ def _html_text(value):
 
 def is_sunday_maple_title(title):
     return title in {"스페셜 썬데이 메이플", "썬데이 메이플"}
+
+
+def _date_only(value):
+    if not value:
+        return None
+    match = re.search(r"\d{4}-\d{2}-\d{2}", str(value))
+    if match is None:
+        return None
+    try:
+        return datetime.strptime(match.group(0), "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _is_event_active(item, today=None):
+    if item.get("noticeType") != NoticeSnapshot.EVENT:
+        return True
+    end_date = _date_only(item.get("eventEndAt"))
+    if end_date is None:
+        return True
+    return end_date >= (today or timezone.localdate())
+
+
+def notice_snapshot_to_payload(snapshot):
+    return {
+        "noticeType": snapshot.notice_type,
+        "noticeId": snapshot.notice_id,
+        "title": snapshot.title,
+        "link": snapshot.link,
+        "registeredAt": snapshot.registered_at,
+        "thumbnail": snapshot.thumbnail,
+        "thumbnailUrl": snapshot.thumbnail,
+        "eventStartAt": snapshot.event_start_at,
+        "eventEndAt": snapshot.event_end_at,
+        "saleStartAt": snapshot.sale_start_at,
+        "saleEndAt": snapshot.sale_end_at,
+        "saleOngoing": snapshot.sale_ongoing,
+        "content": snapshot.content,
+        "contentImageUrls": snapshot.content_image_urls,
+    }
+
+
+def active_notice_items_from_db():
+    today = timezone.localdate()
+    items = []
+    for snapshot in NoticeSnapshot.objects.filter(is_active=True):
+        if snapshot.notice_type == NoticeSnapshot.EVENT:
+            end_date = _date_only(snapshot.event_end_at)
+            if end_date is not None and end_date < today:
+                continue
+        items.append(notice_snapshot_to_payload(snapshot))
+    return items
+
+
+def _save_notice_item(item, active=True):
+    snapshot, _ = NoticeSnapshot.objects.update_or_create(
+        notice_type=item["noticeType"],
+        notice_id=item["noticeId"],
+        defaults={
+            "title": item.get("title", ""),
+            "link": item.get("link", ""),
+            "registered_at": item.get("registeredAt", ""),
+            "thumbnail": item.get("thumbnail", "") or item.get("thumbnailUrl", ""),
+            "event_start_at": item.get("eventStartAt", ""),
+            "event_end_at": item.get("eventEndAt", ""),
+            "sale_start_at": item.get("saleStartAt", ""),
+            "sale_end_at": item.get("saleEndAt", ""),
+            "sale_ongoing": bool(item.get("saleOngoing", False)),
+            "content": item.get("content", ""),
+            "content_image_urls": item.get("contentImageUrls", []),
+            "is_active": active,
+            "ended_notified": False if active else True,
+        },
+    )
+    return snapshot
+
+
+def _snapshot_key(snapshot):
+    return (snapshot.notice_type, snapshot.notice_id)
+
+
+def _item_key(item):
+    return (item["noticeType"], item["noticeId"])
+
+
+def collect_and_store_notice_items(client=None):
+    current_items = collect_current_notice_items(client)
+    today = timezone.localdate()
+    existing_keys = set(NoticeSnapshot.objects.values_list("notice_type", "notice_id"))
+    current_keys = {_item_key(item) for item in current_items}
+    new_items = []
+
+    for item in current_items:
+        key = _item_key(item)
+        if key not in existing_keys:
+            new_items.append(item)
+        _save_notice_item(item, active=_is_event_active(item, today))
+
+    for snapshot in NoticeSnapshot.objects.filter(is_active=True):
+        key = _snapshot_key(snapshot)
+        if key in current_keys:
+            continue
+
+        if snapshot.notice_type == NoticeSnapshot.EVENT:
+            end_date = _date_only(snapshot.event_end_at)
+            if end_date is None or end_date >= today:
+                continue
+
+        snapshot.is_active = False
+        snapshot.save(update_fields=["is_active", "collected_at"])
+
+    ended_events = []
+    for snapshot in NoticeSnapshot.objects.filter(
+        notice_type=NoticeSnapshot.EVENT,
+        is_active=False,
+        ended_notified=False,
+    ):
+        ended_events.append(notice_snapshot_to_payload(snapshot))
+        snapshot.ended_notified = True
+        snapshot.save(update_fields=["ended_notified", "collected_at"])
+
+    return {
+        "items": active_notice_items_from_db(),
+        "newItems": new_items,
+        "endedEvents": ended_events,
+        "snapshotCount": NoticeSnapshot.objects.count(),
+    }
 
 
 def _closed_event_content(link, timeout):
@@ -316,31 +444,12 @@ def collect_current_notice_items(client=None):
 
 
 def check_new_notices(client=None):
-    current_items = collect_current_notice_items(client)
-    existing_ids = set(NoticeSnapshot.objects.values_list("notice_type", "notice_id"))
-    new_items = [
-        item for item in current_items
-        if (item["noticeType"], item["noticeId"]) not in existing_ids
-    ]
-
-    NoticeSnapshot.objects.all().delete()
-    NoticeSnapshot.objects.bulk_create(
-        [
-            NoticeSnapshot(
-                notice_type=item["noticeType"],
-                notice_id=item["noticeId"],
-                title=item["title"],
-                link=item["link"],
-                registered_at=item["registeredAt"],
-            )
-            for item in current_items
-        ],
-        ignore_conflicts=True,
-    )
+    result = collect_and_store_notice_items(client)
     return {
-        "shouldNotify": bool(new_items),
-        "newItems": new_items,
-        "snapshotCount": len(current_items),
+        "shouldNotify": bool(result["newItems"] or result["endedEvents"]),
+        "newItems": result["newItems"],
+        "endedEvents": result["endedEvents"],
+        "snapshotCount": result["snapshotCount"],
     }
 
 

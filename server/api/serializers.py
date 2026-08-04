@@ -13,9 +13,20 @@ class NoticeSnapshotSerializer(serializers.ModelSerializer):
             "title",
             "link",
             "registered_at",
+            "thumbnail",
+            "event_start_at",
+            "event_end_at",
+            "sale_start_at",
+            "sale_end_at",
+            "sale_ongoing",
+            "content",
+            "content_image_urls",
+            "is_active",
+            "ended_notified",
+            "first_seen_at",
             "collected_at",
         ]
-        read_only_fields = ["id", "collected_at"]
+        read_only_fields = ["id", "first_seen_at", "collected_at"]
 
 
 class SundayEventSnapshotSerializer(serializers.ModelSerializer):

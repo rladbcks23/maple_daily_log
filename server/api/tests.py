@@ -6,7 +6,12 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from .models import NoticeSnapshot, SundayEventSnapshot
-from .services import check_new_notices, scheduler_daily_result, scheduler_weekly_result
+from .services import (
+    check_new_notices,
+    collect_and_store_notice_items,
+    scheduler_daily_result,
+    scheduler_weekly_result,
+)
 
 
 class SchedulerResultTests(TestCase):
@@ -79,6 +84,67 @@ class NoticeSnapshotTests(TestCase):
         self.assertEqual([item["noticeId"] for item in result["newItems"]], ["new"])
         self.assertEqual(NoticeSnapshot.objects.count(), 2)
 
+    def test_missing_active_event_stays_until_end_date(self):
+        NoticeSnapshot.objects.create(
+            notice_type="event",
+            notice_id="event-1",
+            title="active event",
+            link="https://example.com/event-1",
+            registered_at="2026-08-01",
+            event_end_at="2099-12-31",
+            is_active=True,
+        )
+
+        class FakeClient:
+            def current_notices(self):
+                return {
+                    "notice": [],
+                    "event": [],
+                    "cashshop": [],
+                    "update": [],
+                }
+
+        result = collect_and_store_notice_items(FakeClient())
+
+        self.assertEqual(
+            [item["noticeId"] for item in result["items"]],
+            ["event-1"],
+        )
+        self.assertTrue(NoticeSnapshot.objects.get(notice_id="event-1").is_active)
+
+    def test_ended_event_is_marked_inactive_and_reported_once(self):
+        NoticeSnapshot.objects.create(
+            notice_type="event",
+            notice_id="event-1",
+            title="ended event",
+            link="https://example.com/event-1",
+            registered_at="2026-07-01",
+            event_end_at="2000-01-01",
+            is_active=True,
+            ended_notified=False,
+        )
+
+        class FakeClient:
+            def current_notices(self):
+                return {
+                    "notice": [],
+                    "event": [],
+                    "cashshop": [],
+                    "update": [],
+                }
+
+        result = collect_and_store_notice_items(FakeClient())
+        second_result = collect_and_store_notice_items(FakeClient())
+
+        snapshot = NoticeSnapshot.objects.get(notice_id="event-1")
+        self.assertFalse(snapshot.is_active)
+        self.assertTrue(snapshot.ended_notified)
+        self.assertEqual(
+            [item["noticeId"] for item in result["endedEvents"]],
+            ["event-1"],
+        )
+        self.assertEqual(second_result["endedEvents"], [])
+
 
 class ApiTests(TestCase):
     def setUp(self):
@@ -116,8 +182,14 @@ class ApiTests(TestCase):
             "world_name": "스카니아",
         }
 
-        first = self.client.get("/api/nexon/characters/ocid-1/basic")
-        second = self.client.get("/api/nexon/characters/ocid-1/basic")
+        first = self.client.get(
+            "/api/nexon/characters/ocid-1/basic",
+            HTTP_X_NEXON_API_KEY="test-key",
+        )
+        second = self.client.get(
+            "/api/nexon/characters/ocid-1/basic",
+            HTTP_X_NEXON_API_KEY="test-key",
+        )
 
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
@@ -133,10 +205,14 @@ class ApiTests(TestCase):
             "world_name": "스카니아",
         }
 
-        self.client.get("/api/nexon/characters/ocid-1/basic")
+        self.client.get(
+            "/api/nexon/characters/ocid-1/basic",
+            HTTP_X_NEXON_API_KEY="test-key",
+        )
         refreshed = self.client.get(
             "/api/nexon/characters/ocid-1/basic",
             {"refresh": "1"},
+            HTTP_X_NEXON_API_KEY="test-key",
         )
 
         self.assertEqual(refreshed.status_code, 200)
