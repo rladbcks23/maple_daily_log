@@ -389,7 +389,6 @@ class _NexonApiSetupScreen extends StatefulWidget {
 
 class _NexonApiSetupScreenState extends State<_NexonApiSetupScreen> {
   final apiKeyController = TextEditingController();
-  var showApiKey = false;
   var saving = false;
 
   @override
@@ -492,29 +491,16 @@ class _NexonApiSetupScreenState extends State<_NexonApiSetupScreen> {
                       TextField(
                         controller: apiKeyController,
                         enabled: !saving,
-                        obscureText: !showApiKey,
+                        obscureText: true,
                         textInputAction: TextInputAction.done,
                         onSubmitted: (_) => unawaited(submit()),
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: '넥슨 Open API 키',
-                          border: const OutlineInputBorder(),
-                          focusedBorder: const OutlineInputBorder(
+                          border: OutlineInputBorder(),
+                          focusedBorder: OutlineInputBorder(
                             borderSide: BorderSide(
                               color: AppColors.navAccent,
                               width: 1.4,
-                            ),
-                          ),
-                          suffixIcon: IconButton(
-                            tooltip: showApiKey ? 'API 키 숨기기' : 'API 키 보기',
-                            onPressed: saving
-                                ? null
-                                : () => setState(() {
-                                      showApiKey = !showApiKey;
-                                    }),
-                            icon: Icon(
-                              showApiKey
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
                             ),
                           ),
                         ),
@@ -2789,7 +2775,6 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   var checkingUpdate = false;
   var runningUpdate = false;
   var saving = false;
-  var showNexonApiKey = false;
 
   @override
   void initState() {
@@ -3029,28 +3014,15 @@ class _SettingsPanelState extends State<_SettingsPanel> {
             TextField(
               controller: nexonApiKeyController,
               enabled: !saving,
-              obscureText: !showNexonApiKey,
-              decoration: InputDecoration(
+              obscureText: true,
+              decoration: const InputDecoration(
                 labelText: '넥슨 OpenAPI 키',
                 hintText: 'Nexon OpenAPI 키를 입력해주세요.',
                 helperText: '캐릭터 목록과 스케줄러 조회에 사용합니다.',
                 helperMaxLines: 2,
-                border: const OutlineInputBorder(),
-                focusedBorder: const OutlineInputBorder(
+                border: OutlineInputBorder(),
+                focusedBorder: OutlineInputBorder(
                   borderSide: BorderSide(color: AppColors.navAccent),
-                ),
-                suffixIcon: IconButton(
-                  tooltip: showNexonApiKey ? '숨기기' : '보기',
-                  onPressed: saving
-                      ? null
-                      : () => setState(() {
-                            showNexonApiKey = !showNexonApiKey;
-                          }),
-                  icon: Icon(
-                    showNexonApiKey
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                  ),
                 ),
               ),
             ),
