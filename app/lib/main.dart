@@ -875,6 +875,7 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
       NotificationSettingsStore();
 
   Timer? notificationTimer;
+  Timer? noticeNotificationTimer;
   Timer? launcherMonitorTimer;
   Timer? overlayAlertBatchTimer;
   StreamSubscription<void>? mainWindowShowRequestSubscription;
@@ -937,6 +938,10 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
       const Duration(minutes: 1),
       (_) => unawaited(checkScheduledNotifications()),
     );
+    noticeNotificationTimer = Timer.periodic(
+      const Duration(minutes: 10),
+      (_) => unawaited(checkNewNoticeNotifications(refresh: true)),
+    );
     launcherMonitorTimer = Timer.periodic(
       const Duration(seconds: 10),
       (_) => unawaited(checkLauncherProcess()),
@@ -995,6 +1000,7 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
   @override
   void dispose() {
     notificationTimer?.cancel();
+    noticeNotificationTimer?.cancel();
     launcherMonitorTimer?.cancel();
     overlayAlertBatchTimer?.cancel();
     mainWindowShowRequestSubscription?.cancel();
@@ -1885,7 +1891,7 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
     await runScheduledNotificationChecks(DateTime.now());
   }
 
-  Future<void> checkNewNoticeNotifications() async {
+  Future<void> checkNewNoticeNotifications({bool refresh = false}) async {
     if (!notificationSettings.enabled ||
         !notificationSettings.noticeEnabled ||
         isCheckingNoticeNotifications) {
@@ -1895,12 +1901,20 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
     isCheckingNoticeNotifications = true;
     try {
       var currentItems = noticeItems;
-      if (currentItems.isEmpty) {
-        final fetchedItems = await apiClient.fetchCurrentNotices();
+      if (refresh || currentItems.isEmpty) {
+        final fetchedItems = await apiClient.fetchCurrentNotices(
+          forceRefresh: refresh,
+        );
         currentItems = await _mergeCurrentNoticeItemsWithEventCache(
           fetchedItems,
           eventNoticeCache,
         );
+        if (mounted) {
+          setState(() {
+            noticeItems = currentItems;
+            noticeErrorMessage = null;
+          });
+        }
       }
 
       final previousSnapshot = await notificationHistory.loadNoticeSnapshot();
