@@ -4078,6 +4078,7 @@ class _CharacterProgressCard extends StatelessWidget {
                     icon: Icons.monetization_on_outlined,
                     label: '주간 보스 수익',
                     value: _formatMesos(rewardSummary.crystalMesos),
+                    tooltipMessage: rewardSummary.crystalMesosTooltip,
                   ),
                 ),
                 Container(width: 1, height: 42, color: AppColors.border),
@@ -4237,10 +4238,19 @@ class _WeeklyRewardSummary {
   const _WeeklyRewardSummary({
     required this.crystalMesos,
     required this.solErdaEnergy,
+    required this.crystalMesosDetails,
   });
 
   final int crystalMesos;
   final int solErdaEnergy;
+  final List<String> crystalMesosDetails;
+
+  String get crystalMesosTooltip {
+    final details = crystalMesosDetails.isEmpty
+        ? '집계 가능한 보스 수익이 없습니다.'
+        : crystalMesosDetails.map((detail) => '- $detail').join('\n');
+    return '물욕템이나 부가 수익을 제외한 수익입니다.\n\n$details';
+  }
 }
 
 class _BossRewardInfo {
@@ -4260,6 +4270,7 @@ _WeeklyRewardSummary _buildWeeklyRewardSummary({
 }) {
   var crystalMesos = 0;
   var solErdaEnergy = 0;
+  final crystalMesosDetails = <String>[];
 
   for (final item in snapshot.bossItems.where(_isDashboardWeeklyBoss)) {
     final reward = _bossRewardFor(item);
@@ -4271,13 +4282,22 @@ _WeeklyRewardSummary _buildWeeklyRewardSummary({
       bossItem: item,
       partySchedules: partySchedules,
     );
-    crystalMesos += reward.crystalMesos ~/ shareSize;
+    final sharedCrystalMesos = reward.crystalMesos ~/ shareSize;
+    crystalMesos += sharedCrystalMesos;
     solErdaEnergy += reward.solErdaEnergy ~/ shareSize;
+    if (sharedCrystalMesos > 0) {
+      final shareSuffix = shareSize > 1 ? ' / $shareSize인 분배' : '';
+      crystalMesosDetails.add(
+        '${item.difficulty.toUpperCase()} ${item.title}: '
+        '${_formatMesos(sharedCrystalMesos)}$shareSuffix',
+      );
+    }
   }
 
   return _WeeklyRewardSummary(
     crystalMesos: crystalMesos,
     solErdaEnergy: solErdaEnergy,
+    crystalMesosDetails: crystalMesosDetails,
   );
 }
 
