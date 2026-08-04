@@ -10,6 +10,16 @@ namespace {
 constexpr UINT kTrayIconMessage = WM_APP + 1;
 constexpr UINT kTrayMenuShow = 1001;
 constexpr UINT kTrayMenuExit = 1002;
+
+BOOL CALLBACK HideChildWindow(HWND child, LPARAM) {
+  ShowWindow(child, SW_HIDE);
+  return TRUE;
+}
+
+BOOL CALLBACK ShowChildWindow(HWND child, LPARAM) {
+  ShowWindow(child, SW_SHOW);
+  return TRUE;
+}
 }  // namespace
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
@@ -69,14 +79,14 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
   if (message == WM_CLOSE) {
-    ShowWindow(hwnd, SW_HIDE);
+    HideMainWindow(hwnd);
     return 0;
   }
 
   if (message == kTrayIconMessage) {
     switch (LOWORD(lparam)) {
       case WM_LBUTTONUP:
-        RestoreFromNativeTray(hwnd);
+        RestoreMainWindow(hwnd);
         return 0;
       case WM_RBUTTONUP:
         ShowNativeTrayMenu(hwnd);
@@ -87,7 +97,7 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   if (message == WM_COMMAND) {
     switch (LOWORD(wparam)) {
       case kTrayMenuShow:
-        RestoreFromNativeTray(hwnd);
+        RestoreMainWindow(hwnd);
         return 0;
       case kTrayMenuExit:
         RemoveNativeTrayIcon();
@@ -145,7 +155,7 @@ void FlutterWindow::RemoveNativeTrayIcon() {
 void FlutterWindow::ShowNativeTrayMenu(HWND hwnd) {
   HMENU menu = CreatePopupMenu();
   if (menu == nullptr) {
-    RestoreFromNativeTray(hwnd);
+    RestoreMainWindow(hwnd);
     return;
   }
 
@@ -161,8 +171,59 @@ void FlutterWindow::ShowNativeTrayMenu(HWND hwnd) {
   DestroyMenu(menu);
 }
 
-void FlutterWindow::RestoreFromNativeTray(HWND hwnd) {
-  ShowWindow(hwnd, SW_SHOW);
-  ShowWindow(hwnd, SW_RESTORE);
+void FlutterWindow::HideMainWindow(HWND hwnd) {
+  if (hwnd == nullptr || !IsWindow(hwnd) ||
+      main_window_state_ == MainWindowState::kHiddenToTray) {
+    return;
+  }
+
+  HWND flutter_view_window = nullptr;
+  if (flutter_controller_ && flutter_controller_->view()) {
+    flutter_view_window = flutter_controller_->view()->GetNativeWindow();
+  }
+
+  HWND capture = GetCapture();
+  if (capture == hwnd ||
+      (flutter_view_window != nullptr && capture == flutter_view_window) ||
+      (capture != nullptr && IsChild(hwnd, capture))) {
+    ReleaseCapture();
+  }
+
+  if (flutter_view_window != nullptr && IsWindow(flutter_view_window)) {
+    ShowWindow(flutter_view_window, SW_HIDE);
+  }
+  EnumChildWindows(hwnd, HideChildWindow, 0);
+  ShowWindow(hwnd, SW_HIDE);
+  main_window_state_ = MainWindowState::kHiddenToTray;
+}
+
+void FlutterWindow::RestoreMainWindow(HWND hwnd) {
+  if (hwnd == nullptr || !IsWindow(hwnd)) {
+    return;
+  }
+
+  HWND flutter_view_window = nullptr;
+  if (flutter_controller_ && flutter_controller_->view()) {
+    flutter_view_window = flutter_controller_->view()->GetNativeWindow();
+  }
+
+  if (IsIconic(hwnd)) {
+    ShowWindow(hwnd, SW_RESTORE);
+  } else {
+    ShowWindow(hwnd, SW_SHOW);
+  }
+
+  if (flutter_view_window != nullptr && IsWindow(flutter_view_window)) {
+    ShowWindow(flutter_view_window, SW_SHOW);
+  }
+  EnumChildWindows(hwnd, ShowChildWindow, 0);
+
+  SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0,
+               SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+  SetActiveWindow(hwnd);
   SetForegroundWindow(hwnd);
+  if (flutter_view_window != nullptr && IsWindow(flutter_view_window)) {
+    SetFocus(flutter_view_window);
+  }
+  main_window_state_ = MainWindowState::kVisible;
 }

@@ -25,10 +25,16 @@ class FlutterWindow : public Win32Window {
                          LPARAM const lparam) noexcept override;
 
  private:
+  enum class MainWindowState {
+    kVisible,
+    kHiddenToTray,
+  };
+
   void AddNativeTrayIcon(HWND hwnd);
   void RemoveNativeTrayIcon();
   void ShowNativeTrayMenu(HWND hwnd);
-  void RestoreFromNativeTray(HWND hwnd);
+  void HideMainWindow(HWND hwnd);
+  void RestoreMainWindow(HWND hwnd);
 
   // The project to run.
   flutter::DartProject project_;
@@ -38,6 +44,7 @@ class FlutterWindow : public Win32Window {
 
   NOTIFYICONDATA tray_icon_data_ = {};
   bool tray_icon_added_ = false;
+  MainWindowState main_window_state_ = MainWindowState::kVisible;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_
