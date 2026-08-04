@@ -68,6 +68,11 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  if (message == WM_CLOSE) {
+    ShowWindow(hwnd, SW_HIDE);
+    return 0;
+  }
+
   if (message == kTrayIconMessage) {
     switch (LOWORD(lparam)) {
       case WM_LBUTTONUP:
@@ -156,44 +161,8 @@ void FlutterWindow::ShowNativeTrayMenu(HWND hwnd) {
   DestroyMenu(menu);
 }
 
-void FlutterWindow::HideToNativeTray(HWND hwnd) {
-  if (hwnd == nullptr) {
-    return;
-  }
-
-  HWND flutter_view_window = nullptr;
-  if (flutter_controller_ && flutter_controller_->view()) {
-    flutter_view_window = flutter_controller_->view()->GetNativeWindow();
-  }
-
-  // Hide both the host window and Flutter's child view. On Windows the child
-  // view can otherwise keep a stale input surface over the desktop.
-  if (flutter_view_window != nullptr) {
-    EnableWindow(flutter_view_window, FALSE);
-    ShowWindow(flutter_view_window, SW_HIDE);
-  }
-  EnableWindow(hwnd, FALSE);
-  SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0,
-               SWP_HIDEWINDOW | SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-}
-
 void FlutterWindow::RestoreFromNativeTray(HWND hwnd) {
-  if (hwnd == nullptr) {
-    return;
-  }
-
-  EnableWindow(hwnd, TRUE);
-  HWND flutter_view_window = nullptr;
-  if (flutter_controller_ && flutter_controller_->view()) {
-    flutter_view_window = flutter_controller_->view()->GetNativeWindow();
-  }
-  if (flutter_view_window != nullptr) {
-    EnableWindow(flutter_view_window, TRUE);
-    ShowWindow(flutter_view_window, SW_SHOW);
-  }
   ShowWindow(hwnd, SW_SHOW);
   ShowWindow(hwnd, SW_RESTORE);
-  SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0,
-               SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
   SetForegroundWindow(hwnd);
 }
