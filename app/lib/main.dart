@@ -4086,6 +4086,7 @@ class _CharacterProgressCard extends StatelessWidget {
                     icon: Icons.auto_awesome_outlined,
                     label: '솔 에르다 기운',
                     value: _formatSolErdaEnergy(rewardSummary.solErdaEnergy),
+                    tooltipMessage: '다른 버프나 보약 버프를 적용하지 않았을 때 기준입니다.',
                   ),
                 ),
               ],
@@ -4161,11 +4162,13 @@ class _CharacterMetric extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.tooltipMessage,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final String? tooltipMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -4173,13 +4176,48 @@ class _CharacterMetric extends StatelessWidget {
       children: [
         Icon(icon, size: 20, color: AppColors.navAccent),
         const SizedBox(height: 6),
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.muted,
-            fontSize: 13,
-            fontWeight: FontWeight.w800,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.muted,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            if (tooltipMessage != null) ...[
+              const SizedBox(width: 4),
+              Tooltip(
+                message: tooltipMessage!,
+                waitDuration: const Duration(milliseconds: 250),
+                child: Container(
+                  width: 15,
+                  height: 15,
+                  decoration: BoxDecoration(
+                    color: AppColors.navAccent.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.navAccent.withValues(alpha: 0.65),
+                    ),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      '!',
+                      style: TextStyle(
+                        color: AppColors.navAccent,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 3),
         Text(
