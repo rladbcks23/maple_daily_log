@@ -3525,7 +3525,6 @@ class _SettingsPanelState extends State<_SettingsPanel> {
       );
       await _runDownloadedInstaller(installer, pendingInfoCandidate);
       await Future<void>.delayed(const Duration(milliseconds: 500));
-      await windowManager.destroy();
       exit(0);
     } catch (_) {
       await Clipboard.setData(ClipboardData(text: trimmedUrl));
@@ -3609,6 +3608,10 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     }
     final logPath = '${directory.path}${Platform.pathSeparator}'
         'installer_${DateTime.now().millisecondsSinceEpoch}.log';
+    final scriptPath = '${directory.path}${Platform.pathSeparator}'
+        'updater_${DateTime.now().millisecondsSinceEpoch}.ps1';
+    final launcherPath = '${directory.path}${Platform.pathSeparator}'
+        'updater_${DateTime.now().millisecondsSinceEpoch}.vbs';
     final powershell = File(
       '${Platform.environment['SystemRoot'] ?? r'C:\Windows'}'
       r'\System32\WindowsPowerShell\v1.0\powershell.exe',
@@ -3633,43 +3636,56 @@ Start-Sleep -Milliseconds 500
   '/SUPPRESSMSGBOXES',
   '/NORESTART',
   '/SP-',
+  '/CLOSEAPPLICATIONS',
+  '/FORCECLOSEAPPLICATIONS',
   "/LOG=\$logPath"
 )
 
 try {
   Start-Process -FilePath \$installer -ArgumentList \$arguments -Wait -WindowStyle Hidden
-} catch {}
+} catch {
+  Add-Content -LiteralPath \$logPath -Value ("installer failed: " + \$_.Exception.Message)
+}
 
 Start-Sleep -Milliseconds 700
 if (Test-Path -LiteralPath \$appExecutable) {
   try {
     Start-Process -FilePath \$appExecutable
-  } catch {}
+  } catch {
+    Add-Content -LiteralPath \$logPath -Value ("restart failed: " + \$_.Exception.Message)
+  }
 }
 ''';
-    final encodedScript = base64Encode(
-      script.codeUnits
-          .expand((unit) => [unit & 0xff, (unit >> 8) & 0xff])
-          .toList(),
-    );
+    final scriptFile = File(scriptPath);
+    await _writeWindowsScript(scriptFile, script);
+    final launcherFile = File(launcherPath);
+    final launcher = 'Set shell = CreateObject("WScript.Shell")\r\n'
+        'shell.Run ${_vbScriptLiteral('$powershellCommand -NoProfile -ExecutionPolicy Bypass -File "$scriptPath"')}, 0, False\r\n';
+    await _writeWindowsScript(launcherFile, launcher);
 
     await Process.start(
-      powershellCommand,
-      [
-        '-NoProfile',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-WindowStyle',
-        'Hidden',
-        '-EncodedCommand',
-        encodedScript,
-      ],
+      'wscript.exe',
+      [launcherFile.path],
       mode: ProcessStartMode.detached,
     );
   }
 
   String _powerShellLiteral(String value) {
     return "'${value.replaceAll("'", "''")}'";
+  }
+
+  Future<void> _writeWindowsScript(File file, String content) async {
+    final bytes = <int>[0xff, 0xfe];
+    for (final codeUnit in content.codeUnits) {
+      bytes
+        ..add(codeUnit & 0xff)
+        ..add((codeUnit >> 8) & 0xff);
+    }
+    await file.writeAsBytes(bytes, flush: true);
+  }
+
+  String _vbScriptLiteral(String value) {
+    return '"${value.replaceAll('"', '""')}"';
   }
 
   bool _isNewerVersion(String latestVersion, String currentVersion) {
