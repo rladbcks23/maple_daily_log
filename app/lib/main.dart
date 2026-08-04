@@ -9,6 +9,8 @@ import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app_config.dart';
+import 'app_lifecycle_service.dart';
+import 'app_update_service.dart';
 import 'api_client.dart';
 import 'character_cache.dart';
 import 'character_profile_cache.dart';
@@ -22,23 +24,14 @@ import 'sunday_event_cache.dart';
 
 const appCurrentVersion = '0.1.32';
 const _mainWindowSize = Size(1280, 860);
-const _nativeWindowChannel = MethodChannel('maple_task_reminder/window');
 const _mapleProcessNames = {
   'maplestory.exe',
   'maplestoryclient.exe',
   'nexonplug.exe',
   'nexonlauncher.exe',
 };
-const _singleInstancePort = 48721;
-const _singleInstanceShowCommand = 'show';
-
-// Keep a reference to the bound socket so the single-instance lock stays alive.
-// ignore: unused_element
-ServerSocket? _singleInstanceSocket;
-final _mainWindowShowRequests = StreamController<void>.broadcast();
-var _isExitingMainApplication = false;
-var _isHidingMainWindowToTray = false;
-var _isShowingMainWindowFromTray = false;
+final _appLifecycle = AppLifecycleService(mainWindowSize: _mainWindowSize);
+const _appUpdateService = AppUpdateService();
 
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,143 +53,13 @@ Future<void> main(List<String> args) async {
     return;
   }
 
-  if (!await _ensureSingleMainInstance()) {
+  if (!await _appLifecycle.ensureSingleMainInstance()) {
     await windowManager.destroy();
     return;
   }
 
-  await _prepareMainWindowControls();
+  await _appLifecycle.prepareMainWindowControls();
   runApp(const MapleTaskReminderApp());
-}
-
-Future<void> _prepareMainWindowControls() async {
-  await _lockCurrentWindowSize(_mainWindowSize);
-  if (!Platform.isWindows) {
-    await windowManager.setPreventClose(true);
-  }
-}
-
-Future<void> _hideMainWindowToTray() async {
-  if (_isExitingMainApplication || _isHidingMainWindowToTray) {
-    return;
-  }
-  _isHidingMainWindowToTray = true;
-  try {
-    if (Platform.isWindows) {
-      await _nativeWindowChannel.invokeMethod<void>('hideMainWindow');
-    } else {
-      await windowManager.setPreventClose(true);
-      await windowManager.hide();
-      await windowManager.setSkipTaskbar(true);
-    }
-  } finally {
-    _isHidingMainWindowToTray = false;
-  }
-}
-
-Future<void> _showMainWindowFromTray() async {
-  if (_isExitingMainApplication || _isShowingMainWindowFromTray) {
-    return;
-  }
-  _isShowingMainWindowFromTray = true;
-  try {
-    if (Platform.isWindows) {
-      await _nativeWindowChannel.invokeMethod<void>('restoreMainWindow');
-      return;
-    }
-    try {
-      await windowManager.setPreventClose(true);
-    } catch (error) {
-      debugPrint('Failed to keep prevent-close enabled: $error');
-    }
-    try {
-      await windowManager.setSkipTaskbar(false);
-    } catch (error) {
-      debugPrint('Failed to restore taskbar visibility: $error');
-    }
-    try {
-      await windowManager.show();
-    } catch (error) {
-      debugPrint('Failed to show main window from tray: $error');
-    }
-    try {
-      await windowManager.restore();
-    } catch (error) {
-      debugPrint('Failed to restore main window from tray: $error');
-    }
-    try {
-      await windowManager.focus();
-    } catch (error) {
-      debugPrint('Failed to focus main window from tray: $error');
-    }
-  } catch (error) {
-    debugPrint('Failed to recover main window from tray: $error');
-    // Keep the tray process alive even if Windows rejects a foreground request.
-  } finally {
-    _isShowingMainWindowFromTray = false;
-  }
-}
-
-Future<void> _exitMainApplication() async {
-  _isExitingMainApplication = true;
-  if (Platform.isWindows) {
-    try {
-      await _nativeWindowChannel.invokeMethod<void>('exitApplication');
-      return;
-    } catch (error) {
-      debugPrint('Failed to exit through native window channel: $error');
-    }
-  }
-  await windowManager.setPreventClose(false);
-  await windowManager.destroy();
-  exit(0);
-}
-
-Future<bool> _ensureSingleMainInstance() async {
-  try {
-    _singleInstanceSocket = await ServerSocket.bind(
-      InternetAddress.loopbackIPv4,
-      _singleInstancePort,
-      shared: false,
-    );
-    _listenForSingleInstanceSignals(_singleInstanceSocket!);
-    return true;
-  } on SocketException {
-    await _notifyExistingMainInstance(_singleInstanceShowCommand);
-    return false;
-  }
-}
-
-void _listenForSingleInstanceSignals(ServerSocket serverSocket) {
-  serverSocket.listen((client) {
-    unawaited(() async {
-      try {
-        final command = (await utf8.decoder.bind(client).join()).trim();
-        if (command == _singleInstanceShowCommand) {
-          _mainWindowShowRequests.add(null);
-        }
-      } catch (error) {
-        debugPrint('Failed to process single-instance signal: $error');
-      } finally {
-        await client.close();
-      }
-    }());
-  });
-}
-
-Future<void> _notifyExistingMainInstance(String command) async {
-  try {
-    final socket = await Socket.connect(
-      InternetAddress.loopbackIPv4,
-      _singleInstancePort,
-      timeout: const Duration(milliseconds: 800),
-    );
-    socket.write(command);
-    await socket.flush();
-    await socket.close();
-  } catch (error) {
-    debugPrint('Failed to notify existing main instance: $error');
-  }
 }
 
 Map<String, dynamic> _decodeWindowArguments(String rawArguments) {
@@ -255,13 +118,6 @@ Future<void> _hideDuplicateAlertWindows(WindowController primaryWindow) async {
   }
 }
 
-Future<void> _lockCurrentWindowSize(Size size) async {
-  await windowManager.setSize(size);
-  await windowManager.setMinimumSize(size);
-  await windowManager.setMaximumSize(size);
-  await windowManager.setResizable(false);
-}
-
 Future<void> _configureAlertWindow(
   _OverlayAlertData alert,
   WindowController windowController,
@@ -285,7 +141,7 @@ Future<void> _configureAlertWindow(
       return;
     }
 
-    await _lockCurrentWindowSize(alertSize);
+    await _appLifecycle.lockCurrentWindowSize(alertSize);
     await _hideDuplicateAlertWindows(windowController);
     await windowManager.setAlwaysOnTop(true);
     await windowManager.show();
@@ -417,81 +273,6 @@ class _StartupData {
   final List<NoticeItemSummary> noticeItems;
   final NoticeItemSummary? sundayEvent;
   final bool hasLoadedNotices;
-}
-
-class _PendingUpdateInfo {
-  const _PendingUpdateInfo({
-    required this.version,
-    required this.notes,
-  });
-
-  final String version;
-  final String notes;
-
-  Map<String, dynamic> toJson() => {
-        'version': version,
-        'notes': notes,
-      };
-
-  factory _PendingUpdateInfo.fromJson(Map<String, dynamic> json) {
-    return _PendingUpdateInfo(
-      version: json['version']?.toString() ?? '',
-      notes: json['notes']?.toString() ?? '',
-    );
-  }
-}
-
-Future<Directory> _localAppDataDirectory() async {
-  final appDataDirectory = Platform.environment['LOCALAPPDATA'] ??
-      Platform.environment['APPDATA'] ??
-      Directory.systemTemp.path;
-  final directory = Directory(
-    '$appDataDirectory${Platform.pathSeparator}MapleTaskReminder',
-  );
-  if (!await directory.exists()) {
-    await directory.create(recursive: true);
-  }
-  return directory;
-}
-
-Future<File> _pendingUpdateInfoFile() async {
-  final directory = await _localAppDataDirectory();
-  return File(
-    '${directory.path}${Platform.pathSeparator}pending_update.json',
-  );
-}
-
-Future<File> _createPendingUpdateInfoCandidate(AppVersionInfo info) async {
-  final directory = await _localAppDataDirectory();
-  final file = File(
-    '${directory.path}${Platform.pathSeparator}'
-    'pending_update_${DateTime.now().millisecondsSinceEpoch}.json',
-  );
-  final pendingInfo = _PendingUpdateInfo(
-    version: info.version,
-    notes: info.notes,
-  );
-  await file.writeAsString(jsonEncode(pendingInfo.toJson()));
-  return file;
-}
-
-Future<_PendingUpdateInfo?> _takePendingUpdateInfo() async {
-  try {
-    final file = await _pendingUpdateInfoFile();
-    if (!await file.exists()) {
-      return null;
-    }
-    final decoded = jsonDecode(await file.readAsString());
-    await file.delete();
-    if (decoded is Map) {
-      return _PendingUpdateInfo.fromJson(Map<String, dynamic>.from(decoded));
-    }
-  } on FileSystemException {
-    return null;
-  } on FormatException {
-    return null;
-  }
-  return null;
 }
 
 class _StartupGate extends StatefulWidget {
@@ -833,7 +614,7 @@ double _alertBodyHeight(String body) {
 
 Future<void> _resizeAlertWindow(_OverlayAlertData alert) async {
   final size = _alertWindowSize(alert);
-  await _lockCurrentWindowSize(size);
+  await _appLifecycle.lockCurrentWindowSize(size);
   await windowManager.center();
 }
 
@@ -1147,7 +928,7 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
   void initState() {
     super.initState();
     windowManager.addListener(this);
-    mainWindowShowRequestSubscription = _mainWindowShowRequests.stream.listen(
+    mainWindowShowRequestSubscription = _appLifecycle.showRequests.listen(
       (_) => unawaited(showWindowFromTray()),
     );
     appConfig = widget.startupData.appConfig;
@@ -1182,7 +963,7 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
   }
 
   Future<void> showPendingUpdateInfo() async {
-    final pendingInfo = await _takePendingUpdateInfo();
+    final pendingInfo = await _appUpdateService.takePendingUpdateInfo();
     if (pendingInfo == null || !mounted) {
       return;
     }
@@ -1219,7 +1000,7 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
   }
 
   Future<void> initializeDesktopControls() async {
-    await _lockCurrentWindowSize(_mainWindowSize);
+    await _appLifecycle.lockCurrentWindowSize(_mainWindowSize);
     if (!Platform.isWindows) {
       await windowManager.setPreventClose(true);
     }
@@ -1245,15 +1026,15 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
   }
 
   Future<void> hideWindowToTray() async {
-    await _hideMainWindowToTray();
+    await _appLifecycle.hideMainWindowToTray();
   }
 
   Future<void> showWindowFromTray() async {
-    await _showMainWindowFromTray();
+    await _appLifecycle.showMainWindowFromTray();
   }
 
   Future<void> exitApplication() async {
-    await _exitMainApplication();
+    await _appLifecycle.exitMainApplication();
   }
 
   Future<void> checkLauncherProcess() async {
@@ -3396,7 +3177,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     try {
       final info = await ApiClient(baseUrl: configDraft.apiBaseUrl)
           .fetchAppVersionInfo();
-      final hasUpdate = _isNewerVersion(info.version, appCurrentVersion);
+      final hasUpdate = isNewerVersion(info.version, appCurrentVersion);
       setState(() {
         updateInfo = info;
         updateMessage = hasUpdate
@@ -3415,7 +3196,11 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   }
 
   Future<void> _openUpdate(AppVersionInfo info) async {
-    final opened = await _openDownloadUrl(info);
+    final opened = await _appUpdateService.downloadAndRunInstaller(info);
+    if (opened) {
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      exit(0);
+    }
     if (!opened && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -3506,212 +3291,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   bool _canOpenUpdate(AppVersionInfo? info) {
     return info != null &&
         info.downloadUrl.isNotEmpty &&
-        _isNewerVersion(info.version, appCurrentVersion);
-  }
-
-  Future<bool> _openDownloadUrl(AppVersionInfo info) async {
-    final trimmedUrl = info.downloadUrl.trim();
-    final uri = Uri.tryParse(trimmedUrl);
-    if (trimmedUrl.isEmpty ||
-        uri == null ||
-        (uri.scheme != 'http' && uri.scheme != 'https')) {
-      return false;
-    }
-
-    try {
-      final installer = await _downloadInstaller(trimmedUrl);
-      final pendingInfoCandidate = await _createPendingUpdateInfoCandidate(
-        info,
-      );
-      await _runDownloadedInstaller(installer, pendingInfoCandidate);
-      await Future<void>.delayed(const Duration(milliseconds: 500));
-      exit(0);
-    } catch (_) {
-      await Clipboard.setData(ClipboardData(text: trimmedUrl));
-      return false;
-    }
-  }
-
-  Future<File> _downloadInstaller(String url) async {
-    final uri = Uri.parse(url);
-    final client = HttpClient();
-    try {
-      final request = await client.getUrl(uri);
-      final response = await request.close();
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw const FileSystemException('Update installer download failed.');
-      }
-
-      final contentType = response.headers.contentType?.mimeType ?? '';
-      if (contentType.toLowerCase().contains('text/html')) {
-        throw const FileSystemException(
-          'Update URL must point to an installer file.',
-        );
-      }
-
-      final fileName = _installerFileName(uri, response);
-      if (!fileName.toLowerCase().endsWith('.exe')) {
-        throw const FileSystemException(
-          'Update URL must point to a Windows installer exe.',
-        );
-      }
-
-      final directory = Directory(
-        '${Directory.systemTemp.path}${Platform.pathSeparator}'
-        'MapleTaskReminderUpdates',
-      );
-      if (!await directory.exists()) {
-        await directory.create(recursive: true);
-      }
-
-      final file = File('${directory.path}${Platform.pathSeparator}$fileName');
-      final sink = file.openWrite();
-      try {
-        await response.pipe(sink);
-      } finally {
-        await sink.close();
-      }
-      return file;
-    } finally {
-      client.close(force: true);
-    }
-  }
-
-  String _installerFileName(Uri originalUri, HttpClientResponse response) {
-    final redirectUri = response.redirects.isEmpty
-        ? originalUri
-        : response.redirects.last.location;
-    final decodedName = Uri.decodeComponent(
-      redirectUri.pathSegments.isEmpty ? '' : redirectUri.pathSegments.last,
-    );
-    if (decodedName.toLowerCase().endsWith('.exe')) {
-      return decodedName;
-    }
-    return 'MapleTaskReminder-Setup.exe';
-  }
-
-  Future<void> _runDownloadedInstaller(
-    File installer,
-    File pendingInfoCandidate,
-  ) async {
-    final pendingInfoFile = await _pendingUpdateInfoFile();
-    if (await pendingInfoCandidate.exists()) {
-      await pendingInfoCandidate.copy(pendingInfoFile.path);
-    }
-
-    final directory = Directory(
-      '${Directory.systemTemp.path}${Platform.pathSeparator}'
-      'MapleTaskReminderUpdates',
-    );
-    if (!await directory.exists()) {
-      await directory.create(recursive: true);
-    }
-    final logPath = '${directory.path}${Platform.pathSeparator}'
-        'installer_${DateTime.now().millisecondsSinceEpoch}.log';
-    final scriptPath = '${directory.path}${Platform.pathSeparator}'
-        'updater_${DateTime.now().millisecondsSinceEpoch}.ps1';
-    final launcherPath = '${directory.path}${Platform.pathSeparator}'
-        'updater_${DateTime.now().millisecondsSinceEpoch}.vbs';
-    final powershell = File(
-      '${Platform.environment['SystemRoot'] ?? r'C:\Windows'}'
-      r'\System32\WindowsPowerShell\v1.0\powershell.exe',
-    );
-    final powershellCommand =
-        await powershell.exists() ? powershell.path : 'powershell.exe';
-    final appExecutable = Platform.resolvedExecutable;
-    final script = '''
-\$ErrorActionPreference = 'Continue'
-\$targetPid = $pid
-\$installer = ${_powerShellLiteral(installer.path)}
-\$logPath = ${_powerShellLiteral(logPath)}
-\$appExecutable = ${_powerShellLiteral(appExecutable)}
-
-try {
-  Wait-Process -Id \$targetPid -Timeout 30 -ErrorAction SilentlyContinue
-} catch {}
-
-Start-Sleep -Milliseconds 500
-\$arguments = @(
-  '/VERYSILENT',
-  '/SUPPRESSMSGBOXES',
-  '/NORESTART',
-  '/SP-',
-  '/CLOSEAPPLICATIONS',
-  '/FORCECLOSEAPPLICATIONS',
-  "/LOG=\$logPath"
-)
-
-try {
-  Start-Process -FilePath \$installer -ArgumentList \$arguments -Wait -WindowStyle Hidden
-} catch {
-  Add-Content -LiteralPath \$logPath -Value ("installer failed: " + \$_.Exception.Message)
-}
-
-Start-Sleep -Milliseconds 700
-if (Test-Path -LiteralPath \$appExecutable) {
-  try {
-    Start-Process -FilePath \$appExecutable
-  } catch {
-    Add-Content -LiteralPath \$logPath -Value ("restart failed: " + \$_.Exception.Message)
-  }
-}
-''';
-    final scriptFile = File(scriptPath);
-    await _writeWindowsScript(scriptFile, script);
-    final launcherFile = File(launcherPath);
-    final launcher = 'Set shell = CreateObject("WScript.Shell")\r\n'
-        'shell.Run ${_vbScriptLiteral('$powershellCommand -NoProfile -ExecutionPolicy Bypass -File "$scriptPath"')}, 0, False\r\n';
-    await _writeWindowsScript(launcherFile, launcher);
-
-    await Process.start(
-      'wscript.exe',
-      [launcherFile.path],
-      mode: ProcessStartMode.detached,
-    );
-  }
-
-  String _powerShellLiteral(String value) {
-    return "'${value.replaceAll("'", "''")}'";
-  }
-
-  Future<void> _writeWindowsScript(File file, String content) async {
-    final bytes = <int>[0xff, 0xfe];
-    for (final codeUnit in content.codeUnits) {
-      bytes
-        ..add(codeUnit & 0xff)
-        ..add((codeUnit >> 8) & 0xff);
-    }
-    await file.writeAsBytes(bytes, flush: true);
-  }
-
-  String _vbScriptLiteral(String value) {
-    return '"${value.replaceAll('"', '""')}"';
-  }
-
-  bool _isNewerVersion(String latestVersion, String currentVersion) {
-    final latest = _versionParts(latestVersion);
-    final current = _versionParts(currentVersion);
-    for (var index = 0;
-        index < math.max(latest.length, current.length);
-        index++) {
-      final latestPart = index < latest.length ? latest[index] : 0;
-      final currentPart = index < current.length ? current[index] : 0;
-      if (latestPart > currentPart) {
-        return true;
-      }
-      if (latestPart < currentPart) {
-        return false;
-      }
-    }
-    return false;
-  }
-
-  List<int> _versionParts(String version) {
-    final coreVersion = version.split('+').first;
-    return coreVersion
-        .split('.')
-        .map((part) => int.tryParse(part) ?? 0)
-        .toList();
+        isNewerVersion(info.version, appCurrentVersion);
   }
 }
 
