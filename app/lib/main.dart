@@ -6377,14 +6377,19 @@ class _PartyScheduleCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          _PartyCardTextBlock(
-            label: '파티원',
-            value: memberText,
-            labelColor: mutedColor,
-            valueColor: contentColor,
-          ),
           const SizedBox(height: 14),
+          Expanded(
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: _PartyCardTextBlock(
+                label: '파티원',
+                value: memberText,
+                labelColor: mutedColor,
+                valueColor: contentColor,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           Row(
             children: [
               Icon(Icons.schedule_rounded, color: accentColor, size: 16),
@@ -6412,7 +6417,7 @@ class _PartyScheduleCard extends StatelessWidget {
               ),
             ],
           ),
-          const Spacer(),
+          const SizedBox(height: 8),
           _PartyStatusChip(isCleared: isCleared),
         ],
       ),
