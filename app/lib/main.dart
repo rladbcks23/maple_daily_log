@@ -1960,7 +1960,7 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
 
     isCheckingScheduledNotifications = true;
     try {
-      await _checkPartyScheduleNotifications(now);
+      await _checkPartyScheduleNotifications(now, requireSameDate: true);
       if (selectedCharacters.isEmpty) {
         return;
       }
@@ -1973,13 +1973,17 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
     }
   }
 
-  Future<void> _checkPartyScheduleNotifications(DateTime now) async {
+  Future<void> _checkPartyScheduleNotifications(
+    DateTime now, {
+    bool requireSameDate = false,
+  }) async {
     final dueSchedules = <({PartySchedule schedule, String ruleKey})>[];
     for (final schedule in partySchedules) {
       final targetTime = schedule.currentScheduleFrom(now);
       final elapsed = now.difference(targetTime);
       if (_isPartyScheduleClearedBySnapshots(schedule, dashboardSnapshots) ||
           targetTime.isAfter(now) ||
+          (requireSameDate && _dateKey(targetTime) != _dateKey(now)) ||
           elapsed > const Duration(minutes: 30)) {
         continue;
       }
@@ -2894,7 +2898,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
             _NotificationSettingSwitch(
               title: '앱 시작 시 알림',
               subtitle: '컴퓨터를 켤 때 놓친 알림을 한 번 확인합니다.',
-              tooltip: '앱을 실행할 때 파티 일정과 이번 주 완료되지 않은 주간 콘텐츠를 확인합니다.',
+              tooltip: '앱을 실행할 때 공지/이벤트 변경점, 주간/월간 콘텐츠, 당일 파티 일정 알림을 확인합니다.',
               value: draft.checkOnStartup,
               saving: saving || !draft.enabled,
               onChanged: (value) => setState(() {
