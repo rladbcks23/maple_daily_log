@@ -5814,12 +5814,27 @@ class _PartySchedulePanel extends StatelessWidget {
                       ),
                       if (validationMessage != null) ...[
                         const SizedBox(height: 12),
-                        Text(
-                          validationMessage!,
-                          style: const TextStyle(
-                            color: AppColors.navAccent,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF1E8),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: AppColors.navAccent,
+                              width: 1.2,
+                            ),
+                          ),
+                          child: Text(
+                            validationMessage!,
+                            style: const TextStyle(
+                              color: Color(0xFFD94B13),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              height: 1.35,
+                            ),
                           ),
                         ),
                       ],
