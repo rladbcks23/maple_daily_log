@@ -35,7 +35,6 @@ class FlutterWindow : public Win32Window {
   void ShowNativeTrayMenu(HWND hwnd);
   void HideMainWindow(HWND hwnd);
   void RestoreMainWindow(HWND hwnd);
-  void LogWindowProbe(HWND hwnd, const wchar_t* phase);
 
   // The project to run.
   flutter::DartProject project_;
@@ -46,7 +45,6 @@ class FlutterWindow : public Win32Window {
   NOTIFYICONDATA tray_icon_data_ = {};
   bool tray_icon_added_ = false;
   MainWindowState main_window_state_ = MainWindowState::kVisible;
-  int window_probe_ticks_ = 0;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_
