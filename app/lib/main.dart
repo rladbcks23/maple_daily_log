@@ -2822,7 +2822,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
             const _SettingsSectionTitle('예약 알림 시간', small: true),
             const SizedBox(height: 4),
             const Text(
-              '일간, 주간처럼 주기적으로 확인하는 알림이 이 시간에 발송됩니다.',
+              '일간 알림과 주간 알림이 이 시간에 발송됩니다.',
               style: TextStyle(
                 color: AppColors.muted,
                 fontSize: 12,
@@ -2894,7 +2894,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
             _NotificationSettingSwitch(
               title: '앱 시작 시 알림',
               subtitle: '컴퓨터를 켤 때 놓친 알림을 한 번 확인합니다.',
-              tooltip: '앱을 실행할 때 공지/이벤트 변경, 주간/월간 숙제, 파티 일정 알림을 확인합니다.',
+              tooltip: '앱을 실행할 때 파티 일정과 이번 주 완료되지 않은 주간 콘텐츠를 확인합니다.',
               value: draft.checkOnStartup,
               saving: saving || !draft.enabled,
               onChanged: (value) => setState(() {
