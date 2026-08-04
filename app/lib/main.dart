@@ -5507,8 +5507,17 @@ class _PartySchedulePanel extends StatelessWidget {
                         },
                         decoration: const InputDecoration(
                           labelText: '파티원',
-                          hintText: '말못함채금임, 유렌괜찬',
+                          hintText: '파티원을 쉼표로 구분해서 입력',
                           border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        '파티원 수는 본인 포함 기준입니다. 파티원 입력에는 본인을 제외하고 적어주세요.',
+                        style: TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                       if (showMemberSuggestions &&
