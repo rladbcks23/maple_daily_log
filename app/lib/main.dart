@@ -14,7 +14,6 @@ import 'app_update_service.dart';
 import 'api_client.dart';
 import 'character_cache.dart';
 import 'character_profile_cache.dart';
-import 'event_notice_cache.dart';
 import 'local_notification_service.dart';
 import 'notification_history.dart';
 import 'notification_settings.dart';
@@ -289,17 +288,11 @@ class _StartupGateState extends State<_StartupGate> {
     final appConfigStore = AppConfigStore();
     final appConfig = await appConfigStore.load();
     final apiClient = ApiClient(baseUrl: appConfig.apiBaseUrl);
-    final eventCache = EventNoticeCache();
     final sundayCache = SundayEventCache();
-    await eventCache.ensure();
     final cachedSundayEvent = await sundayCache.load();
 
     try {
-      final fetchedNoticeItems = await apiClient.fetchCurrentNotices();
-      final noticeItems = await _mergeCurrentNoticeItemsWithEventCache(
-        fetchedNoticeItems,
-        eventCache,
-      );
+      final noticeItems = await apiClient.fetchCurrentNotices();
       var sundayEvent = _findSpecialSundayEvent(noticeItems);
       sundayEvent ??= await apiClient.fetchLatestSundayEvent();
       if (sundayEvent != null) {
@@ -867,7 +860,6 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
   final CharacterCache characterCache = CharacterCache();
   final CharacterProfileCache characterProfileCache = CharacterProfileCache();
   final SchedulerCache schedulerCache = SchedulerCache();
-  final EventNoticeCache eventNoticeCache = EventNoticeCache();
   final SundayEventCache sundayEventCache = SundayEventCache();
   final NotificationHistory notificationHistory = NotificationHistory();
   final PartyScheduleStore partyScheduleStore = PartyScheduleStore();
@@ -1233,7 +1225,6 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
       characterCache.ensure(),
       characterProfileCache.ensure(),
       schedulerCache.ensure(),
-      eventNoticeCache.ensure(),
       sundayEventCache.ensure(),
       partyScheduleStore.ensure(),
       notificationSettingsStore.ensure(),
@@ -1690,12 +1681,8 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
     });
 
     try {
-      final fetchedItems = await apiClient.fetchCurrentNotices(
+      final items = await apiClient.fetchCurrentNotices(
         forceRefresh: refresh,
-      );
-      final items = await _mergeCurrentNoticeItemsWithEventCache(
-        fetchedItems,
-        eventNoticeCache,
       );
       final currentSundayEvent = _findSpecialSundayEvent(items);
       NoticeItemSummary? nextSundayEvent = currentSundayEvent;
@@ -1902,12 +1889,8 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
     try {
       var currentItems = noticeItems;
       if (refresh || currentItems.isEmpty) {
-        final fetchedItems = await apiClient.fetchCurrentNotices(
+        currentItems = await apiClient.fetchCurrentNotices(
           forceRefresh: refresh,
-        );
-        currentItems = await _mergeCurrentNoticeItemsWithEventCache(
-          fetchedItems,
-          eventNoticeCache,
         );
         if (mounted) {
           setState(() {
@@ -8040,57 +8023,6 @@ class _EventThumbnail extends StatelessWidget {
       ),
     );
   }
-}
-
-Future<List<NoticeItemSummary>> _mergeCurrentNoticeItemsWithEventCache(
-  List<NoticeItemSummary> fetchedItems,
-  EventNoticeCache eventCache,
-) async {
-  final now = DateTime.now();
-  final fetchedEvents =
-      fetchedItems.where((item) => item.noticeType == 'event');
-  final cachedEvents = await eventCache.load();
-  final eventsByKey = <String, NoticeItemSummary>{
-    for (final event in cachedEvents)
-      if (!_isEventEnded(event, now)) event.notificationKey: event,
-  };
-
-  for (final event in fetchedEvents) {
-    if (!_isEventEnded(event, now)) {
-      eventsByKey[event.notificationKey] = event;
-    }
-  }
-
-  final mergedItems = <NoticeItemSummary>[];
-  final emittedKeys = <String>{};
-  for (final item in fetchedItems) {
-    if (item.noticeType == 'event') {
-      final event = eventsByKey[item.notificationKey];
-      if (event != null && emittedKeys.add(event.notificationKey)) {
-        mergedItems.add(event);
-      }
-      continue;
-    }
-    mergedItems.add(item);
-  }
-
-  for (final event in eventsByKey.values) {
-    if (emittedKeys.add(event.notificationKey)) {
-      mergedItems.add(event);
-    }
-  }
-
-  await eventCache.save(eventsByKey.values.toList());
-  return mergedItems;
-}
-
-bool _isEventEnded(NoticeItemSummary event, DateTime now) {
-  final endDate = _noticeDateOnly(event.eventEndAt);
-  if (endDate == null) {
-    return false;
-  }
-  final today = DateTime(now.year, now.month, now.day);
-  return endDate.isBefore(today);
 }
 
 bool _isSnapshotEventEnded(Map<String, String> snapshot, DateTime now) {
