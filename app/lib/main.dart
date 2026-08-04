@@ -2037,7 +2037,7 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
 
   String _partyScheduleNotificationText(PartySchedule schedule) {
     final memberText =
-        schedule.members.isEmpty ? '등록된 파티원 없음' : schedule.members.join(', ');
+        schedule.members.isEmpty ? '싱글 플레이' : schedule.members.join(', ');
     return '${schedule.difficulty.toUpperCase()} ${schedule.bossName} - $memberText';
   }
 
@@ -6222,7 +6222,7 @@ class _PartyScheduleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final memberText =
-        schedule.members.isEmpty ? '파티원 없음' : schedule.members.join(' · ');
+        schedule.members.isEmpty ? '싱글 플레이' : schedule.members.join(' · ');
     final now = DateTime.now();
     final overdue =
         !isCleared && schedule.currentScheduleFrom(now).isBefore(now);
