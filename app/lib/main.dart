@@ -2820,6 +2820,15 @@ class _SettingsPanelState extends State<_SettingsPanel> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const _SettingsSectionTitle('예약 알림 시간', small: true),
+            const SizedBox(height: 4),
+            const Text(
+              '일간, 주간처럼 주기적으로 확인하는 알림이 이 시간에 발송됩니다.',
+              style: TextStyle(
+                color: AppColors.muted,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 8),
             OutlinedButton(
               onPressed: saving ? null : _pickReminderTime,
