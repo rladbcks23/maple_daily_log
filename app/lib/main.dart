@@ -6328,97 +6328,115 @@ class _PartyScheduleCard extends StatelessWidget {
           color: overdue ? AppColors.navAccent : AppColors.navBorder,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Stack(
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _BossIconImage(
-                bossName: schedule.bossName,
-                size: 38,
-                fallbackTextColor: contentColor,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
+          Positioned.fill(
+            bottom: 62,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _BossDifficultyBadge(difficulty: schedule.difficulty),
-                    const SizedBox(height: 5),
+                    _BossIconImage(
+                      bossName: schedule.bossName,
+                      size: 38,
+                      fallbackTextColor: contentColor,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _BossDifficultyBadge(
+                            difficulty: schedule.difficulty,
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            schedule.bossName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: contentColor,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _PartyScheduleIconButton(
+                      icon: Icons.edit_rounded,
+                      tooltip: '수정',
+                      onPressed: onEdit,
+                      foregroundColor:
+                          isCleared ? AppColors.text : contentColor,
+                      backgroundColor:
+                          isCleared ? Colors.white : AppColors.surface,
+                    ),
+                    const SizedBox(width: 4),
+                    _PartyScheduleIconButton(
+                      icon: Icons.delete_outline_rounded,
+                      tooltip: '삭제',
+                      onPressed: onDelete,
+                      foregroundColor:
+                          isCleared ? AppColors.text : contentColor,
+                      backgroundColor:
+                          isCleared ? Colors.white : AppColors.surface,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                _PartyCardTextBlock(
+                  label: '파티원',
+                  value: memberText,
+                  labelColor: mutedColor,
+                  valueColor: contentColor,
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.schedule_rounded, color: accentColor, size: 16),
+                    const SizedBox(width: 6),
                     Text(
-                      schedule.bossName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      _partyRepeatTypeLabel(schedule.repeatType),
                       style: TextStyle(
-                        color: contentColor,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
+                        color: mutedColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        '· ${_partyScheduleText(schedule)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: mutedColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              _PartyScheduleIconButton(
-                icon: Icons.edit_rounded,
-                tooltip: '수정',
-                onPressed: onEdit,
-                foregroundColor: isCleared ? AppColors.text : contentColor,
-                backgroundColor: isCleared ? Colors.white : AppColors.surface,
-              ),
-              const SizedBox(width: 4),
-              _PartyScheduleIconButton(
-                icon: Icons.delete_outline_rounded,
-                tooltip: '삭제',
-                onPressed: onDelete,
-                foregroundColor: isCleared ? AppColors.text : contentColor,
-                backgroundColor: isCleared ? Colors.white : AppColors.surface,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Expanded(
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: _PartyCardTextBlock(
-                label: '파티원',
-                value: memberText,
-                labelColor: mutedColor,
-                valueColor: contentColor,
-              ),
+                const SizedBox(height: 8),
+                _PartyStatusChip(isCleared: isCleared),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.schedule_rounded, color: accentColor, size: 16),
-              const SizedBox(width: 6),
-              Text(
-                _partyRepeatTypeLabel(schedule.repeatType),
-                style: TextStyle(
-                  color: mutedColor,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  '· ${_partyScheduleText(schedule)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: mutedColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _PartyStatusChip(isCleared: isCleared),
         ],
       ),
     );
