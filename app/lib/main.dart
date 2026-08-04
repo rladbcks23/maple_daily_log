@@ -2790,6 +2790,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   AppVersionInfo? updateInfo;
   String? updateMessage;
   var checkingUpdate = false;
+  var runningUpdate = false;
   var saving = false;
   var showNexonApiKey = false;
 
@@ -3102,8 +3103,17 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                     onPressed: _canOpenUpdate(updateInfo)
                         ? () => _openUpdate(updateInfo!)
                         : null,
-                    icon: const Icon(Icons.download_rounded, size: 18),
-                    label: const Text('업데이트'),
+                    icon: runningUpdate
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.download_rounded, size: 18),
+                    label: Text(runningUpdate ? '업데이트 중' : '업데이트'),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.navAccent,
                       foregroundColor: Colors.white,
@@ -3196,12 +3206,23 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   }
 
   Future<void> _openUpdate(AppVersionInfo info) async {
+    if (runningUpdate) {
+      return;
+    }
+    setState(() {
+      runningUpdate = true;
+      updateMessage = '${info.version} 업데이트를 준비하고 있어요.';
+    });
     final opened = await _appUpdateService.downloadAndRunInstaller(info);
     if (opened) {
       await Future<void>.delayed(const Duration(milliseconds: 500));
       exit(0);
     }
     if (!opened && mounted) {
+      setState(() {
+        runningUpdate = false;
+        updateMessage = '업데이트를 시작하지 못했어요.';
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('다운로드 주소를 열지 못해서 클립보드에 복사했어요.'),
@@ -3290,6 +3311,9 @@ class _SettingsPanelState extends State<_SettingsPanel> {
 
   bool _canOpenUpdate(AppVersionInfo? info) {
     return info != null &&
+        !saving &&
+        !checkingUpdate &&
+        !runningUpdate &&
         info.downloadUrl.isNotEmpty &&
         isNewerVersion(info.version, appCurrentVersion);
   }
