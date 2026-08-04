@@ -1978,9 +1978,6 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
       if (selectedCharacters.isEmpty) {
         return;
       }
-      if (notificationSettings.dailyEnabled) {
-        await _checkDailyLoginNotification(now);
-      }
       if (notificationSettings.weeklyEnabled &&
           notificationSettings.weeklyWeekdays.contains(now.weekday)) {
         await _checkWeeklyReminderNotification(now);
