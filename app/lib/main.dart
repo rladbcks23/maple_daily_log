@@ -2894,6 +2894,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
             _NotificationSettingSwitch(
               title: '앱 시작 시 알림',
               subtitle: '컴퓨터를 켤 때 놓친 알림을 한 번 확인합니다.',
+              tooltip: '앱을 실행할 때 공지/이벤트 변경, 주간/월간 숙제, 파티 일정 알림을 확인합니다.',
               value: draft.checkOnStartup,
               saving: saving || !draft.enabled,
               onChanged: (value) => setState(() {
@@ -3628,6 +3629,7 @@ class _NotificationSettingSwitch extends StatelessWidget {
     required this.value,
     required this.saving,
     required this.onChanged,
+    this.tooltip,
   });
 
   final String title;
@@ -3635,6 +3637,7 @@ class _NotificationSettingSwitch extends StatelessWidget {
   final bool value;
   final bool saving;
   final ValueChanged<bool> onChanged;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
@@ -3643,13 +3646,30 @@ class _NotificationSettingSwitch extends StatelessWidget {
       onChanged: saving ? null : onChanged,
       contentPadding: EdgeInsets.zero,
       activeThumbColor: AppColors.navAccent,
-      title: Text(
-        title,
-        style: const TextStyle(
-          color: AppColors.text,
-          fontSize: 14,
-          fontWeight: FontWeight.w900,
-        ),
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          if (tooltip != null) ...[
+            const SizedBox(width: 6),
+            Tooltip(
+              message: tooltip!,
+              waitDuration: const Duration(milliseconds: 350),
+              child: const Icon(
+                Icons.info_outline_rounded,
+                color: AppColors.muted,
+                size: 16,
+              ),
+            ),
+          ],
+        ],
       ),
       subtitle: Text(subtitle),
     );
