@@ -5164,12 +5164,18 @@ String _partyWeekdayShortLabel(int weekday) {
 }
 
 String _partyScheduleText(PartySchedule schedule) {
-  final hour = schedule.hour.toString().padLeft(2, '0');
-  final minute = schedule.minute.toString().padLeft(2, '0');
+  final time = _partyDisplayTimeText(schedule.hour, schedule.minute);
   if (schedule.isMonthly) {
-    return '매월 ${schedule.monthDay}일 $hour:$minute';
+    return '매월 ${schedule.monthDay}일 $time';
   }
-  return '매주 ${_partyWeekdayLabel(schedule.weekday)} $hour:$minute';
+  return '매주 ${_partyWeekdayLabel(schedule.weekday)} $time';
+}
+
+String _partyDisplayTimeText(int hour, int minute) {
+  final period = hour < 12 ? '오전' : '오후';
+  final displayHour = _partyDisplayHour(hour);
+  final minuteText = minute.toString().padLeft(2, '0');
+  return '$period $displayHour:$minuteText';
 }
 
 String _defaultPartyRepeatType(String bossName) {
