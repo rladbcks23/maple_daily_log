@@ -4810,6 +4810,10 @@ const _partyBossDifficultyOptions = <String, List<String>>{
 
 int _partyBossMaxMembers(String bossName, String difficulty) {
   final normalizedDifficulty = _normalizeDifficulty(difficulty);
+  if (bossName == '시즌 보스 메이린' &&
+      (normalizedDifficulty == 'normal' || normalizedDifficulty == 'hard')) {
+    return 1;
+  }
   if (bossName == '스우' && normalizedDifficulty == 'extreme') {
     return 2;
   }
