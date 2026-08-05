@@ -55,3 +55,7 @@ Nexon API 프록시:
 
 알림 판단은 앱(Flutter 클라이언트)이 `GET /api/nexon/scheduler/{ocid}` 응답을 직접 받아 수행한다
 (자세한 규칙은 `docs/알림 판단 규칙.md` 참고). 서버는 공지/이벤트 변경 감지(`POST /api/notices/check-new`)만 담당한다.
+
+`POST /api/notices/check-new`는 DB(SQLite)를 실제로 갱신하려면 반드시 **웹 서비스 프로세스 안에서** 실행돼야 한다
+(Render Cron Job처럼 별도 컨테이너에서 `manage.py collect_notices`를 돌리면 그 컨테이너만의 임시 DB에 쓰고 끝나서 효과가 없다).
+그래서 별도 Cron Job 대신 `.github/workflows/collect-notices.yml`이 10분마다 배포된 서버의 이 엔드포인트를 호출해서 갱신한다.
