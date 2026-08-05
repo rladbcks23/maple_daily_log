@@ -2074,27 +2074,74 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
     }
 
     final missingCharacters = <NexonCharacterSummary>[];
+    final characterDetails = <String, List<String>>{};
     for (final character in notificationTargetCharacters) {
       try {
         final snapshot = await apiClient.fetchScheduler(character.ocid);
         if (!snapshot.hasDailyItems) {
           missingCharacters.add(character);
+          continue;
+        }
+
+        final details = <String>[];
+        for (final item in snapshot.dailyItems) {
+          if (_isMonsterParkItem(item)) {
+            if ((item.currentCount ?? 0) == 0) {
+              details.add('몬스터파크');
+            }
+            continue;
+          }
+          if (item.title.contains('[일일 퀘스트]') && !item.done) {
+            details.add(item.title);
+          }
+        }
+        for (final item in snapshot.bossItems.where(_isDailyBossItem)) {
+          if (!item.done) {
+            details.add(item.title);
+          }
+        }
+
+        if (details.isNotEmpty) {
+          characterDetails[character.characterName] = details;
         }
       } on ApiException {
         // A failed lookup should not turn into a missed-login notification.
       }
     }
 
-    if (missingCharacters.isEmpty) {
+    if (missingCharacters.isEmpty && characterDetails.isEmpty) {
       return;
     }
 
+    final title = characterDetails.isEmpty
+        ? '오늘 접속 기록이 없어요'
+        : missingCharacters.isEmpty
+            ? '오늘 일일 숙제가 남아 있어요'
+            : '오늘 확인할 숙제가 있어요';
+
     await showOverlayAlert(
-      title: '오늘 접속 기록이 없어요',
-      body: '${_characterNames(missingCharacters)} 접속 후 일일 숙제를 확인해주세요.',
+      title: title,
+      body: _dailyReminderBody(missingCharacters, characterDetails),
       payload: 'section:scheduler',
     );
     await notificationHistory.markSent(ruleKey);
+  }
+
+  String _dailyReminderBody(
+    List<NexonCharacterSummary> missingCharacters,
+    Map<String, List<String>> characterDetails,
+  ) {
+    final lines = <String>[];
+    if (missingCharacters.isNotEmpty) {
+      lines.add(
+        '오늘 접속 안 함: '
+        '${missingCharacters.map((character) => character.characterName).join(', ')}',
+      );
+    }
+    for (final entry in characterDetails.entries) {
+      lines.add('${entry.key}: ${entry.value.join(', ')}');
+    }
+    return lines.join('\n');
   }
 
   Future<void> _checkWeeklyReminderNotification(DateTime now) async {
@@ -2103,7 +2150,7 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
       return;
     }
 
-    final incompleteCharacters = <NexonCharacterSummary>[];
+    final characterDetails = <String, List<String>>{};
     for (final character in notificationTargetCharacters) {
       try {
         final snapshot = await apiClient.fetchScheduler(character.ocid);
@@ -2111,26 +2158,52 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
         final displayedSnapshot = cachedSnapshot == null
             ? snapshot
             : snapshot.withCachedEmptySections(cachedSnapshot);
-        final hasIncompleteWeeklyContent =
-            displayedSnapshot.weeklyItems.any((item) => !item.done);
-        final hasIncompleteWeeklyBoss = displayedSnapshot.bossItems
-            .where(_isWeeklyBoss)
-            .any((item) => !item.done);
-        if (hasIncompleteWeeklyContent || hasIncompleteWeeklyBoss) {
-          incompleteCharacters.add(character);
+
+        final details = <String>[];
+
+        final weeklyBosses = displayedSnapshot.bossItems
+            .where(_isDashboardWeeklyBoss)
+            .toList();
+        final weeklyBossClearCount = displayedSnapshot.weeklyBossClearCount ??
+            weeklyBosses.where((item) => item.done).length;
+        final weeklyBossClearLimit =
+            displayedSnapshot.weeklyBossClearLimit ?? 12;
+        if (weeklyBossClearCount < weeklyBossClearLimit) {
+          details.add('주간보스 $weeklyBossClearCount/$weeklyBossClearLimit');
+        }
+
+        for (final item in displayedSnapshot.weeklyItems) {
+          final isSuro = _isGuildSuroItem(item);
+          final isFlagRace = _isGuildFlagRaceItem(item);
+          if (isSuro || isFlagRace) {
+            final isCompleted = (item.currentCount ?? 0) >= 1 || item.done;
+            if (!isCompleted) {
+              details.add(item.title);
+            }
+            continue;
+          }
+          if (_isEpicDungeonItem(item) && !item.done) {
+            details.add(item.title);
+          }
+        }
+
+        if (details.isNotEmpty) {
+          characterDetails[character.characterName] = details;
         }
       } on ApiException {
         // A failed lookup should not turn into an unfinished-content notification.
       }
     }
 
-    if (incompleteCharacters.isEmpty) {
+    if (characterDetails.isEmpty) {
       return;
     }
 
     await showOverlayAlert(
       title: '이번 주 숙제가 남아 있어요',
-      body: '${_characterNames(incompleteCharacters)} 목요일 전에 주간 콘텐츠를 확인해주세요.',
+      body: characterDetails.entries
+          .map((entry) => '${entry.key}: ${entry.value.join(', ')}')
+          .join('\n'),
       payload: 'section:scheduler',
     );
     await notificationHistory.markSent(ruleKey);
@@ -2141,11 +2214,6 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
         .where(
             (character) => !notificationDisabledOcids.contains(character.ocid))
         .toList();
-  }
-
-  bool _isWeeklyBoss(SchedulerItemSummary item) {
-    final cycle = item.cycle.trim().toLowerCase();
-    return cycle == 'weekly' || cycle == 'week' || cycle == '주간';
   }
 
   Future<void> _checkMonthlyReminderNotification(DateTime now) async {
@@ -2184,13 +2252,6 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
     final month = dateTime.month.toString().padLeft(2, '0');
     final day = dateTime.day.toString().padLeft(2, '0');
     return '${dateTime.year}-$month-$day';
-  }
-
-  String _characterNames(List<NexonCharacterSummary> characters) {
-    if (characters.length == 1) {
-      return '${characters.first.characterName}님의';
-    }
-    return '${characters.first.characterName}님 외 ${characters.length - 1}명의';
   }
 
   String _newNoticeTitle(NoticeItemSummary item) {
@@ -4944,6 +5005,15 @@ bool _isGuildWeeklyMissionPointItem(SchedulerItemSummary item) {
       title.contains('주간') &&
       title.contains('미션') &&
       title.contains('포인트');
+}
+
+bool _isEpicDungeonItem(SchedulerItemSummary item) {
+  return item.title.replaceAll(' ', '').contains('에픽던전');
+}
+
+bool _isDailyBossItem(SchedulerItemSummary item) {
+  final cycle = item.cycle.trim().toLowerCase();
+  return cycle == 'daily' || cycle == 'day' || cycle == '일간' || cycle == '일일';
 }
 
 const _partyBossDifficultyOptions = <String, List<String>>{
