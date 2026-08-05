@@ -1852,6 +1852,9 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
     try {
       final now = DateTime.now();
       await _checkPartyScheduleNotifications(now);
+      if (notificationSettings.monthlyEnabled) {
+        await _checkMonthlyReminderNotification(now);
+      }
 
       if (now.hour != notificationSettings.reminderHour ||
           now.minute != notificationSettings.reminderMinute ||
@@ -1958,6 +1961,9 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
     isCheckingScheduledNotifications = true;
     try {
       await _checkPartyScheduleNotifications(now, requireSameDate: true);
+      if (notificationSettings.monthlyEnabled) {
+        await _checkMonthlyReminderNotification(now);
+      }
       if (selectedCharacters.isEmpty) {
         return;
       }
@@ -2140,6 +2146,38 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
   bool _isWeeklyBoss(SchedulerItemSummary item) {
     final cycle = item.cycle.trim().toLowerCase();
     return cycle == 'weekly' || cycle == 'week' || cycle == '주간';
+  }
+
+  Future<void> _checkMonthlyReminderNotification(DateTime now) async {
+    if (notificationTargetCharacters.isEmpty) {
+      return;
+    }
+
+    for (final schedule in partySchedules.where((item) => item.isMonthly)) {
+      final targetTime = schedule.currentScheduleFrom(now);
+      if (_dateKey(targetTime) != _dateKey(now) ||
+          now.hour != targetTime.hour ||
+          now.minute != targetTime.minute) {
+        continue;
+      }
+
+      final ruleKey = 'monthly-reminder-${schedule.id}-${_dateKey(now)}';
+      if (await notificationHistory.hasSent(ruleKey)) {
+        continue;
+      }
+
+      if (_isPartyScheduleClearedBySnapshots(schedule, dashboardSnapshots)) {
+        await notificationHistory.markSent(ruleKey);
+        continue;
+      }
+
+      await showOverlayAlert(
+        title: '이번 달 ${schedule.bossName} 숙제가 남아 있어요',
+        body: '${_partyScheduleNotificationText(schedule)} 아직 완료하지 않았어요.',
+        payload: 'section:party',
+      );
+      await notificationHistory.markSent(ruleKey);
+    }
   }
 
   String _dateKey(DateTime dateTime) {
@@ -3019,7 +3057,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
             ),
             _NotificationSettingSwitch(
               title: '월간 알림',
-              subtitle: '월간 콘텐츠 알림 기준으로 사용합니다.',
+              subtitle: '보스 일정에 등록된 월간 보스(검은 마법사 등)를 일정 시간에 완료했는지 확인해서 알려줍니다.',
               value: draft.monthlyEnabled,
               saving: saving || !draft.enabled,
               onChanged: (value) => setState(() {
