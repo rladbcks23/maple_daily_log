@@ -5,8 +5,6 @@ from .views import (
     AppVersionView,
     CheckNewNoticesView,
     CurrentNoticesView,
-    DailyReminderCheckView,
-    LauncherExitReminderCheckView,
     LatestSundayEventView,
     NexonBasicView,
     NexonCharactersView,
@@ -14,7 +12,6 @@ from .views import (
     NexonSchedulerView,
     NoticeSnapshotViewSet,
     SundayEventSnapshotViewSet,
-    WeeklyReminderCheckView,
 )
 
 router = DefaultRouter()
@@ -30,8 +27,5 @@ urlpatterns = [
     path("notices/current", CurrentNoticesView.as_view()),
     path("notices/latest-sunday", LatestSundayEventView.as_view()),
     path("notices/check-new", CheckNewNoticesView.as_view()),
-    path("reminders/daily-check", DailyReminderCheckView.as_view()),
-    path("reminders/weekly-check", WeeklyReminderCheckView.as_view()),
-    path("reminders/launcher-exit-check", LauncherExitReminderCheckView.as_view()),
     path("app/version", AppVersionView.as_view()),
 ]

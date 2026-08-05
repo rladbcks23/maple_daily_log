@@ -16,7 +16,6 @@ from .services import (
     check_new_notices,
     collect_and_store_notice_items,
     collect_or_load_latest_sunday_event,
-    run_reminder_check,
 )
 
 
@@ -177,31 +176,3 @@ class AppVersionView(APIView):
                 "notes": settings.APP_RELEASE_NOTES,
             }
         )
-
-
-class ReminderCheckView(APIView):
-    mode = None
-
-    def post(self, request):
-        try:
-            result = run_reminder_check(
-                self.mode,
-                ocid=request.data.get("ocid"),
-                date=request.data.get("date"),
-                force=bool(request.data.get("force", False)),
-            )
-        except NexonApiError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
-        return Response(result)
-
-
-class DailyReminderCheckView(ReminderCheckView):
-    mode = "daily"
-
-
-class WeeklyReminderCheckView(ReminderCheckView):
-    mode = "weekly"
-
-
-class LauncherExitReminderCheckView(ReminderCheckView):
-    mode = "launcher_exit"

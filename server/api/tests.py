@@ -9,39 +9,7 @@ from .models import NoticeSnapshot, SundayEventSnapshot
 from .services import (
     check_new_notices,
     collect_and_store_notice_items,
-    scheduler_daily_result,
-    scheduler_weekly_result,
 )
-
-
-class SchedulerResultTests(TestCase):
-    def test_empty_daily_contents_becomes_unknown(self):
-        result = scheduler_daily_result({"daily_contents": []})
-
-        self.assertEqual(result["unknownItems"][0]["name"], "일간 콘텐츠 정보")
-        self.assertEqual(result["missingItems"], [])
-
-    def test_incomplete_daily_content_becomes_missing(self):
-        result = scheduler_daily_result(
-            {
-                "daily_contents": [
-                    {
-                        "contents_name": "몬스터 파크",
-                        "current_count": 0,
-                        "max_count": 2,
-                    }
-                ]
-            }
-        )
-
-        self.assertEqual(result["unknownItems"], [])
-        self.assertEqual(result["missingItems"][0]["name"], "몬스터 파크")
-
-    def test_empty_weekly_contents_becomes_weekly_unknown(self):
-        result = scheduler_weekly_result({"weekly_contents": []})
-
-        self.assertEqual(result["weeklyUnknownItems"][0]["name"], "주간 콘텐츠 정보")
-        self.assertEqual(result["weeklyMissingItems"], [])
 
 
 class NoticeSnapshotTests(TestCase):

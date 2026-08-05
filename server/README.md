@@ -53,11 +53,5 @@ Nexon API 프록시:
 - `GET /api/notice-snapshots/`
 - `GET /api/sunday-events/`
 
-알림 판단:
-
-- `POST /api/reminders/daily-check`
-- `POST /api/reminders/weekly-check`
-- `POST /api/reminders/launcher-exit-check`
-
-`weekly-check`는 기본적으로 화요일/수요일에만 판단한다.
-테스트나 수동 확인이 필요하면 요청 바디에 `"force": true`를 넣는다.
+알림 판단은 앱(Flutter 클라이언트)이 `GET /api/nexon/scheduler/{ocid}` 응답을 직접 받아 수행한다
+(자세한 규칙은 `docs/알림 판단 규칙.md` 참고). 서버는 공지/이벤트 변경 감지(`POST /api/notices/check-new`)만 담당한다.
