@@ -2489,31 +2489,14 @@ class _FeedbackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.navAccent,
-      borderRadius: BorderRadius.circular(24),
-      elevation: 3,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: onPressed,
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.feedback_outlined, size: 18, color: Colors.white),
-              SizedBox(width: 8),
-              Text(
-                '피드백 / 버그 제보하기',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
+    return FilledButton.icon(
+      onPressed: onPressed,
+      icon: const Icon(Icons.feedback_outlined, size: 18),
+      label: const Text('피드백 / 버그 제보하기'),
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.navAccent,
+        foregroundColor: Colors.white,
+        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800),
       ),
     );
   }
