@@ -4449,7 +4449,7 @@ class _CharacterProgressCard extends StatelessWidget {
                     icon: Icons.auto_awesome_outlined,
                     label: '솔 에르다 기운',
                     value: _formatSolErdaEnergy(rewardSummary.solErdaEnergy),
-                    tooltipMessage: '부가 버프를 제외한 기본 획득량입니다.',
+                    tooltipMessage: '버프를 제외한 기본 획득량입니다.',
                   ),
                 ),
               ],
