@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 const defaultApiBaseUrl = 'https://maple-daily-log-e5su.onrender.com';
 
@@ -74,7 +75,11 @@ class ApiClient {
         ..fields['content'] = content
         ..fields['appVersion'] = appVersion
         ..files.add(
-          await http.MultipartFile.fromPath('attachment', attachment.path),
+          await http.MultipartFile.fromPath(
+            'attachment',
+            attachment.path,
+            contentType: _attachmentMediaType(attachment.path),
+          ),
         );
       final streamedResponse = await _httpClient.send(request);
       response = await http.Response.fromStream(streamedResponse);
@@ -105,6 +110,27 @@ class ApiClient {
       // Ignore malformed error bodies and fall back to the status code only.
     }
     return '';
+  }
+
+  static const _attachmentMimeTypes = {
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+    'bmp': 'image/bmp',
+    'mp4': 'video/mp4',
+    'mov': 'video/quicktime',
+    'mkv': 'video/x-matroska',
+    'webm': 'video/webm',
+    'avi': 'video/x-msvideo',
+  };
+
+  static MediaType _attachmentMediaType(String path) {
+    final extension = path.split('.').last.toLowerCase();
+    final mimeType =
+        _attachmentMimeTypes[extension] ?? 'application/octet-stream';
+    return MediaType.parse(mimeType);
   }
 
   Future<List<NexonCharacterSummary>> fetchNexonCharacters() async {
