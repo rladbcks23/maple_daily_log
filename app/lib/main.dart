@@ -4449,7 +4449,7 @@ class _CharacterProgressCard extends StatelessWidget {
                     icon: Icons.auto_awesome_outlined,
                     label: '솔 에르다 기운',
                     value: _formatSolErdaEnergy(rewardSummary.solErdaEnergy),
-                    tooltipMessage: '다른 버프나 보약 버프를 적용하지 않았을 때 기준입니다.',
+                    tooltipMessage: '부가 버프를 제외한 기본 획득량입니다.',
                   ),
                 ),
               ],
@@ -4611,7 +4611,7 @@ class _WeeklyRewardSummary {
     final details = crystalMesosDetails.isEmpty
         ? '집계 가능한 보스 수익이 없습니다.'
         : crystalMesosDetails.map((detail) => '- $detail').join('\n');
-    return '물욕템이나 부가 수익을 제외한 수익입니다.\n\n$details';
+    return '부가 수익을 제외한 결정석값 입니다.\n\n$details';
   }
 }
 
