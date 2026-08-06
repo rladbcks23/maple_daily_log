@@ -680,6 +680,9 @@ class SchedulerItemSummary {
     if (_isGuildFlagRace(title)) {
       return current == null ? '' : '$current점';
     }
+    if (_isMonsterPark(title) && max != null) {
+      return '$count / $max';
+    }
     if (state == '0' && count == 0) {
       return '';
     }
@@ -713,6 +716,10 @@ class SchedulerItemSummary {
 
   static bool _isEpicDungeon(String title) {
     return title.contains('에픽 던전');
+  }
+
+  static bool _isMonsterPark(String title) {
+    return title.replaceAll(' ', '').contains('몬스터파크');
   }
 
   static bool _isGuildWeeklyMissionDone(
