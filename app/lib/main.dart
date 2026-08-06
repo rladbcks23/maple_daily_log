@@ -941,8 +941,13 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
     unawaited(checkScheduledNotifications());
     unawaited(checkLauncherProcess());
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      unawaited(showPendingUpdateInfo());
+      unawaited(_runStartupUpdateChecks());
     });
+  }
+
+  Future<void> _runStartupUpdateChecks() async {
+    await showPendingUpdateInfo();
+    await checkForNewAppVersion();
   }
 
   Future<void> showPendingUpdateInfo() async {
@@ -973,6 +978,47 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
         );
       },
     );
+  }
+
+  Future<void> checkForNewAppVersion() async {
+    if (!mounted) {
+      return;
+    }
+    try {
+      final info = await apiClient.fetchAppVersionInfo();
+      if (!mounted || !isNewerVersion(info.version, appCurrentVersion)) {
+        return;
+      }
+
+      await showDialog<void>(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text('새 버전 ${info.version}이 나왔어요'),
+            content: Text(
+              info.notes.trim().isEmpty
+                  ? '설정 화면에서 업데이트할 수 있어요.'
+                  : info.notes.trim(),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('나중에'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  selectSection(AppSection.settings);
+                },
+                child: const Text('업데이트하러 가기'),
+              ),
+            ],
+          );
+        },
+      );
+    } on ApiException {
+      // Best-effort startup check — a failed lookup shouldn't interrupt startup.
+    }
   }
 
   Future<void> initializeNotifications() async {
