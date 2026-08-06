@@ -4556,27 +4556,10 @@ class _CharacterMetric extends StatelessWidget {
               Tooltip(
                 message: tooltipMessage!,
                 waitDuration: const Duration(milliseconds: 250),
-                child: Container(
-                  width: 15,
-                  height: 15,
-                  decoration: BoxDecoration(
-                    color: AppColors.navAccent.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.navAccent.withValues(alpha: 0.65),
-                    ),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      '!',
-                      style: TextStyle(
-                        color: AppColors.navAccent,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        height: 1,
-                      ),
-                    ),
-                  ),
+                child: const Icon(
+                  Icons.info_outline_rounded,
+                  color: AppColors.navAccent,
+                  size: 16,
                 ),
               ),
             ],
