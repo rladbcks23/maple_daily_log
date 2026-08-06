@@ -20,3 +20,4 @@ server/.gradle/
 server/db.sqlite3
 *.sqlite3
 *.db
+server/media/

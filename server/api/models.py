@@ -42,6 +42,21 @@ class NoticeSnapshot(models.Model):
         return f"[{self.notice_type}] {self.title}"
 
 
+class Feedback(models.Model):
+    content = models.TextField()
+    attachment = models.FileField(upload_to="feedback_attachments/", blank=True, null=True)
+    app_version = models.CharField(max_length=40, blank=True)
+    is_resolved = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        preview = self.content.strip().splitlines()[0] if self.content.strip() else ""
+        return preview[:50] or f"Feedback #{self.pk}"
+
+
 class SundayEventSnapshot(models.Model):
     notice_id = models.CharField(max_length=120, unique=True)
     title = models.CharField(max_length=300)

@@ -1,11 +1,13 @@
+import tempfile
 from unittest.mock import patch
 
 from django.core.cache import cache
-from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from .models import NoticeSnapshot, SundayEventSnapshot
+from .models import Feedback, NoticeSnapshot, SundayEventSnapshot
 from .services import (
     check_new_notices,
     collect_and_store_notice_items,
@@ -185,3 +187,53 @@ class ApiTests(TestCase):
 
         self.assertEqual(refreshed.status_code, 200)
         self.assertEqual(character_basic.call_count, 2)
+
+    def test_feedback_create_saves_content(self):
+        response = self.client.post(
+            "/api/feedback",
+            {"content": "  버튼이 잘 안 눌려요  ", "appVersion": "0.2.0"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Feedback.objects.count(), 1)
+        feedback = Feedback.objects.get()
+        self.assertEqual(feedback.content, "버튼이 잘 안 눌려요")
+
+    def test_feedback_create_rejects_blank_content(self):
+        response = self.client.post(
+            "/api/feedback", {"content": "   "}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+    def test_feedback_create_accepts_image_attachment(self):
+        image = SimpleUploadedFile(
+            "screenshot.png", b"fake-image-bytes", content_type="image/png"
+        )
+
+        response = self.client.post(
+            "/api/feedback",
+            {"content": "스크린샷 첨부", "attachment": image},
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        feedback = Feedback.objects.get()
+        self.assertTrue(feedback.attachment.name.startswith("feedback_attachments/"))
+
+    def test_feedback_create_rejects_non_media_attachment(self):
+        text_file = SimpleUploadedFile(
+            "notes.txt", b"not media", content_type="text/plain"
+        )
+
+        response = self.client.post(
+            "/api/feedback",
+            {"content": "잘못된 첨부", "attachment": text_file},
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Feedback.objects.count(), 0)
+        self.assertEqual(Feedback.objects.count(), 0)

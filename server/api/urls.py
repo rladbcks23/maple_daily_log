@@ -5,6 +5,7 @@ from .views import (
     AppVersionView,
     CheckNewNoticesView,
     CurrentNoticesView,
+    FeedbackCreateView,
     LatestSundayEventView,
     NexonBasicView,
     NexonCharactersView,
@@ -28,4 +29,5 @@ urlpatterns = [
     path("notices/latest-sunday", LatestSundayEventView.as_view()),
     path("notices/check-new", CheckNewNoticesView.as_view()),
     path("app/version", AppVersionView.as_view()),
+    path("feedback", FeedbackCreateView.as_view()),
 ]

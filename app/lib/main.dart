@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:desktop_multi_window/desktop_multi_window.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
@@ -977,6 +978,13 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
           ],
         );
       },
+    );
+  }
+
+  Future<void> _openFeedbackDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (_) => _FeedbackDialog(apiClient: apiClient),
     );
   }
 
@@ -2460,6 +2468,11 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
             ],
           ),
         ),
+        Positioned(
+          top: 16,
+          right: 16,
+          child: _FeedbackButton(onPressed: () => unawaited(_openFeedbackDialog())),
+        ),
         if (alert != null)
           Positioned.fill(
             child: _OverlayAlertWindow(
@@ -2468,6 +2481,186 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
               onConfirm: () => unawaited(closeOverlayAlert()),
             ),
           ),
+      ],
+    );
+  }
+}
+
+class _FeedbackButton extends StatelessWidget {
+  const _FeedbackButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.navAccent,
+      borderRadius: BorderRadius.circular(24),
+      elevation: 3,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onPressed,
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.feedback_outlined, size: 18, color: Colors.white),
+              SizedBox(width: 8),
+              Text(
+                '피드백 / 버그 제보하기',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FeedbackDialog extends StatefulWidget {
+  const _FeedbackDialog({required this.apiClient});
+
+  final ApiClient apiClient;
+
+  @override
+  State<_FeedbackDialog> createState() => _FeedbackDialogState();
+}
+
+class _FeedbackDialogState extends State<_FeedbackDialog> {
+  final contentController = TextEditingController();
+  var submitting = false;
+  PlatformFile? attachment;
+
+  @override
+  void dispose() {
+    contentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickAttachment() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const [
+        'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp',
+        'mp4', 'mov', 'mkv', 'webm', 'avi',
+      ],
+    );
+    if (result == null || result.files.isEmpty || !mounted) {
+      return;
+    }
+    setState(() {
+      attachment = result.files.single;
+    });
+  }
+
+  Future<void> _submit() async {
+    final content = contentController.text.trim();
+    if (content.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('내용을 입력해주세요.')),
+      );
+      return;
+    }
+
+    setState(() {
+      submitting = true;
+    });
+    try {
+      await widget.apiClient.submitFeedback(
+        content: content,
+        appVersion: appCurrentVersion,
+        attachment:
+            attachment?.path == null ? null : File(attachment!.path!),
+      );
+      if (!mounted) {
+        return;
+      }
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('피드백이 전송됐어요. 감사합니다!')),
+      );
+    } on ApiException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        submitting = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('피드백 / 버그 제보하기'),
+      content: SizedBox(
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: contentController,
+              enabled: !submitting,
+              maxLines: 5,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: '버그, 개선 아이디어 등 자유롭게 남겨주세요',
+                alignLabelWithHint: true,
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: submitting ? null : () => unawaited(_pickAttachment()),
+              icon: const Icon(Icons.attach_file, size: 18),
+              label: Text(
+                attachment == null
+                    ? '이미지/영상 첨부 (선택)'
+                    : attachment!.name,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (attachment != null)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: submitting
+                      ? null
+                      : () => setState(() => attachment = null),
+                  child: const Text('첨부 제거'),
+                ),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: submitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('취소'),
+        ),
+        FilledButton(
+          onPressed: submitting ? null : () => unawaited(_submit()),
+          child: submitting
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('보내기'),
+        ),
       ],
     );
   }

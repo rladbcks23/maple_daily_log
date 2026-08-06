@@ -116,6 +116,12 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Feedback attachment size limit (bytes).
+FEEDBACK_ATTACHMENT_MAX_BYTES = 20 * 1024 * 1024
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 NEXON_API_KEY = os.getenv("NEXON_API_KEY", "")

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -53,6 +54,35 @@ class ApiClient {
     }
 
     return AppVersionInfo.fromJson(decoded);
+  }
+
+  Future<void> submitFeedback({
+    required String content,
+    String appVersion = '',
+    File? attachment,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/feedback');
+    http.Response response;
+    if (attachment == null) {
+      response = await _httpClient.post(
+        uri,
+        headers: const {'Content-Type': 'application/json'},
+        body: jsonEncode({'content': content, 'appVersion': appVersion}),
+      );
+    } else {
+      final request = http.MultipartRequest('POST', uri)
+        ..fields['content'] = content
+        ..fields['appVersion'] = appVersion
+        ..files.add(
+          await http.MultipartFile.fromPath('attachment', attachment.path),
+        );
+      final streamedResponse = await _httpClient.send(request);
+      response = await http.Response.fromStream(streamedResponse);
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException('피드백을 보내지 못했습니다. (${response.statusCode})');
+    }
   }
 
   Future<List<NexonCharacterSummary>> fetchNexonCharacters() async {

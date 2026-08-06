@@ -5,12 +5,17 @@ from django.conf import settings
 from django.db import transaction
 from django.http import JsonResponse
 from rest_framework import status, viewsets
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import NoticeSnapshot, SundayEventSnapshot
+from .models import Feedback, NoticeSnapshot, SundayEventSnapshot
 from .nexon import NexonApiError, NexonClient
-from .serializers import NoticeSnapshotSerializer, SundayEventSnapshotSerializer
+from .serializers import (
+    FeedbackSerializer,
+    NoticeSnapshotSerializer,
+    SundayEventSnapshotSerializer,
+)
 from .services import (
     active_notice_items_from_db,
     check_new_notices,
@@ -176,3 +181,19 @@ class AppVersionView(APIView):
                 "notes": settings.APP_RELEASE_NOTES,
             }
         )
+
+
+class FeedbackCreateView(APIView):
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+
+    def post(self, request):
+        serializer = FeedbackSerializer(
+            data={
+                "content": request.data.get("content", ""),
+                "app_version": request.data.get("appVersion", ""),
+                "attachment": request.data.get("attachment"),
+            }
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
