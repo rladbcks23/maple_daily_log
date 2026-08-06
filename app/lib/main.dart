@@ -4022,7 +4022,7 @@ class _NotificationSettingSwitch extends StatelessWidget {
               waitDuration: const Duration(milliseconds: 350),
               child: const Icon(
                 Icons.info_outline_rounded,
-                color: AppColors.muted,
+                color: AppColors.navAccent,
                 size: 16,
               ),
             ),
