@@ -81,8 +81,30 @@ class ApiClient {
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException('피드백을 보내지 못했습니다. (${response.statusCode})');
+      throw ApiException(
+        '피드백을 보내지 못했습니다. (${response.statusCode}) '
+        '${_firstErrorDetail(response.bodyBytes)}',
+      );
     }
+  }
+
+  static String _firstErrorDetail(List<int> bodyBytes) {
+    try {
+      final decoded = jsonDecode(utf8.decode(bodyBytes));
+      if (decoded is Map<String, dynamic>) {
+        for (final value in decoded.values) {
+          if (value is List && value.isNotEmpty) {
+            return value.first.toString();
+          }
+          if (value is String) {
+            return value;
+          }
+        }
+      }
+    } catch (_) {
+      // Ignore malformed error bodies and fall back to the status code only.
+    }
+    return '';
   }
 
   Future<List<NexonCharacterSummary>> fetchNexonCharacters() async {
