@@ -2463,15 +2463,11 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
                   onToggleCharacterNotification: toggleCharacterNotification,
                   onSavePartySchedule: savePartySchedule,
                   onDeletePartySchedule: deletePartySchedule,
+                  onOpenFeedback: () => unawaited(_openFeedbackDialog()),
                 ),
               ),
             ],
           ),
-        ),
-        Positioned(
-          top: 16,
-          right: 16,
-          child: _FeedbackButton(onPressed: () => unawaited(_openFeedbackDialog())),
         ),
         if (alert != null)
           Positioned.fill(
@@ -2985,6 +2981,7 @@ class _MainPanel extends StatelessWidget {
     required this.onToggleCharacterNotification,
     required this.onSavePartySchedule,
     required this.onDeletePartySchedule,
+    required this.onOpenFeedback,
   });
 
   final AppSection currentSection;
@@ -3021,6 +3018,7 @@ class _MainPanel extends StatelessWidget {
   final ValueChanged<NexonCharacterSummary> onToggleCharacterNotification;
   final Future<void> Function(PartySchedule schedule) onSavePartySchedule;
   final Future<void> Function(PartySchedule schedule) onDeletePartySchedule;
+  final VoidCallback onOpenFeedback;
 
   @override
   Widget build(BuildContext context) {
@@ -3061,6 +3059,8 @@ class _MainPanel extends StatelessWidget {
                   ),
                 ],
                 const Spacer(),
+                if (currentSection == AppSection.settings)
+                  _FeedbackButton(onPressed: onOpenFeedback),
               ],
             ),
             const SizedBox(height: 24),
