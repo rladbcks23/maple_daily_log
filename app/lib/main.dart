@@ -3487,6 +3487,20 @@ class _SettingsPanelState extends State<_SettingsPanel> {
                 ),
               ],
             ),
+            const SizedBox(height: 24),
+            const Center(
+              child: Text(
+                '이 앱은 NEXON Open API를 활용하여 제작되었습니다.\n'
+                '넥슨코리아와 공식적인 제휴 관계가 없는 개인 제작 도구입니다.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  height: 1.5,
+                ),
+              ),
+            ),
           ],
         ),
       ),
