@@ -7717,8 +7717,10 @@ class _NoticeOverviewPanelState extends State<_NoticeOverviewPanel> {
       return _InlineError(message: widget.errorMessage!);
     }
 
-    final filteredItems = selectedCategory.type == null
+    final filteredItems = selectedCategory == NoticeCategory.all
         ? widget.items
+            .where((item) => item.displayType != NoticeCategory.cashshop.type)
+            .toList()
         : widget.items
             .where((item) => item.displayType == selectedCategory.type)
             .toList();
