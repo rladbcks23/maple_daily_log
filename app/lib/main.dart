@@ -1949,10 +1949,33 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
         currentItems = await apiClient.fetchCurrentNotices(
           forceRefresh: refresh,
         );
+
+        // Keep the "이번주 썬데이" section's title (driven by noticeItems) and
+        // its actual content (driven by sundayEvent) in sync — this background
+        // check used to update only noticeItems, so the section label could
+        // flip to "이번주 썬데이" while the content panel kept showing last
+        // week's cached event.
+        var nextSundayEvent = _findSpecialSundayEvent(currentItems);
+        if (nextSundayEvent == null) {
+          try {
+            nextSundayEvent = await apiClient.fetchLatestSundayEvent(
+              forceRefresh: refresh,
+            );
+          } on ApiException {
+            nextSundayEvent = null;
+          }
+        }
+        if (nextSundayEvent != null) {
+          await sundayEventCache.save(nextSundayEvent);
+        }
+
         if (mounted) {
           setState(() {
             noticeItems = currentItems;
             noticeErrorMessage = null;
+            if (nextSundayEvent != null) {
+              sundayEvent = nextSundayEvent;
+            }
           });
         }
       }
