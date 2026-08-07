@@ -2138,15 +2138,17 @@ class _MapleAppShellState extends State<_MapleAppShell> with WindowListener {
         }
 
         final details = <String>[];
-        for (final item in snapshot.dailyItems) {
+        for (final item in _groupDailyQuestItems(snapshot.dailyItems)) {
           if (_isMonsterParkItem(item)) {
             if ((item.currentCount ?? 0) == 0) {
               details.add('몬스터파크');
             }
             continue;
           }
-          if (item.title.contains('[일일 퀘스트]') && !item.done) {
-            details.add(item.title);
+          if (!item.done) {
+            details.add(
+              item.meta.isEmpty ? item.title : '${item.title} ${item.meta}',
+            );
           }
         }
         for (final item in snapshot.bossItems.where(_isDailyBossItem)) {
