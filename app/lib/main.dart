@@ -5265,7 +5265,7 @@ bool _isDailyBossItem(SchedulerItemSummary item) {
 }
 
 const _partyBossDifficultyOptions = <String, List<String>>{
-  '발록': ['easy', 'normal'],
+  '발록': ['easy'],
   '자쿰': ['normal', 'chaos'],
   '매그너스': ['easy', 'normal', 'hard'],
   '힐라': ['normal', 'hard'],
