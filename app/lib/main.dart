@@ -4658,6 +4658,11 @@ _WeeklyRewardSummary _buildWeeklyRewardSummary({
   for (final item in snapshot.bossItems.where(_isDashboardWeeklyBoss)) {
     final reward = _bossRewardFor(item);
     if (reward == null) {
+      // 시세 데이터가 없는 보스도 목록에서 빠지지 않도록 표시만 하고
+      // 합계 계산에서는 제외한다 (등록된 보스가 조용히 사라지는 것을 방지).
+      crystalMesosDetails.add(
+        '${item.difficulty.toUpperCase()} ${item.title}: 시세 정보 없음',
+      );
       continue;
     }
     final shareSize = _partyShareSizeFor(
