@@ -5379,6 +5379,30 @@ String _partyBossImageAsset(String bossName) {
 }
 
 final _bossRewards = <String, _BossRewardInfo>{
+  _bossRewardKey('발록', 'easy'):
+      const _BossRewardInfo(crystalMesos: 0, solErdaEnergy: 0),
+  _bossRewardKey('반 레온', 'easy'):
+      const _BossRewardInfo(crystalMesos: 602000, solErdaEnergy: 0),
+  _bossRewardKey('반 레온', 'normal'):
+      const _BossRewardInfo(crystalMesos: 830000, solErdaEnergy: 0),
+  _bossRewardKey('반 레온', 'hard'):
+      const _BossRewardInfo(crystalMesos: 1070000, solErdaEnergy: 0),
+  _bossRewardKey('혼테일', 'easy'):
+      const _BossRewardInfo(crystalMesos: 502000, solErdaEnergy: 0),
+  _bossRewardKey('혼테일', 'normal'):
+      const _BossRewardInfo(crystalMesos: 576000, solErdaEnergy: 0),
+  _bossRewardKey('혼테일', 'chaos'):
+      const _BossRewardInfo(crystalMesos: 770000, solErdaEnergy: 0),
+  _bossRewardKey('아카이럼', 'easy'):
+      const _BossRewardInfo(crystalMesos: 656000, solErdaEnergy: 0),
+  _bossRewardKey('아카이럼', 'normal'):
+      const _BossRewardInfo(crystalMesos: 1110000, solErdaEnergy: 0),
+  _bossRewardKey('핑크빈', 'normal'):
+      const _BossRewardInfo(crystalMesos: 799000, solErdaEnergy: 0),
+  _bossRewardKey('핑크빈', 'chaos'):
+      const _BossRewardInfo(crystalMesos: 1320000, solErdaEnergy: 0),
+  _bossRewardKey('시그너스', 'normal'):
+      const _BossRewardInfo(crystalMesos: 1360000, solErdaEnergy: 0),
   _bossRewardKey('자쿰', 'normal'):
       const _BossRewardInfo(crystalMesos: 354800, solErdaEnergy: 0),
   _bossRewardKey('자쿰', 'chaos'):
@@ -5504,6 +5528,38 @@ final _bossRewards = <String, _BossRewardInfo>{
   _bossRewardKey('메이린', 'hard'): const _BossRewardInfo(
     crystalMesos: 600000000,
     solErdaEnergy: 550,
+  ),
+  _bossRewardKey('최초의 대적자', 'easy'): const _BossRewardInfo(
+    crystalMesos: 308000000,
+    solErdaEnergy: 0,
+  ),
+  _bossRewardKey('최초의 대적자', 'normal'): const _BossRewardInfo(
+    crystalMesos: 560000000,
+    solErdaEnergy: 0,
+  ),
+  _bossRewardKey('최초의 대적자', 'hard'): const _BossRewardInfo(
+    crystalMesos: 1435000000,
+    solErdaEnergy: 0,
+  ),
+  _bossRewardKey('최초의 대적자', 'extreme'): const _BossRewardInfo(
+    crystalMesos: 4712000000,
+    solErdaEnergy: 0,
+  ),
+  _bossRewardKey('찬란한 흉성', 'normal'): const _BossRewardInfo(
+    crystalMesos: 625000000,
+    solErdaEnergy: 0,
+  ),
+  _bossRewardKey('찬란한 흉성', 'hard'): const _BossRewardInfo(
+    crystalMesos: 2678000000,
+    solErdaEnergy: 0,
+  ),
+  _bossRewardKey('유피테르', 'normal'): const _BossRewardInfo(
+    crystalMesos: 1615000000,
+    solErdaEnergy: 0,
+  ),
+  _bossRewardKey('유피테르', 'hard'): const _BossRewardInfo(
+    crystalMesos: 4845000000,
+    solErdaEnergy: 0,
   ),
 };
 
