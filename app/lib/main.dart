@@ -5297,6 +5297,7 @@ const _partyBossDifficultyOptions = <String, List<String>>{
   '최초의 대적자': ['easy', 'normal', 'hard', 'extreme'],
   '찬란한 흉성': ['normal', 'hard'],
   '유피테르': ['normal', 'hard'],
+  '벨로나': ['easy', 'normal', 'hard'],
   '시즌 보스 메이린': ['normal', 'hard'],
 };
 
@@ -5315,6 +5316,7 @@ int _partyBossMaxMembers(String bossName, String difficulty) {
     '최초의 대적자',
     '찬란한 흉성',
     '유피테르',
+    '벨로나',
   }.contains(bossName)) {
     return 3;
   }
@@ -5322,6 +5324,7 @@ int _partyBossMaxMembers(String bossName, String difficulty) {
 }
 
 const _partyBossPriorityOrder = <String>[
+  '벨로나',
   '유피테르',
   '찬란한 흉성',
   '최초의 대적자',
@@ -5560,6 +5563,18 @@ final _bossRewards = <String, _BossRewardInfo>{
   _bossRewardKey('유피테르', 'hard'): const _BossRewardInfo(
     crystalMesos: 4845000000,
     solErdaEnergy: 0,
+  ),
+  _bossRewardKey('벨로나', 'easy'): const _BossRewardInfo(
+    crystalMesos: 440000000,
+    solErdaEnergy: 200,
+  ),
+  _bossRewardKey('벨로나', 'normal'): const _BossRewardInfo(
+    crystalMesos: 890000000,
+    solErdaEnergy: 290,
+  ),
+  _bossRewardKey('벨로나', 'hard'): const _BossRewardInfo(
+    crystalMesos: 2950000000,
+    solErdaEnergy: 590,
   ),
 };
 
