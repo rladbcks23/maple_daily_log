@@ -728,7 +728,7 @@ class SchedulerItemSummary {
     if (_isGuildFlagRace(title)) {
       return current == null ? '' : '$current점';
     }
-    if (_isMonsterPark(title) && max != null) {
+    if (_isMonsterPark(title) && max != null && max > 0) {
       return '$count / $max';
     }
     if (state == '0' && count == 0) {
@@ -740,7 +740,7 @@ class SchedulerItemSummary {
     if (_isEpicDungeon(title)) {
       return '$count / 5';
     }
-    if (_usesCountRatio(title) && current != null && max != null) {
+    if (_usesCountRatio(title) && current != null && max != null && max > 0) {
       return '$current / $max';
     }
     if (state.isEmpty && count == 0 && max != null) {
